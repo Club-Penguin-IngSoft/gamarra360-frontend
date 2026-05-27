@@ -1,7 +1,8 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import MaterialIcon from './MaterialIcon';
 import LogoGamarra from './LogoGamarra';
 import { RUTAS } from '../constants/rutas';
+import { useAuth } from '../hooks/useAuth';
 
 const NAV_ITEMS = [
   { label: 'Inicio', icon: 'dashboard', to: RUTAS.COMERCIANTE_DASHBOARD },
@@ -14,6 +15,13 @@ const NAV_ITEMS = [
 
 export default function ComercianteSidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { cerrarSesion } = useAuth();
+
+  const handleLogout = () => {
+    cerrarSesion();
+    navigate(RUTAS.LOGIN, { replace: true });
+  };
 
   return (
     <aside className="fixed top-0 left-0 w-64 min-h-screen bg-gray-900 text-white flex flex-col z-10 shadow-lg">
@@ -44,7 +52,7 @@ export default function ComercianteSidebar() {
         })}
       </nav>
 
-      <div className="p-3 border-t border-white/10">
+      <div className="p-3 border-t border-white/10 space-y-0.5">
         <Link
           to={RUTAS.INICIO}
           className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-white/65 hover:bg-white/5 hover:text-white transition-colors"
@@ -52,6 +60,13 @@ export default function ComercianteSidebar() {
           <MaterialIcon name="storefront" style={{ fontSize: '18px' }} />
           Ver Tienda
         </Link>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-white/65 hover:bg-red-500/15 hover:text-red-400 transition-colors"
+        >
+          <MaterialIcon name="logout" style={{ fontSize: '18px' }} />
+          Cerrar Sesión
+        </button>
       </div>
     </aside>
   );
