@@ -625,30 +625,31 @@ export default function EditarProductoPage() {
         <div className="bg-white rounded-xl px-6 py-[22px] shadow-sm">
           <p className="text-[14px] font-bold text-gray-900 mb-5">Especificaciones Técnicas</p>
 
-          <div className="flex gap-3 mb-5">
-            <input
-              type="text"
-              className={`w-[200px] flex-shrink-0 ${tagInputClass}`}
-              placeholder="Título (ej: Material)"
-              value={especTitulo}
-              onChange={(e) => setEspecTitulo(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && agregarEspecificacion()}
-            />
-            <input
-              type="text"
-              className={`flex-1 ${tagInputClass}`}
+          <div className="mb-5 space-y-2">
+            <div className="flex gap-3">
+              <input
+                type="text"
+                className={`flex-1 ${tagInputClass}`}
+                placeholder="Título (ej: Material)"
+                value={especTitulo}
+                onChange={(e) => setEspecTitulo(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && agregarEspecificacion()}
+              />
+              <button
+                onClick={agregarEspecificacion}
+                disabled={!especTitulo.trim() || !especDescripcion.trim()}
+                className="h-9 px-4 bg-primario text-white rounded-lg text-[12px] font-semibold hover:bg-primario-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+              >
+                Agregar
+              </button>
+            </div>
+            <textarea
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-[13px] text-gray-900 bg-white resize-y focus:border-primario focus:outline-none transition-colors"
               placeholder="Descripción (ej: 100% algodón pima)"
               value={especDescripcion}
               onChange={(e) => setEspecDescripcion(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && agregarEspecificacion()}
+              rows={3}
             />
-            <button
-              onClick={agregarEspecificacion}
-              disabled={!especTitulo.trim() || !especDescripcion.trim()}
-              className="h-9 px-4 bg-primario text-white rounded-lg text-[12px] font-semibold hover:bg-primario-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
-            >
-              Agregar
-            </button>
           </div>
 
           {especificaciones.length === 0 ? (
