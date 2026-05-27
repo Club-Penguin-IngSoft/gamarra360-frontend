@@ -14,12 +14,12 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import TopBar from '../components/TopBar';
 import LogoGamarra from '../components/LogoGamarra';
 import MaterialIcon from '../components/MaterialIcon';
-import InputTexto from '../components/InputTexto';
-import BotonPrimario from '../components/BotonPrimario';
-import BotonGoogle from '../components/BotonGoogle';
+import Input from '../components/Input';
+import Button from '../components/Button';
+import GoogleButton from '../components/GoogleButton';
 import { RUTAS } from '../constants/rutas';
 import { useAuth } from '../hooks/useAuth';
 import { validarEmail } from '../utils/validarEmail';
@@ -52,7 +52,7 @@ export default function LoginPage() {
 
     // MOCK: en producción se llamará a apiClient.post('/autenticacion/login')
     const esAdmin = correo === 'admin@gamarra360.com';
-    
+
     iniciarSesion({
       token: 'mock-jwt-' + Date.now(),
       usuario: {
@@ -71,20 +71,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-neutro-50 font-sans">
-      {/* Top bar especial: solo logo + volver al inicio */}
-      <header className="flex h-14 items-center justify-between border-b border-neutro-200 bg-white px-6">
-        <Link to={RUTAS.INICIO} aria-label="Ir al inicio">
-          <LogoGamarra size="sm" />
-        </Link>
-        <Link
-          to={RUTAS.INICIO}
-          className="flex items-center gap-1 text-sm font-medium transition-opacity hover:opacity-75"
-          style={{ color: COLORES.primario }}
-        >
-          <MaterialIcon name="arrow_back" style={{ fontSize: '18px' }} />
-          Volver al Inicio
-        </Link>
-      </header>
+      <TopBar minimal />
 
       <main className="flex flex-1 flex-col lg:flex-row">
         {/* Left: Editorial image */}
@@ -97,7 +84,6 @@ export default function LoginPage() {
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
           />
-          {/* Gradient overlay para legibilidad */}
           <div
             className="absolute inset-0"
             style={{
@@ -124,35 +110,33 @@ export default function LoginPage() {
         {/* Right: Login form */}
         <section className="flex flex-1 items-center justify-center bg-white px-8 py-10">
           <div className="flex w-full max-w-sm flex-col">
-            {/* Header branding */}
-            <LogoGamarra size="md" className="mb-8" />
-            
+            <LogoGamarra size="md" className="mb-8 self-start" />
+
             <h1 className="text-3xl font-extrabold text-neutro-900 mb-1">
               Bienvenido de nuevo
             </h1>
-            <p className="text-neutro-400 text-sm mb-8">
+            <p className="text-neutro-500 text-sm mb-8">
               Ingresa tus credenciales para acceder.
             </p>
 
-            {/* Form */}
             <form onSubmit={handleSubmit} noValidate className="space-y-4">
-              <InputTexto
-                tipo="email"
-                nombre="email"
+              <Input
+                type="email"
+                name="email"
                 placeholder="Correo electrónico"
-                valor={correo}
+                value={correo}
                 onChange={(e) => setCorreo(e.target.value)}
                 autoComplete="email"
               />
 
-              <InputTexto
-                tipo={mostrarContrasena ? 'text' : 'password'}
-                nombre="contrasena"
+              <Input
+                type={mostrarContrasena ? 'text' : 'password'}
+                name="contrasena"
                 placeholder="Contraseña"
-                valor={contrasena}
+                value={contrasena}
                 onChange={(e) => setContrasena(e.target.value)}
                 autoComplete="current-password"
-                sufijo={
+                suffix={
                   <button
                     type="button"
                     onClick={() => setMostrarContrasena((v) => !v)}
@@ -175,15 +159,12 @@ export default function LoginPage() {
                 </div>
               )}
 
-              <BotonPrimario
-                type="submit"
-                disabled={!puedeEnviar}
-              >
+              <Button type="submit" disabled={!puedeEnviar}>
                 Ingresar
-              </BotonPrimario>
+              </Button>
             </form>
 
-            <p className="text-center text-sm text-neutro-400 mt-5">
+            <p className="text-center text-sm text-neutro-500 mt-5">
               ¿Olvidaste tu contraseña?{' '}
               <button
                 type="button"
@@ -194,18 +175,17 @@ export default function LoginPage() {
               </button>
             </p>
 
-            {/* Divider */}
             <div className="flex items-center gap-3 my-6">
-              <div className="flex-1 h-px bg-neutro-100" />
-              <span className="text-xs text-neutro-400 uppercase tracking-widest font-medium whitespace-nowrap">
+              <div className="flex-1 h-px bg-neutro-400" />
+              <span className="text-xs text-neutro-500 uppercase tracking-widest font-medium whitespace-nowrap">
                 O continúa con
               </span>
-              <div className="flex-1 h-px bg-neutro-100" />
+              <div className="flex-1 h-px bg-neutro-400" />
             </div>
 
-            <BotonGoogle />
+            <GoogleButton />
 
-            <div className="text-center text-sm text-neutro-400 mt-6">
+            <div className="text-center text-sm text-neutro-500 mt-6">
               ¿No tienes una cuenta?{' '}
               <Link
                 to={RUTAS.REGISTRO}

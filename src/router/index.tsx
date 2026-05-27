@@ -13,6 +13,9 @@ import CarritoPage from '../pages/CarritoPage';
 import TiendasPage from '../pages/TiendasPage';
 import DetalleTiendaPage from '../pages/DetalleTiendaPage';
 import LoginPage from '../pages/LoginPage';
+import RegistroPage from '../pages/RegistroPage';
+import VenderPage from '../pages/VenderPage';
+import RegistroComerciantePage from '../pages/RegistroComerciantePage';
 import PersonalizacionPage from '../pages/PersonalizacionPage';
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
 import ComingSoonPage from '../pages/ComingSoonPage';
@@ -36,16 +39,8 @@ export default function AppRouter() {
         path={RUTAS.DETALLE_TIENDA()}
         element={<DetalleTiendaPage />}
       />
-      <Route
-        path={RUTAS.VENDER}
-        element={
-          <ComingSoonPage
-            active="Vender"
-            title="Vender en Gamarra 360°"
-            description="El portal de registro para comerciantes estará disponible pronto."
-          />
-        }
-      />
+      <Route path={RUTAS.VENDER} element={<VenderPage />} />
+      <Route path={RUTAS.REGISTRO_COMERCIANTE} element={<RegistroComerciantePage />} />
       <Route
         path={RUTAS.CUENTA}
         element={
@@ -68,6 +63,7 @@ export default function AppRouter() {
         }
       />
       <Route path={RUTAS.LOGIN} element={<LoginPage />} />
+      <Route path={RUTAS.REGISTRO} element={<RegistroPage />} />
       <Route
         path={RUTAS.PERSONALIZAR()}
         element={<PersonalizacionPage />}

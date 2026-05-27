@@ -20,6 +20,12 @@ export const RUTAS = {
   COTIZACIONES: '/cotizaciones',
   LOGIN: '/login',
   REGISTRO: '/registro',
+  REGISTRO_COMERCIANTE: '/registro-comerciante',
+  COMERCIANTE_DASHBOARD: '/comerciante/dashboard',
+  COMERCIANTE_CATALOGO: '/comerciante/catalogo',
+  COMERCIANTE_PEDIDOS: '/comerciante/pedidos',
+  COMERCIANTE_NUEVO_PRODUCTO: '/comerciante/catalogo/nuevo',
+  COMERCIANTE_EDITAR_PRODUCTO: (id: string | number = ':id') => `/comerciante/catalogo/${id}/editar`,
   /** Helper: construye la ruta del formulario de personalización */
   PERSONALIZAR: (id: string | number = ':id') => `/personalizar/${id}`,
   /** Mis personalizaciones (seguimiento del cliente — HU-29) */

@@ -1,0 +1,340 @@
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main {
+  margin-left: var(--sidebar-width);
+  flex: 1;
+  padding: 28px 32px;
+  background: var(--gray-100);
+  min-height: 100vh;
+}
+
+/* ─── Header ─── */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+
+.headerTexts h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--dark);
+  margin-bottom: 4px;
+}
+
+.headerTexts p {
+  font-size: 13px;
+  color: var(--gray-500);
+}
+
+.btnPublicar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  background: var(--primary);
+  color: var(--white);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.btnPublicar:hover {
+  background: var(--primary-hover);
+}
+
+/* ─── Stats ─── */
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.statCard {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.statInfo label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--gray-500);
+  display: block;
+  margin-bottom: 8px;
+}
+
+.statValue {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--dark);
+}
+
+.statIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.statIcon.pink {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.statIcon.green {
+  background: #D1FAE5;
+  color: #059669;
+}
+
+.statIcon.orange {
+  background: #FEF3C7;
+  color: #D97706;
+}
+
+/* ─── Sección media ─── */
+.midRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-sm);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.cardTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--dark);
+}
+
+.cardLink {
+  font-size: 12px;
+  color: var(--primary);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.cardLink:hover {
+  text-decoration: underline;
+}
+
+/* ─── Chart ─── */
+.chartFilter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chartSelect {
+  font-size: 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  color: var(--dark);
+  background: var(--white);
+}
+
+.chartBars {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 120px;
+  padding-top: 8px;
+}
+
+.bar {
+  flex: 1;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: var(--primary-light);
+  position: relative;
+  transition: background 0.15s;
+}
+
+.bar:hover {
+  background: var(--primary);
+}
+
+.barActive {
+  background: var(--primary) !important;
+}
+
+.chartLabels {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.chartLabel {
+  flex: 1;
+  text-align: center;
+  font-size: 11px;
+  color: var(--gray-500);
+}
+
+/* ─── Pedidos Recientes ─── */
+.orderTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.orderTable th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.orderTable td {
+  padding: 10px 0;
+  font-size: 13px;
+  color: var(--dark);
+  border-bottom: 1px solid var(--gray-100);
+  vertical-align: middle;
+}
+
+.orderProduct {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.orderThumb {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  background: var(--gray-200);
+  flex-shrink: 0;
+}
+
+.orderName {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dark);
+  display: block;
+}
+
+.orderSku {
+  font-size: 11px;
+  color: var(--gray-500);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.badge.entregado {
+  background: #D1FAE5;
+  color: #059669;
+}
+
+.badge.pendiente {
+  background: #FEF3C7;
+  color: #D97706;
+}
+
+.badge.enProceso {
+  background: #DBEAFE;
+  color: #2563EB;
+}
+
+.badge.cancelado {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+/* ─── Inventario Crítico ─── */
+.inventoryRow {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.inventoryCard {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.inventoryThumb {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  background: var(--gray-200);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.inventoryInfo {
+  flex: 1;
+}
+
+.inventoryName {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dark);
+  margin-bottom: 2px;
+}
+
+.inventoryStock {
+  font-size: 12px;
+  color: var(--danger);
+  margin-bottom: 10px;
+}
+
+.btnReabastecer {
+  padding: 6px 14px;
+  border: 1.5px solid var(--primary);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--white);
+  transition: background 0.15s, color 0.15s;
+}
+
+.btnReabastecer:hover {
+  background: var(--primary);
+  color: var(--white);
+}
