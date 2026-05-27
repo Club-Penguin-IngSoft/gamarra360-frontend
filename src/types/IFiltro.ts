@@ -8,7 +8,16 @@ import type { GaleriaGamarra } from './ITienda';
 
 export type TipoEntrega = 'DOMICILIO' | 'TIENDA';
 
+export type OrdenCatalogo = 'RECENT' | 'PRICE_ASC' | 'PRICE_DESC' | 'RELEVANCIA';
+
 export interface IFiltrosCatalogo {
+  /**
+   * Búsqueda por palabras clave (CU-08, RF-22/RF-23).
+   * Se envía como `?q=texto` al backend, que ranquea por relevancia en
+   * `productos.nombre`, `productos.descripcion`, `tiendas.nombre_comercial`
+   * y `categorias.nombre_categoria`.
+   */
+  q: string | null;
   entrega: TipoEntrega | null;
   tipoServicio: TipoServicio | null;
   categorias: Categoria[];
@@ -18,9 +27,15 @@ export interface IFiltrosCatalogo {
   tallas: string[];
   precioMin: number | null;
   precioMax: number | null;
+  sort: OrdenCatalogo | null;
+  page: number | null;
+  size: number | null;
+  random: boolean | null;
+  seed: number | null;
 }
 
 export const FILTROS_VACIOS: IFiltrosCatalogo = {
+  q: null,
   entrega: null,
   tipoServicio: null,
   categorias: [],
@@ -30,6 +45,11 @@ export const FILTROS_VACIOS: IFiltrosCatalogo = {
   tallas: [],
   precioMin: null,
   precioMax: null,
+  sort: 'RECENT',
+  page: 1,
+  size: 12,
+  random: false,
+  seed: null,
 };
 
 /**

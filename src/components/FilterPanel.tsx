@@ -8,7 +8,7 @@
  *  - DetalleTiendaPage (filtros del catálogo de una tienda específica)
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   ChevronDown,
@@ -173,11 +173,12 @@ function Select({
 interface Props {
   open: boolean;
   filtros: IFiltrosCatalogo;
-  onChange: (f: IFiltrosCatalogo) => void;
+  onApply: (f: IFiltrosCatalogo) => void;
   onClose: () => void;
 }
 
-export default function FilterPanel({ open, filtros, onChange, onClose }: Props) {
+export default function FilterPanel({ open, filtros, onApply, onClose }: Props) {
+  const [draft, setDraft] = useState<IFiltrosCatalogo>(filtros);
   const [sections, setSections] = useState<Record<SectionKey, boolean>>({
     entrega: true,
     categoria: true,
@@ -189,34 +190,38 @@ export default function FilterPanel({ open, filtros, onChange, onClose }: Props)
     precio: false,
   });
 
+  useEffect(() => {
+    if (open) setDraft(filtros);
+  }, [open, filtros]);
+
   const toggleSection = (k: SectionKey) =>
     setSections((s) => ({ ...s, [k]: !s[k] }));
 
   const toggleCategoria = (c: Categoria) =>
-    onChange({
-      ...filtros,
-      categorias: filtros.categorias.includes(c)
-        ? filtros.categorias.filter((x) => x !== c)
-        : [...filtros.categorias, c],
+    setDraft({
+      ...draft,
+      categorias: draft.categorias.includes(c)
+        ? draft.categorias.filter((x) => x !== c)
+        : [...draft.categorias, c],
     });
 
   const toggleTipoProducto = (t: string) =>
-    onChange({
-      ...filtros,
-      tiposProducto: filtros.tiposProducto.includes(t)
-        ? filtros.tiposProducto.filter((x) => x !== t)
-        : [...filtros.tiposProducto, t],
+    setDraft({
+      ...draft,
+      tiposProducto: draft.tiposProducto.includes(t)
+        ? draft.tiposProducto.filter((x) => x !== t)
+        : [...draft.tiposProducto, t],
     });
 
   const toggleTalla = (t: string) =>
-    onChange({
-      ...filtros,
-      tallas: filtros.tallas.includes(t)
-        ? filtros.tallas.filter((x) => x !== t)
-        : [...filtros.tallas, t],
+    setDraft({
+      ...draft,
+      tallas: draft.tallas.includes(t)
+        ? draft.tallas.filter((x) => x !== t)
+        : [...draft.tallas, t],
     });
 
-  const limpiarTodo = () => onChange(FILTROS_VACIOS);
+  const limpiarTodo = () => setDraft(FILTROS_VACIOS);
 
   return (
     <>
@@ -263,15 +268,15 @@ export default function FilterPanel({ open, filtros, onChange, onClose }: Props)
               name="entrega"
               label="Envío a domicilio"
               icon={<Truck className="h-4 w-4 text-ink-500" />}
-              checked={filtros.entrega === 'DOMICILIO'}
-              onChange={() => onChange({ ...filtros, entrega: 'DOMICILIO' })}
+              checked={draft.entrega === 'DOMICILIO'}
+              onChange={() => setDraft({ ...draft, entrega: 'DOMICILIO' })}
             />
             <Radio
               name="entrega"
               label="Retiro en tienda"
               icon={<StoreIcon className="h-4 w-4 text-ink-500" />}
-              checked={filtros.entrega === 'TIENDA'}
-              onChange={() => onChange({ ...filtros, entrega: 'TIENDA' })}
+              checked={draft.entrega === 'TIENDA'}
+              onChange={() => setDraft({ ...draft, entrega: 'TIENDA' })}
             />
           </Section>
 
@@ -285,7 +290,7 @@ export default function FilterPanel({ open, filtros, onChange, onClose }: Props)
                 <Pill
                   key={c.value}
                   label={c.label}
-                  active={filtros.categorias.includes(c.value)}
+                  active={draft.categorias.includes(c.value)}
                   onClick={() => toggleCategoria(c.value)}
                 />
               ))}
@@ -302,7 +307,7 @@ export default function FilterPanel({ open, filtros, onChange, onClose }: Props)
                 <Pill
                   key={t}
                   label={t}
-                  active={filtros.tiposProducto.includes(t)}
+                  active={draft.tiposProducto.includes(t)}
                   onClick={() => toggleTipoProducto(t)}
                 />
               ))}
@@ -319,9 +324,9 @@ export default function FilterPanel({ open, filtros, onChange, onClose }: Props)
                 key={s.value}
                 name="servicio"
                 label={s.label}
-                checked={filtros.tipoServicio === s.value}
+                checked={draft.tipoServicio === s.value}
                 onChange={() =>
-                  onChange({ ...filtros, tipoServicio: s.value })
+                  setDraft({ ...draft, tipoServicio: s.value })
                 }
               />
             ))}
@@ -334,9 +339,9 @@ export default function FilterPanel({ open, filtros, onChange, onClose }: Props)
           >
             <Select
               placeholder="Todos"
-              value={filtros.color ?? ''}
+              value={draft.color ?? ''}
               onChange={(v) =>
-                onChange({ ...filtros, color: v ? v : null })
+                setDraft({ ...draft, color: v ? v : null })
               }
               options={['Negro', 'Blanco', 'Azul', 'Rojo', 'Verde']}
             />
@@ -349,9 +354,9 @@ export default function FilterPanel({ open, filtros, onChange, onClose }: Props)
           >
             <Select
               placeholder="Todos"
-              value={filtros.material ?? ''}
+              value={draft.material ?? ''}
               onChange={(v) =>
-                onChange({ ...filtros, material: v ? v : null })
+                setDraft({ ...draft, material: v ? v : null })
               }
               options={['Algodón', 'Denim', 'Cuero', 'Poliéster', 'Lana']}
             />
@@ -367,7 +372,7 @@ export default function FilterPanel({ open, filtros, onChange, onClose }: Props)
                 <Pill
                   key={t}
                   label={t}
-                  active={filtros.tallas.includes(t)}
+                  active={draft.tallas.includes(t)}
                   onClick={() => toggleTalla(t)}
                 />
               ))}
@@ -383,10 +388,10 @@ export default function FilterPanel({ open, filtros, onChange, onClose }: Props)
               <input
                 type="number"
                 placeholder="Mín"
-                value={filtros.precioMin ?? ''}
+                value={draft.precioMin ?? ''}
                 onChange={(e) =>
-                  onChange({
-                    ...filtros,
+                  setDraft({
+                    ...draft,
                     precioMin: e.target.value ? Number(e.target.value) : null,
                   })
                 }
@@ -396,10 +401,10 @@ export default function FilterPanel({ open, filtros, onChange, onClose }: Props)
               <input
                 type="number"
                 placeholder="Máx"
-                value={filtros.precioMax ?? ''}
+                value={draft.precioMax ?? ''}
                 onChange={(e) =>
-                  onChange({
-                    ...filtros,
+                  setDraft({
+                    ...draft,
                     precioMax: e.target.value ? Number(e.target.value) : null,
                   })
                 }
@@ -412,13 +417,21 @@ export default function FilterPanel({ open, filtros, onChange, onClose }: Props)
         {/* Footer buttons */}
         <div className="flex flex-col gap-2 border-t border-ink-100 p-6">
           <button
-            onClick={onClose}
+            onClick={() => {
+              onApply(draft);
+              onClose();
+            }}
             className="h-11 rounded-lg bg-brand-500 text-[15px] font-medium text-white transition-colors hover:bg-brand-600"
           >
             Aplicar filtros
           </button>
           <button
-            onClick={limpiarTodo}
+            onClick={() => {
+              const limpio = FILTROS_VACIOS;
+              setDraft(limpio);
+              onApply(limpio);
+              onClose();
+            }}
             className="h-11 rounded-lg border border-brand-500 bg-white text-[15px] font-medium text-brand-600 transition-colors hover:bg-brand-50"
           >
             Limpiar todo

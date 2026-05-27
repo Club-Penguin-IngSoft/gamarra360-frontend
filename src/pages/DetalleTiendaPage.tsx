@@ -252,7 +252,7 @@ function CatalogoSection({
       <FilterPanel
         open={filterOpen}
         filtros={filtros}
-        onChange={handleChangeFiltros}
+           onApply={handleChangeFiltros}
         onClose={() => setFilterOpen(false)}
       />
 

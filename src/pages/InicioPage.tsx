@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import customBadgeIcon from '../assets/images/verified-logo.svg';
@@ -10,6 +10,8 @@ import { RUTAS } from '../constants/rutas';
 import { useCatalogo } from '../hooks/useCatalogo';
 import { listarTiendasDestacadas } from '../services/tiendaService';
 import type { ITienda } from '../types/ITienda';
+import type { Categoria } from '../types/IProducto';
+import type { IFiltrosCatalogo } from '../types/IFiltro';
 
 /** Pseudo-categoría visible en UI — incluye "TODO" además de los enums del backend */
 type CategoriaUI =
@@ -102,10 +104,38 @@ function CategoryTags({
 
 function CatalogoGlobal() {
   const [categoria, setCategoria] = useState<CategoriaUI>('TODO');
-  const { productos, cargando } = useCatalogo();
 
-  // Solo mostramos los primeros 4 en el home
-  const destacados = productos.slice(0, 4);
+  const filtrosCatalogo = useMemo<Partial<IFiltrosCatalogo>>(() => {
+    const seedDiaria = Number(
+      new Date().toISOString().slice(0, 10).replace(/-/g, ''),
+    );
+    const mapCategoria = (value: CategoriaUI): Categoria | null => {
+      switch (value) {
+        case 'HOMBRE':
+          return 'HOMBRE';
+        case 'MUJER':
+          return 'MUJER';
+        case 'NIÑOS':
+          return 'NINOS';
+        case 'UNISEX ADULTOS':
+          return 'UNISEX_ADULTOS';
+        case 'UNISEX NIÑOS':
+          return 'UNISEX_NINOS';
+        case 'TODO':
+        default:
+          return null;
+      }
+    };
+
+    const categoriaBackend = mapCategoria(categoria);
+    return categoriaBackend
+      ? { categorias: [categoriaBackend], page: 1, size: 4, random: true, seed: seedDiaria }
+      : { categorias: [], page: 1, size: 4, random: true, seed: seedDiaria };
+  }, [categoria]);
+
+  const { productos, cargando } = useCatalogo(filtrosCatalogo);
+
+  const destacados = productos;
 
   return (
     <section className="flex flex-col gap-8 px-12 py-12">
