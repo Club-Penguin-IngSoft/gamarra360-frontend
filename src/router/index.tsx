@@ -15,6 +15,9 @@ import DetalleTiendaPage from '../pages/DetalleTiendaPage';
 import LoginPage from '../pages/LoginPage';
 import PersonalizacionPage from '../pages/PersonalizacionPage';
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
+import UsuariosPage from '../pages/admin/UsuariosPage';
+import AprobacionesPage from '../pages/admin/AprobacionesPage';
+import NotificacionesPage from '../pages/admin/NotificacionesPage';
 import ComingSoonPage from '../pages/ComingSoonPage';
 
 /**
@@ -83,6 +86,9 @@ export default function AppRouter() {
         }
       />
       <Route path={RUTAS.ADMIN_DASHBOARD} element={<AdminDashboardPage />} />
+      <Route path={RUTAS.ADMIN_USUARIOS} element={<UsuariosPage />} />
+      <Route path={RUTAS.ADMIN_APROBACIONES} element={<AprobacionesPage />} />
+      <Route path={RUTAS.ADMIN_NOTIFICACIONES} element={<NotificacionesPage />} />
       <Route path="*" element={<Navigate to={RUTAS.INICIO} replace />} />
     </Routes>
   );
