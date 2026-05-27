@@ -14,6 +14,7 @@ import TiendasPage from '../pages/TiendasPage';
 import DetalleTiendaPage from '../pages/DetalleTiendaPage';
 import LoginPage from '../pages/LoginPage';
 import PersonalizacionPage from '../pages/PersonalizacionPage';
+import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
 import ComingSoonPage from '../pages/ComingSoonPage';
 
 /**
@@ -81,6 +82,7 @@ export default function AppRouter() {
           />
         }
       />
+      <Route path={RUTAS.ADMIN_DASHBOARD} element={<AdminDashboardPage />} />
       <Route path="*" element={<Navigate to={RUTAS.INICIO} replace />} />
     </Routes>
   );

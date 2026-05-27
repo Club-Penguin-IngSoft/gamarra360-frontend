@@ -21,11 +21,7 @@ import { useCarrito } from '../hooks/useCarrito';
 import { useAuth } from '../hooks/useAuth';
 import { listarProductosDeTienda } from '../services/catalogoService';
 import { calcularDescuento, formatearPrecio } from '../utils/formatearPrecio';
-import type {
-  IProducto,
-  IVarianteProducto,
-  IEspecificacionProducto,
-} from '../types/IProducto';
+import type { IProducto, IVarianteProducto } from '../types/IProducto';
 
 /* =========================================================================
    Subcomponentes compartidos
@@ -121,7 +117,7 @@ function StoreCard({ producto }: { producto: IProducto }) {
         </span>
       </div>
       <Link
-        to={RUTAS.DETALLE_TIENDA(producto.idTienda)}
+        to={RUTAS.DETALLE_TIENDA(producto.idComerciante)}
         className="inline-flex items-center text-[15px] font-medium text-brand-600 hover:text-brand-500"
       >
         Visitar tienda
@@ -566,7 +562,7 @@ function Gallery({ imagenes, titulo }: { imagenes: string[]; titulo: string }) {
 function Specifications({
   especificaciones,
 }: {
-  especificaciones?: IEspecificacionProducto[];
+  especificaciones?: { etiqueta: string; valor: string }[];
 }) {
   if (!especificaciones || especificaciones.length === 0) return null;
   return (
@@ -577,14 +573,14 @@ function Specifications({
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {especificaciones.map((s) => (
           <div
-            key={s.nombre}
+            key={s.etiqueta}
             className="flex flex-col gap-2 rounded-lg border border-ink-50 bg-white p-4"
           >
             <span className="text-[11px] font-semibold tracking-[0.1em] text-ink-500">
-              {s.nombre}
+              {s.etiqueta}
             </span>
             <span className="text-[15px] font-medium text-ink-900">
-              {s.descripcion}
+              {s.valor}
             </span>
           </div>
         ))}
@@ -601,10 +597,10 @@ function RelatedProducts({ producto }: { producto: IProducto }) {
   const [relacionados, setRelacionados] = useState<IProducto[]>([]);
 
   useEffect(() => {
-    listarProductosDeTienda(producto.idTienda, producto.id).then(
+    listarProductosDeTienda(producto.idComerciante, producto.id).then(
       setRelacionados,
     );
-  }, [producto.idTienda, producto.id]);
+  }, [producto.idComerciante, producto.id]);
 
   if (relacionados.length === 0) return null;
 

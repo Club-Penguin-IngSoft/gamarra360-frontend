@@ -24,4 +24,6 @@ export const RUTAS = {
   PERSONALIZAR: (id: string | number = ':id') => `/personalizar/${id}`,
   /** Mis personalizaciones (seguimiento del cliente — HU-29) */
   PERSONALIZACIONES: '/personalizaciones',
+  /** Panel de Administración */
+  ADMIN_DASHBOARD: '/admin/dashboard',
 } as const;
