@@ -8,7 +8,6 @@ import {
 } from "lucide-react"
 import LogoGamarra from "../LogoGamarra"
 import { useAuth } from "../../hooks/useAuth"
-import { RUTAS } from "../../constants/rutas"
 
 const navItems = [
   { href: "/admin", label: "Inicio", icon: LayoutDashboard },
