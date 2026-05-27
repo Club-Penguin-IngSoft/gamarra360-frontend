@@ -100,8 +100,8 @@ export default function AppRouter() {
       <Route path={RUTAS.ADMIN_DASHBOARD} element={<AdminDashboardPage />} />
       <Route path={RUTAS.ADMIN_USUARIOS} element={<AdminUsuariosPage />} />
       <Route path={RUTAS.ADMIN_APROBACIONES} element={<AdminAprobacionesPage />} />
+      <Route path={RUTAS.ADMIN_APROBACION_COMERCIANTES} element={<AdminAprobacionesPage />} />
       <Route path={RUTAS.ADMIN_NOTIFICACIONES} element={<AdminNotificacionesPage />} />
-
       <Route path={RUTAS.COMERCIANTE_DASHBOARD} element={<DashboardPage />} />
       <Route path={RUTAS.COMERCIANTE_CATALOGO} element={<GestionInventarioPage />} />
       <Route
@@ -144,7 +144,8 @@ export default function AppRouter() {
             title="Notificaciones"
             description="Centro de notificaciones del comerciante. Disponible próximamente."
           />
-        }/>
+        }
+      />
       <Route path="*" element={<Navigate to={RUTAS.INICIO} replace />} />
     </Routes>
   );

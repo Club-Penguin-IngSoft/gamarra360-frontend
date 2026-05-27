@@ -144,7 +144,7 @@ const LoginPage = () => {
               </BotonPrimario>
             </form>
 
-            <p className="text-center text-sm text-neutro-400 mt-5">
+            <p className="text-center text-sm text-neutro-500 mt-5">
               ¿Olvidaste tu contraseña?{' '}
               <button
                 type="button"
@@ -156,11 +156,11 @@ const LoginPage = () => {
             </p>
 
             <div className="flex items-center gap-3 my-6">
-              <div className="flex-1 h-px bg-neutro-100" />
-              <span className="text-xs text-neutro-400 uppercase tracking-widest font-medium whitespace-nowrap">
+              <div className="flex-1 h-px bg-neutro-400" />
+              <span className="text-xs text-neutro-500 uppercase tracking-widest font-medium whitespace-nowrap">
                 O continúa con
               </span>
-              <div className="flex-1 h-px bg-neutro-100" />
+              <div className="flex-1 h-px bg-neutro-400" />
             </div>
 
             <BotonGoogle />
