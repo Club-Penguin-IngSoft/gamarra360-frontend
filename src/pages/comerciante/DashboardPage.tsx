@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Sidebar from '../components/Sidebar';
-import ReabastecimientoModal from '../components/ReabastecimientoModal';
-import { RUTAS } from '../constants';
-import styles from './DashboardPage.module.css';
+import ComercianteSidebar from '../../components/ComercianteSidebar';
+import ReabastecimientoModal from '../../components/ReabastecimientoModal';
+import { RUTAS } from '../../constants/rutas';
 
 const MOCK_PEDIDOS = [
   { id: 'A-1021', producto: 'Camisa Oxford Slim', sku: 'S / Negro', precio: 'S/ 320.00', estado: 'ENTREGADO' },
@@ -34,11 +33,11 @@ const CHART_DATA = [
 
 const maxValorChart = Math.max(...CHART_DATA.map((d) => d.valor));
 
-const estadoBadgeClass: Record<string, string> = {
-  ENTREGADO: styles.entregado,
-  PENDIENTE: styles.pendiente,
-  EN_PROCESO: styles.enProceso,
-  CANCELADO: styles.cancelado,
+const estadoBadgeClasses: Record<string, string> = {
+  ENTREGADO: 'bg-[#D1FAE5] text-[#059669]',
+  PENDIENTE: 'bg-[#FEF3C7] text-[#D97706]',
+  EN_PROCESO: 'bg-[#DBEAFE] text-[#2563EB]',
+  CANCELADO: 'bg-[#FEE2E2] text-[#DC2626]',
 };
 
 const estadoLabel: Record<string, string> = {
@@ -52,7 +51,6 @@ const estadoLabel: Record<string, string> = {
 export default function DashboardPage() {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [productoModal, setProductoModal] = useState('');
-
   const navigate = useNavigate();
 
   const handleAbrirModal = (nombre: string) => {
@@ -61,18 +59,19 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className={styles.layout}>
-      <Sidebar />
+    <div className="flex min-h-screen">
+      <ComercianteSidebar />
 
-      <main className={styles.main}>
-        <div className={styles.header}>
-          <div className={styles.headerTexts}>
-            <h1>Panel de Control</h1>
-            <p>Bienvenido de vuelta, Nombre Apellido S.A.C.</p>
+      <main className="ml-64 flex-1 bg-gray-100 min-h-screen p-7">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-7">
+          <div>
+            <h1 className="text-[22px] font-bold text-gray-900 mb-1">Panel de Control</h1>
+            <p className="text-[13px] text-gray-500">Bienvenido de vuelta, Nombre Apellido S.A.C.</p>
           </div>
           <button
-            className={styles.btnPublicar}
-            onClick={() => navigate(RUTAS.CATALOGO)}
+            className="flex items-center gap-1.5 px-[18px] py-2.5 bg-primario text-white rounded-lg text-[13px] font-semibold hover:bg-primario-hover transition-colors whitespace-nowrap"
+            onClick={() => navigate(RUTAS.COMERCIANTE_NUEVO_PRODUCTO)}
           >
             <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
               <line x1="12" y1="5" x2="12" y2="19" />
@@ -82,13 +81,16 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        <div className={styles.statsRow}>
-          <div className={styles.statCard}>
-            <div className={styles.statInfo}>
-              <label>Ventas Totales</label>
-              <span className={styles.statValue}>S/ 12,450</span>
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="bg-white rounded-xl px-[22px] py-5 shadow-sm flex items-center justify-between">
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-[0.5px] text-gray-500 mb-2">
+                Ventas Totales
+              </label>
+              <span className="text-[28px] font-bold text-gray-900">S/ 12,450</span>
             </div>
-            <div className={`${styles.statIcon} ${styles.pink}`}>
+            <div className="w-11 h-11 rounded-lg bg-primario-claro text-primario flex items-center justify-center">
               <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
                 <polyline points="17 6 23 6 23 12" />
@@ -96,12 +98,14 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className={styles.statCard}>
-            <div className={styles.statInfo}>
-              <label>Pedidos Pendientes</label>
-              <span className={styles.statValue}>8</span>
+          <div className="bg-white rounded-xl px-[22px] py-5 shadow-sm flex items-center justify-between">
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-[0.5px] text-gray-500 mb-2">
+                Pedidos Pendientes
+              </label>
+              <span className="text-[28px] font-bold text-gray-900">8</span>
             </div>
-            <div className={`${styles.statIcon} ${styles.orange}`}>
+            <div className="w-11 h-11 rounded-lg bg-[#FEF3C7] text-[#D97706] flex items-center justify-center">
               <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
                 <line x1="3" y1="6" x2="21" y2="6" />
@@ -110,12 +114,14 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className={styles.statCard}>
-            <div className={styles.statInfo}>
-              <label>En/De Stock</label>
-              <span className={styles.statValue}>3</span>
+          <div className="bg-white rounded-xl px-[22px] py-5 shadow-sm flex items-center justify-between">
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-[0.5px] text-gray-500 mb-2">
+                En/De Stock
+              </label>
+              <span className="text-[28px] font-bold text-gray-900">3</span>
             </div>
-            <div className={`${styles.statIcon} ${styles.green}`}>
+            <div className="w-11 h-11 rounded-lg bg-[#D1FAE5] text-[#059669] flex items-center justify-center">
               <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
               </svg>
@@ -123,64 +129,82 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className={styles.midRow}>
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <span className={styles.cardTitle}>Venta Semanal</span>
-              <div className={styles.chartFilter}>
-                <select className={styles.chartSelect}>
-                  <option>Semana</option>
-                  <option>Mes</option>
-                </select>
-              </div>
+        {/* Mid row: chart + pedidos recientes */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          {/* Venta Semanal */}
+          <div className="bg-white rounded-xl px-[22px] py-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[14px] font-bold text-gray-900">Venta Semanal</span>
+              <select className="text-[12px] border border-gray-300 rounded px-2 py-1 text-gray-900 bg-white">
+                <option>Semana</option>
+                <option>Mes</option>
+              </select>
             </div>
-            <div className={styles.chartBars}>
+            <div className="flex items-end gap-2 h-[120px] pt-2">
               {CHART_DATA.map((d, i) => (
                 <div
                   key={d.dia}
-                  className={`${styles.bar} ${i === 5 ? styles.barActive : ''}`}
+                  className={`flex-1 rounded-t transition-colors ${
+                    i === 5 ? 'bg-primario' : 'bg-primario-claro hover:bg-primario'
+                  }`}
                   style={{ height: `${(d.valor / maxValorChart) * 100}%` }}
                   title={`S/ ${d.valor}`}
                 />
               ))}
             </div>
-            <div className={styles.chartLabels}>
+            <div className="flex gap-2 mt-2">
               {CHART_DATA.map((d) => (
-                <span key={d.dia} className={styles.chartLabel}>{d.dia}</span>
+                <span key={d.dia} className="flex-1 text-center text-[11px] text-gray-500">
+                  {d.dia}
+                </span>
               ))}
             </div>
           </div>
 
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <span className={styles.cardTitle}>Pedidos Recientes</span>
-              <span className={styles.cardLink} onClick={() => navigate(RUTAS.PEDIDOS)}>
+          {/* Pedidos Recientes */}
+          <div className="bg-white rounded-xl px-[22px] py-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[14px] font-bold text-gray-900">Pedidos Recientes</span>
+              <span
+                className="text-[12px] text-primario font-medium cursor-pointer hover:underline"
+                onClick={() => navigate(RUTAS.COMERCIANTE_PEDIDOS)}
+              >
                 Ver todos
               </span>
             </div>
-            <table className={styles.orderTable}>
+            <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  <th>Producto</th>
-                  <th>Total</th>
-                  <th>Estado</th>
+                  <th className="text-left text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] pb-2 border-b border-gray-200">
+                    Producto
+                  </th>
+                  <th className="text-left text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] pb-2 border-b border-gray-200">
+                    Total
+                  </th>
+                  <th className="text-left text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] pb-2 border-b border-gray-200">
+                    Estado
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {MOCK_PEDIDOS.map((p) => (
                   <tr key={p.id}>
-                    <td>
-                      <div className={styles.orderProduct}>
-                        <div className={styles.orderThumb} />
+                    <td className="py-2.5 text-[13px] text-gray-900 border-b border-gray-100 align-middle">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded bg-gray-200 flex-shrink-0" />
                         <div>
-                          <span className={styles.orderName}>{p.producto}</span>
-                          <span className={styles.orderSku}>{p.sku}</span>
+                          <span className="block text-[12px] font-semibold text-gray-900">{p.producto}</span>
+                          <span className="text-[11px] text-gray-500">{p.sku}</span>
                         </div>
                       </div>
                     </td>
-                    <td>{p.precio}</td>
-                    <td>
-                      <span className={`${styles.badge} ${estadoBadgeClass[p.estado]}`}>
+                    <td className="py-2.5 text-[13px] text-gray-900 border-b border-gray-100 align-middle">
+                      {p.precio}
+                    </td>
+                    <td className="py-2.5 border-b border-gray-100 align-middle">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${estadoBadgeClasses[p.estado]}`}
+                      >
                         {estadoLabel[p.estado]}
                       </span>
                     </td>
@@ -191,19 +215,22 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className={styles.card} style={{ marginBottom: 0 }}>
-          <div className={styles.cardHeader}>
-            <span className={styles.cardTitle}>Acciones de Inventario Crítico</span>
+        {/* Inventario Crítico */}
+        <div className="bg-white rounded-xl px-[22px] py-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-[14px] font-bold text-gray-900">Acciones de Inventario Crítico</span>
           </div>
-          <div className={styles.inventoryRow}>
+          <div className="grid grid-cols-2 gap-4">
             {MOCK_INVENTARIO_CRITICO.map((item) => (
-              <div key={item.id} className={styles.inventoryCard}>
-                <div className={styles.inventoryThumb} />
-                <div className={styles.inventoryInfo}>
-                  <p className={styles.inventoryName}>{item.nombre}</p>
-                  <p className={styles.inventoryStock}>{item.desc} — Solo {item.stock} unidades</p>
+              <div key={item.id} className="flex items-center gap-3.5 p-4 border border-gray-100 rounded-xl">
+                <div className="w-14 h-14 rounded-lg bg-gray-200 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-[13px] font-bold text-gray-900 mb-0.5">{item.nombre}</p>
+                  <p className="text-[12px] text-red-500 mb-2.5">
+                    {item.desc} — Solo {item.stock} unidades
+                  </p>
                   <button
-                    className={styles.btnReabastecer}
+                    className="px-3.5 py-1.5 border-[1.5px] border-primario rounded-lg text-[12px] font-semibold text-primario bg-white hover:bg-primario hover:text-white transition-colors"
                     onClick={() => handleAbrirModal(item.nombre)}
                   >
                     Reabastecer

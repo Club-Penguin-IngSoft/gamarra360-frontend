@@ -1,20 +1,10 @@
-import { Link, useNavigate } from 'react-router-dom';
 import MaterialIcon from '../../components/MaterialIcon';
-import LogoGamarra from '../../components/LogoGamarra';
-import { RUTAS } from '../../constants/rutas';
+import AdminSidebar from '../../components/AdminSidebar';
 import { useAuth } from '../../hooks/useAuth';
-import { COLORES } from '../../styles/tokens';
 
 export default function AdminDashboardPage() {
-  const { usuario, cerrarSesion } = useAuth();
-  const navigate = useNavigate();
+  const { usuario } = useAuth();
 
-  const handleLogout = () => {
-    cerrarSesion();
-    navigate(RUTAS.LOGIN);
-  };
-
-  // Mock data para el dashboard
   const stats = [
     { label: 'Usuarios Totales', value: '1,284', icon: 'people', color: 'bg-blue-500' },
     { label: 'Tiendas Activas', value: '156', icon: 'store', color: 'bg-primario' },
@@ -23,50 +13,11 @@ export default function AdminDashboardPage() {
   ];
 
   return (
-    <div className="flex min-h-screen bg-neutro-50 font-sans">
-      {/* Sidebar */}
-      <aside className="w-64 bg-marino text-white flex flex-col shadow-lg">
-        <div className="p-6 border-b border-white/10">
-          <LogoGamarra size="sm" className="brightness-0 invert" />
-          <p className="text-xs text-white/50 mt-1 font-medium tracking-widest uppercase">Admin Panel</p>
-        </div>
-        
-        <nav className="flex-1 p-4 space-y-2">
-          <Link to={RUTAS.ADMIN_DASHBOARD} className="flex items-center gap-3 px-4 py-3 rounded-lg bg-white/10 text-white font-medium">
-            <MaterialIcon name="dashboard" />
-            Dashboard
-          </Link>
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-white/70 hover:bg-white/5 transition-colors font-medium">
-            <MaterialIcon name="people" />
-            Usuarios
-          </button>
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-white/70 hover:bg-white/5 transition-colors font-medium">
-            <MaterialIcon name="store" />
-            Tiendas
-          </button>
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-white/70 hover:bg-white/5 transition-colors font-medium">
-            <MaterialIcon name="inventory_2" />
-            Catálogo
-          </button>
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-white/70 hover:bg-white/5 transition-colors font-medium">
-            <MaterialIcon name="settings" />
-            Configuración
-          </button>
-        </nav>
-
-        <div className="p-4 border-t border-white/10">
-          <button 
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-error-claro hover:bg-error/10 transition-colors font-medium"
-          >
-            <MaterialIcon name="logout" />
-            Cerrar Sesión
-          </button>
-        </div>
-      </aside>
+    <div className="flex min-h-screen">
+      <AdminSidebar />
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col">
+      <main className="ml-64 flex-1 flex flex-col bg-gray-100">
         {/* Top Header */}
         <header className="h-16 bg-white border-b border-neutro-200 flex items-center justify-between px-8">
           <h1 className="text-xl font-bold text-neutro-900">Resumen del Sistema</h1>

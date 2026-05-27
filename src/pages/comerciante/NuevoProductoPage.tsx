@@ -42,7 +42,7 @@ interface IColor {
   hex: string;
 }
 
-interface IVarianteEditable {
+interface IVarianteNueva {
   id: number;
   talla: string;
   colorNombre: string;
@@ -58,12 +58,6 @@ interface IEspecificacion {
   titulo: string;
   descripcion: string;
 }
-
-const MOCK_VARIANTES: IVarianteEditable[] = [
-  { id: 1, talla: 'M', colorNombre: 'Negro', colorHex: '#1a1a1a', precioBase: 249.90, stock: 40, activo: true, imagenes: [] },
-  { id: 2, talla: 'S', colorNombre: 'Blanco', colorHex: '#f5f5f5', precioBase: 249.90, stock: 62, activo: true, imagenes: [] },
-  { id: 3, talla: 'L', colorNombre: 'Blanco', colorHex: '#f5f5f5', precioBase: 249.90, stock: 55, activo: false, imagenes: [] },
-];
 
 const MAX_IMG_VISIBLES = 3;
 
@@ -94,33 +88,28 @@ function PrecioInput({ value, onChange }: { value: number; onChange: (v: number)
   );
 }
 
-export default function EditarProductoPage() {
-  const [nombreProducto, setNombreProducto] = useState('Blazer Cotton');
-  const [descripcion, setDescripcion] = useState(
-    'Blazer de corte confeccionado en mezcla de lino Milano. Corte slim fit contemporáneo con bolsillos de chaleco y solapa enrollada en cada extremo.'
-  );
+export default function NuevoProductoPage() {
+  const [nombreProducto, setNombreProducto] = useState('');
+  const [descripcion, setDescripcion] = useState('');
   const [categoria, setCategoria] = useState('');
   const [tipoProducto, setTipoProducto] = useState('');
   const [correlativo] = useState(1);
-  const [skuInterno, setSkuInterno] = useState('GEN-PRD-001-GEN');
+  const [skuInterno, setSkuInterno] = useState('');
   const [envioADomicilio, setEnvioADomicilio] = useState(false);
   const [retiroEnTienda, setRetiroEnTienda] = useState(false);
 
-  const [precioBase, setPrecioBase] = useState(249.90);
+  const [precioBase, setPrecioBase] = useState(0);
   const [stockMinimo, setStockMinimo] = useState(5);
   const [publicado, setPublicado] = useState(true);
 
-  const [tallas, setTallas] = useState<string[]>(['S', 'M', 'L']);
+  const [tallas, setTallas] = useState<string[]>([]);
   const [tallaInput, setTallaInput] = useState('');
 
-  const [colores, setColores] = useState<IColor[]>([
-    { nombre: 'Negro', hex: '#1a1a1a' },
-    { nombre: 'Blanco', hex: '#f5f5f5' },
-  ]);
+  const [colores, setColores] = useState<IColor[]>([]);
   const [colorNombreInput, setColorNombreInput] = useState('');
   const [colorHexInput, setColorHexInput] = useState('#000000');
 
-  const [variantes, setVariantes] = useState<IVarianteEditable[]>(MOCK_VARIANTES);
+  const [variantes, setVariantes] = useState<IVarianteNueva[]>([]);
 
   const [especificaciones, setEspecificaciones] = useState<IEspecificacion[]>([]);
   const [especTitulo, setEspecTitulo] = useState('');
@@ -134,8 +123,8 @@ export default function EditarProductoPage() {
 
   const navigate = useNavigate();
   const tiposDisponibles = categoria ? TIPOS_POR_CATEGORIA[categoria] ?? [] : [];
-
   const totalStock = variantes.reduce((sum, v) => sum + v.stock, 0);
+  const puedeGenerar = tallas.length > 0 && colores.length > 0;
 
   const errores = {
     nombreProducto: !nombreProducto.trim() ? 'El nombre es obligatorio' : '',
@@ -144,14 +133,14 @@ export default function EditarProductoPage() {
     tipoProducto: !tipoProducto ? 'Selecciona un tipo de producto' : '',
     precioBase: precioBase <= 0 ? 'El precio debe ser mayor a 0' : '',
     tipoEntrega: !envioADomicilio && !retiroEnTienda ? 'Selecciona al menos un tipo de entrega' : '',
-    variantes: variantes.length === 0 ? 'Debe haber al menos una variante' : '',
+    variantes: variantes.length === 0 ? 'Debes generar al menos una variante' : '',
   };
   const hayErrores = Object.values(errores).some(Boolean);
 
   const handleCategoriaChange = (val: string) => {
     setCategoria(val);
     setTipoProducto('');
-    setSkuInterno(generarSKUBase(val, '', correlativo));
+    setSkuInterno(val ? generarSKUBase(val, '', correlativo) : '');
   };
 
   const handleTipoChange = (val: string) => {
@@ -176,6 +165,26 @@ export default function EditarProductoPage() {
   };
   const eliminarColor = (nombre: string) => setColores((p) => p.filter((c) => c.nombre !== nombre));
 
+  const generarCombinaciones = () => {
+    let idCounter = 1;
+    const nuevas: IVarianteNueva[] = [];
+    tallas.forEach((talla) => {
+      colores.forEach((color) => {
+        nuevas.push({
+          id: idCounter++,
+          talla,
+          colorNombre: color.nombre,
+          colorHex: color.hex,
+          precioBase,
+          stock: 0,
+          activo: true,
+          imagenes: [],
+        });
+      });
+    });
+    setVariantes(nuevas);
+  };
+
   const toggleVariante = (id: number) =>
     setVariantes((p) => p.map((v) => (v.id === id ? { ...v, activo: !v.activo } : v)));
 
@@ -184,6 +193,9 @@ export default function EditarProductoPage() {
 
   const updateVarianteStock = (id: number, stock: number) =>
     setVariantes((p) => p.map((v) => (v.id === id ? { ...v, stock } : v)));
+
+  const eliminarVariante = (id: number) =>
+    setVariantes((p) => p.filter((v) => v.id !== id));
 
   const handleClickAgregarImagen = (varianteId: number) => {
     setActiveVarianteId(varianteId);
@@ -224,13 +236,10 @@ export default function EditarProductoPage() {
   const eliminarEspecificacion = (id: number) =>
     setEspecificaciones((p) => p.filter((e) => e.id !== id));
 
-  const handleGuardar = () => {
+  const handlePublicar = () => {
     setSubmitted(true);
     if (hayErrores) return;
-    // TODO: integrar catalogoService.actualizarProducto() - Kevin
-  };
-  const handleEliminar = () => {
-    // TODO: integrar catalogoService.eliminarProducto() - Kevin
+    // TODO: integrar catalogoService.crearProducto() - Kevin
   };
 
   const labelClass = 'block text-[11px] font-semibold text-gray-600 uppercase tracking-[0.4px] mb-1.5';
@@ -250,7 +259,6 @@ export default function EditarProductoPage() {
     <div className="flex min-h-screen">
       <ComercianteSidebar />
 
-      {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"
@@ -265,9 +273,11 @@ export default function EditarProductoPage() {
           <span className="text-primario font-medium cursor-pointer hover:underline" onClick={() => navigate(RUTAS.COMERCIANTE_DASHBOARD)}>Inicio</span>
           {' '}›{' '}
           <span className="text-primario font-medium cursor-pointer hover:underline" onClick={() => navigate(RUTAS.COMERCIANTE_CATALOGO)}>Inventario</span>
+          {' '}›{' '}
+          <span className="text-gray-700 font-medium">Nuevo Producto</span>
         </p>
 
-        <h1 className="text-[22px] font-bold text-gray-900 mb-6">Editar Producto</h1>
+        <h1 className="text-[22px] font-bold text-gray-900 mb-6">Nuevo Producto</h1>
 
         {/* Main grid */}
         <div className="grid gap-5 mb-5" style={{ gridTemplateColumns: '1fr 280px', alignItems: 'start' }}>
@@ -284,6 +294,7 @@ export default function EditarProductoPage() {
               <input
                 type="text"
                 className={fc('nombreProducto')}
+                placeholder="Ej: Blazer Cotton Slim"
                 value={nombreProducto}
                 onChange={(e) => setNombreProducto(e.target.value)}
               />
@@ -298,6 +309,7 @@ export default function EditarProductoPage() {
                 className={`w-full min-h-[100px] border rounded-lg px-3.5 py-2.5 text-[13px] text-gray-900 bg-white resize-y focus:outline-none transition-colors ${
                   submitted && errores.descripcion ? 'border-red-400 focus:border-red-400' : 'border-gray-300 focus:border-primario'
                 }`}
+                placeholder="Describe el producto: materiales, corte, características destacadas..."
                 value={descripcion}
                 onChange={(e) => setDescripcion(e.target.value)}
                 rows={4}
@@ -333,8 +345,10 @@ export default function EditarProductoPage() {
               <input
                 type="text"
                 readOnly
-                className="w-full h-[42px] border border-gray-200 rounded-lg px-3.5 text-[13px] font-mono text-gray-500 bg-gray-50 cursor-default select-all"
-                value={skuInterno}
+                className={`w-full h-[42px] border rounded-lg px-3.5 text-[13px] font-mono cursor-default select-all transition-colors ${
+                  skuInterno ? 'border-gray-200 text-gray-500 bg-gray-50' : 'border-gray-200 text-gray-400 bg-gray-50'
+                }`}
+                value={skuInterno || 'Se genera al elegir categoría y tipo'}
               />
               <p className="text-[11px] text-gray-400 mt-1">Autogenerado: categoría · tipo · correlativo · GEN</p>
             </div>
@@ -376,7 +390,6 @@ export default function EditarProductoPage() {
               Tarjeta del Vendedor
             </p>
 
-            {/* Precio Base editable */}
             <div className="mb-4 pb-4 border-b border-gray-200">
               <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] mb-2">
                 Precio Base <span className="text-red-500 normal-case font-normal">*</span>
@@ -389,15 +402,15 @@ export default function EditarProductoPage() {
                   type="number"
                   min={0}
                   step={0.1}
+                  placeholder="0.00"
                   className="flex-1 px-3 text-[22px] font-bold text-gray-900 bg-white focus:outline-none"
-                  value={precioBase}
+                  value={precioBase || ''}
                   onChange={(e) => setPrecioBase(Number(e.target.value))}
                 />
               </div>
               {errMsg('precioBase')}
             </div>
 
-            {/* Total Stock */}
             <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
               <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px]">Total Stock</p>
               <div className="text-right">
@@ -406,7 +419,6 @@ export default function EditarProductoPage() {
               </div>
             </div>
 
-            {/* Alerta de stock */}
             <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
               <div>
                 <p className="text-[12px] font-semibold text-gray-900">Alerta de stock bajo</p>
@@ -424,7 +436,6 @@ export default function EditarProductoPage() {
               </div>
             </div>
 
-            {/* Publicado */}
             <div className="flex items-center justify-between mb-5">
               <div>
                 <p className="text-[13px] font-semibold text-gray-900">Publicado</p>
@@ -434,23 +445,19 @@ export default function EditarProductoPage() {
             </div>
 
             <button
-              className="w-full h-[42px] bg-primario text-white rounded-lg text-[13px] font-semibold mb-2.5 hover:bg-primario-hover transition-colors"
-              onClick={handleGuardar}
+              className="w-full h-[42px] bg-primario text-white rounded-lg text-[13px] font-semibold hover:bg-primario-hover transition-colors"
+              onClick={handlePublicar}
             >
-              Guardar Cambios
-            </button>
-            <button
-              className="w-full h-[42px] bg-white text-red-600 rounded-lg text-[13px] font-semibold border-[1.5px] border-red-500 hover:bg-[#FEE2E2] transition-colors"
-              onClick={handleEliminar}
-            >
-              Eliminar Producto
+              Publicar Producto
             </button>
           </div>
         </div>
 
         {/* Variantes */}
         <div className="bg-white rounded-xl px-6 py-[22px] shadow-sm mb-5">
-          <p className="text-[14px] font-bold text-gray-900 mb-5">Gestión de Variantes</p>
+          <p className="text-[14px] font-bold text-gray-900 mb-5">
+            Gestión de Variantes <span className="text-red-500">*</span>
+          </p>
 
           <div className="grid grid-cols-2 gap-5 mb-5">
             {/* Tallas */}
@@ -460,10 +467,7 @@ export default function EditarProductoPage() {
                 {tallas.map((t) => (
                   <span key={t} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-sky-700 text-[12px] font-semibold border border-sky-200">
                     {t}
-                    <button
-                      onClick={() => eliminarTalla(t)}
-                      className="w-3.5 h-3.5 rounded-full flex items-center justify-center hover:bg-sky-200 transition-colors"
-                    >
+                    <button onClick={() => eliminarTalla(t)} className="w-3.5 h-3.5 rounded-full flex items-center justify-center hover:bg-sky-200 transition-colors">
                       <svg width={8} height={8} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
                         <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                       </svg>
@@ -494,10 +498,7 @@ export default function EditarProductoPage() {
                   <span key={c.nombre} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primario-claro text-primario text-[12px] font-semibold">
                     <span className="w-3 h-3 rounded-full border border-white/60 flex-shrink-0" style={{ backgroundColor: c.hex }} />
                     {c.nombre}
-                    <button
-                      onClick={() => eliminarColor(c.nombre)}
-                      className="w-3.5 h-3.5 rounded-full flex items-center justify-center hover:bg-primario hover:text-white transition-colors"
-                    >
+                    <button onClick={() => eliminarColor(c.nombre)} className="w-3.5 h-3.5 rounded-full flex items-center justify-center hover:bg-primario hover:text-white transition-colors">
                       <svg width={8} height={8} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
                         <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                       </svg>
@@ -529,96 +530,134 @@ export default function EditarProductoPage() {
             </div>
           </div>
 
+          {/* Generar combinaciones */}
+          <div className={`flex items-center justify-between px-4 py-3 rounded-lg mb-2 border ${
+            puedeGenerar ? 'bg-primario-claro border-primario/20' : 'bg-gray-50 border-gray-200'
+          }`}>
+            <div>
+              <p className={`text-[13px] font-semibold ${puedeGenerar ? 'text-primario' : 'text-gray-400'}`}>
+                Generar combinaciones
+              </p>
+              <p className={`text-[11px] ${puedeGenerar ? 'text-primario/70' : 'text-gray-400'}`}>
+                {puedeGenerar
+                  ? `${tallas.length} talla${tallas.length !== 1 ? 's' : ''} × ${colores.length} color${colores.length !== 1 ? 'es' : ''} = ${tallas.length * colores.length} variante${tallas.length * colores.length !== 1 ? 's' : ''}`
+                  : 'Agrega tallas y colores para generar variantes'}
+              </p>
+            </div>
+            <button
+              onClick={generarCombinaciones}
+              disabled={!puedeGenerar}
+              className="h-9 px-4 bg-primario text-white rounded-lg text-[12px] font-semibold hover:bg-primario-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+            >
+              {variantes.length > 0 ? 'Regenerar' : 'Generar'}
+            </button>
+          </div>
+          {errMsg('variantes')}
+
           {/* Variants table */}
-          {submitted && errores.variantes && (
-            <p className="text-[11px] text-red-500 mb-3">{errores.variantes}</p>
-          )}
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr>
-                  {['Variante', 'SKU', 'Precio Base', 'Stock', 'Imágenes', 'Estado'].map((col, i) => (
-                    <th
-                      key={col}
-                      className={`text-left text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] px-3 py-2 bg-gray-100 border-b border-gray-200 whitespace-nowrap ${
-                        i === 0 ? 'rounded-tl' : i === 5 ? 'rounded-tr' : ''
-                      }`}
-                    >
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {variantes.map((v) => {
-                  const skuVariante = generarSKUVariante(skuInterno, v.talla, v.colorNombre);
-                  const visibles = v.imagenes.slice(0, MAX_IMG_VISIBLES);
-                  const extras = v.imagenes.length - MAX_IMG_VISIBLES;
-                  return (
-                    <tr key={v.id}>
-                      <td className="px-3 py-3 text-[13px] text-gray-900 border-b border-gray-100 align-middle whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <div className="w-[22px] h-[22px] rounded border border-gray-300 flex-shrink-0" style={{ backgroundColor: v.colorHex }} />
-                          {v.talla} / {v.colorNombre}
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100 align-middle">
-                        <span className="text-[11px] font-mono text-gray-500 bg-gray-50 px-2 py-1 rounded border border-gray-200 whitespace-nowrap">
-                          {skuVariante}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100 align-middle">
-                        <PrecioInput value={v.precioBase} onChange={(p) => updateVariantePrecio(v.id, p)} />
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100 align-middle">
-                        <input
-                          type="number"
-                          min={0}
-                          className="w-20 h-[34px] border border-gray-300 rounded px-2.5 text-[13px] text-gray-900 bg-white focus:border-primario focus:outline-none"
-                          value={v.stock}
-                          onChange={(e) => updateVarianteStock(v.id, Number(e.target.value))}
-                        />
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100 align-middle">
-                        <div className="flex items-center gap-1.5">
-                          {visibles.map((img, i) => (
-                            <img
-                              key={i}
-                              src={img}
-                              className="w-9 h-9 rounded object-cover border border-gray-200 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                              onClick={() => setModalImagenes({ varianteId: v.id })}
-                              title="Ver imágenes"
-                            />
-                          ))}
-                          {extras > 0 && (
+          {variantes.length === 0 ? (
+            <p className="text-[13px] text-gray-400 text-center py-8 mt-2">
+              Aún no hay variantes. Agrega tallas y colores, luego genera las combinaciones.
+            </p>
+          ) : (
+            <div className="overflow-x-auto mt-4">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    {['Variante', 'SKU', 'Precio Base', 'Stock', 'Imágenes', 'Estado', ''].map((col, i) => (
+                      <th
+                        key={i}
+                        className={`text-left text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] px-3 py-2 bg-gray-100 border-b border-gray-200 whitespace-nowrap ${
+                          i === 0 ? 'rounded-tl' : i === 6 ? 'rounded-tr w-8' : ''
+                        }`}
+                      >
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {variantes.map((v) => {
+                    const skuVariante = skuInterno ? generarSKUVariante(skuInterno, v.talla, v.colorNombre) : '—';
+                    const visibles = v.imagenes.slice(0, MAX_IMG_VISIBLES);
+                    const extras = v.imagenes.length - MAX_IMG_VISIBLES;
+                    return (
+                      <tr key={v.id} className="group">
+                        <td className="px-3 py-3 text-[13px] text-gray-900 border-b border-gray-100 align-middle whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <div className="w-[22px] h-[22px] rounded border border-gray-300 flex-shrink-0" style={{ backgroundColor: v.colorHex }} />
+                            {v.talla} / {v.colorNombre}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 border-b border-gray-100 align-middle">
+                          <span className="text-[11px] font-mono text-gray-500 bg-gray-50 px-2 py-1 rounded border border-gray-200 whitespace-nowrap">
+                            {skuVariante}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 border-b border-gray-100 align-middle">
+                          <PrecioInput value={v.precioBase} onChange={(p) => updateVariantePrecio(v.id, p)} />
+                        </td>
+                        <td className="px-3 py-3 border-b border-gray-100 align-middle">
+                          <input
+                            type="number"
+                            min={0}
+                            className="w-20 h-[34px] border border-gray-300 rounded px-2.5 text-[13px] text-gray-900 bg-white focus:border-primario focus:outline-none"
+                            value={v.stock}
+                            onChange={(e) => updateVarianteStock(v.id, Number(e.target.value))}
+                          />
+                        </td>
+                        <td className="px-3 py-3 border-b border-gray-100 align-middle">
+                          <div className="flex items-center gap-1.5">
+                            {visibles.map((img, i) => (
+                              <img
+                                key={i}
+                                src={img}
+                                className="w-9 h-9 rounded object-cover border border-gray-200 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => setModalImagenes({ varianteId: v.id })}
+                              />
+                            ))}
+                            {extras > 0 && (
+                              <button
+                                onClick={() => setModalImagenes({ varianteId: v.id })}
+                                className="w-9 h-9 rounded border border-gray-200 bg-gray-100 flex items-center justify-center text-[11px] font-bold text-gray-600 hover:bg-gray-200 flex-shrink-0 transition-colors"
+                              >
+                                +{extras}
+                              </button>
+                            )}
                             <button
-                              onClick={() => setModalImagenes({ varianteId: v.id })}
-                              className="w-9 h-9 rounded border border-gray-200 bg-gray-100 flex items-center justify-center text-[11px] font-bold text-gray-600 hover:bg-gray-200 flex-shrink-0 transition-colors"
-                              title={`Ver ${extras} imagen${extras > 1 ? 'es' : ''} más`}
+                              onClick={() => handleClickAgregarImagen(v.id)}
+                              className="w-9 h-9 rounded border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 hover:border-primario hover:text-primario transition-colors flex-shrink-0"
                             >
-                              +{extras}
+                              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                              </svg>
                             </button>
-                          )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 border-b border-gray-100 align-middle">
+                          <Toggle on={v.activo} onClick={() => toggleVariante(v.id)} />
+                        </td>
+                        <td className="px-3 py-3 border-b border-gray-100 align-middle">
                           <button
-                            onClick={() => handleClickAgregarImagen(v.id)}
-                            className="w-9 h-9 rounded border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 hover:border-primario hover:text-primario transition-colors flex-shrink-0"
-                            title="Agregar imágenes"
+                            onClick={() => eliminarVariante(v.id)}
+                            className="w-7 h-7 flex items-center justify-center text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                            title="Eliminar variante"
                           >
                             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                              <path d="M10 11v6M14 11v6" />
+                              <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
                             </svg>
                           </button>
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100 align-middle">
-                        <Toggle on={v.activo} onClick={() => toggleVariante(v.id)} />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Especificaciones Técnicas */}
@@ -714,7 +753,6 @@ export default function EditarProductoPage() {
                       <button
                         onClick={() => handleEliminarImagen(varianteModal.id, i)}
                         className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Eliminar imagen"
                       >
                         <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
                           <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />

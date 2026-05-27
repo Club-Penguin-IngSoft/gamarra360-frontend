@@ -52,19 +52,20 @@ export default function LoginPage() {
 
     // MOCK: en producción se llamará a apiClient.post('/autenticacion/login')
     const esAdmin = correo === 'admin@gamarra360.com';
+    const esComerciante = correo === 'comerciante@gamarra360.com';
 
     iniciarSesion({
       token: 'mock-jwt-' + Date.now(),
       usuario: {
-        id: esAdmin ? 'admin-1' : 'u-' + Date.now(),
-        nombre: esAdmin ? 'Administrador' : correo.split('@')[0],
-        apellido: esAdmin ? 'Gamarra 360' : '',
+        id: esAdmin ? 'admin-1' : esComerciante ? 'comerciante-1' : 'u-' + Date.now(),
+        nombre: esAdmin ? 'Administrador' : esComerciante ? 'Comerciante' : correo.split('@')[0],
+        apellido: esAdmin ? 'Gamarra 360' : esComerciante ? 'Demo' : '',
         correo,
-        rol: esAdmin ? 'ADMIN' : 'CLIENTE',
+        rol: esAdmin ? 'ADMIN' : esComerciante ? 'COMERCIANTE' : 'CLIENTE',
       },
     });
 
-    navigate(esAdmin ? RUTAS.ADMIN_DASHBOARD : returnTo, { replace: true });
+    navigate(esAdmin ? RUTAS.ADMIN_DASHBOARD : esComerciante ? RUTAS.COMERCIANTE_DASHBOARD : returnTo, { replace: true });
   };
 
   const puedeEnviar = correo.length > 0 && contrasena.length > 0;
