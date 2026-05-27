@@ -17,7 +17,7 @@ const navItems = [
   { href: "/admin/notificaciones", label: "Notificaciones", icon: Bell },
 ]
 
-export function Sidebar() {
+export function AdminSidebar() {
   const location = useLocation()
   const pathname = location.pathname
   const { cerrarSesion } = useAuth()
@@ -46,7 +46,7 @@ export function Sidebar() {
                   : "text-neutro-600 hover:bg-neutro-100"
               }`}
             >
-              <Icon className={`w-5 h-5 ${isActive ? "text-white" : "text-neutro-500"}`} />
+              <Icon className={`w-5 h-5 ${isActive ? "text-white" : "text-neutro-50"}`} />
               <span>{item.label}</span>
             </Link>
           )
