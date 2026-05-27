@@ -1,10 +1,10 @@
-import { Sidebar } from "../../components/admin/Sidebar"
+import { AdminSidebar } from "../../components/admin/AdminSidebar"
 import { Bell } from "lucide-react"
 
-export default function NotificacionesPage() {
+export default function AdminNotificacionesPage() {
   return (
     <div className="flex min-h-screen bg-neutro-50 font-sans">
-      <Sidebar />
+      <AdminSidebar />
 
       <main className="flex-1 p-8">
         {/* Header */}

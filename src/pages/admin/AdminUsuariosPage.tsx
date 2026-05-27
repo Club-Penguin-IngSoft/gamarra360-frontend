@@ -1,4 +1,4 @@
-import { Sidebar } from "../../components/admin/Sidebar"
+import { AdminSidebar } from "../../components/admin/AdminSidebar"
 import {
   Search,
   Download,
@@ -61,10 +61,10 @@ const users = [
   },
 ]
 
-export default function UsuariosPage() {
+export default function AdminUsuariosPage() {
   return (
     <div className="flex min-h-screen bg-neutro-50 font-sans">
-      <Sidebar />
+      <AdminSidebar />
 
       <main className="flex-1 p-8">
         {/* Header */}

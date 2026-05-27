@@ -1,4 +1,4 @@
-import { Sidebar } from "../../components/admin/Sidebar"
+import { AdminSidebar } from "../../components/admin/AdminSidebar"
 import {
   Filter,
   ArrowUpDown,
@@ -54,10 +54,10 @@ const vendors = [
   },
 ]
 
-export default function AprobacionesPage() {
+export default function AdminAprobacionesPage() {
   return (
     <div className="flex min-h-screen bg-neutro-50 font-sans">
-      <Sidebar />
+      <AdminSidebar />
 
       <main className="flex-1 p-8">
         {/* Header */}
