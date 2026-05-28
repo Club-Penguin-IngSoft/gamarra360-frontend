@@ -14,7 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const LoginPage = () => {
-  const [form, setForm] = useState<ILoginRequest>({ email: '', contrasena: '' });
+  const [form, setForm] = useState<ILoginRequest>({ email: '', contrasenha: '' });
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const navigate = useNavigate();
   const { iniciarSesion, cargando, error } = useLogin();
@@ -45,7 +45,7 @@ const LoginPage = () => {
         }
         //usuario existe
         localStorage.setItem("token", response.data.token);
-
+        localStorage.setItem("nombreUsuario", response.data.nombres);
         // ejemplo redirect
         window.location.href = "/home";
       }catch (error) {
@@ -59,7 +59,7 @@ const LoginPage = () => {
   });
 
   const formularioValido =
-    form.email.trim() !== '' && form.contrasena.trim() !== '';
+    form.email.trim() !== '' && form.contrasenha.trim() !== '';
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -157,9 +157,9 @@ const LoginPage = () => {
 
               <InputTexto
                 tipo={mostrarPassword ? 'text' : 'password'}
-                nombre="contrasena"
+                nombre="contrasenha"
                 placeholder="Contraseña"
-                valor={form.contrasena}
+                valor={form.contrasenha}
                 onChange={handleChange}
                 autoComplete="current-password"
                 sufijo={

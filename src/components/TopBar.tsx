@@ -38,6 +38,18 @@ export default function TopBar({
   minimal?: boolean;
 }) {
   const { cantidadTotal } = useCarrito();
+  const token = localStorage.getItem('token');
+  const nombreUsuario = (() => {
+    if (!token) return null;
+    const guardado = localStorage.getItem("nombreUsuario");
+    if (guardado) return guardado;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.nombre || payload.nombres || payload.sub || null;
+    } catch {
+      return null;
+    }
+  })();
   const navigate = useNavigate();
 
   const [query, setQuery] = useState('');
@@ -195,13 +207,24 @@ export default function TopBar({
                 </div>
               )}
             </div>
-
+            {/*aqui puede haber perfilamiento*/}
             <Link
-              to={RUTAS.LOGIN}
+              to={nombreUsuario ? RUTAS.LOGIN : RUTAS.LOGIN}
               aria-label="Perfil"
-              className="inline-flex items-center justify-center transition-opacity hover:opacity-80"
+              className="inline-flex items-center gap-2 transition-opacity hover:opacity-80"
             >
-              <img src={accountCircleIcon} alt="" className="h-8 w-8 object-contain" />
+              {nombreUsuario ? (
+                <>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500 text-xs font-bold text-white">
+                    {nombreUsuario.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="hidden text-[14px] font-medium text-ink-800 lg:block">
+                    {nombreUsuario}
+                  </span>
+                </>
+              ) : (
+                <img src={accountCircleIcon} alt="" className="h-8 w-8 object-contain" />
+              )}
             </Link>
 
             <Link
