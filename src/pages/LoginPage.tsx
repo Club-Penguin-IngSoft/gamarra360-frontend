@@ -1,80 +1,41 @@
-/**
- * Pantalla de inicio de sesión.
- * Diseño basado en Figma node 2576-15682.
- *
- * Se accede cuando un usuario no autenticado intenta entrar a flujos protegidos
- * (ej. "Solicitar personalización"). Soporta el query param `?returnTo=...` para
- * redirigir al usuario de vuelta luego del login exitoso.
- *
- * Por ahora la autenticación es mockeada — cualquier credencial válida crea
- * un usuario en memoria. Se reemplazará por POST /api/v1/autenticacion/login
- * cuando el backend Spring Boot esté disponible.
- */
-
-import { useState } from 'react';
-import type { FormEvent } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import LogoGamarra from '../components/LogoGamarra';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import MaterialIcon from '../components/MaterialIcon';
+import LogoGamarra from '../components/LogoGamarra';
 import InputTexto from '../components/InputTexto';
 import BotonPrimario from '../components/BotonPrimario';
 import BotonGoogle from '../components/BotonGoogle';
+import useLogin from '../hooks/useLogin';
 import { RUTAS } from '../constants/rutas';
-import { useAuth } from '../hooks/useAuth';
-import { validarEmail } from '../utils/validarEmail';
+import { ILoginRequest } from '../types/IAuth';
 import { COLORES } from '../styles/tokens';
 
-export default function LoginPage() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const { iniciarSesion } = useAuth();
+const LoginPage = () => {
+  const [form, setForm] = useState<ILoginRequest>({ email: '', contrasena: '' });
+  const [mostrarPassword, setMostrarPassword] = useState(false);
+  const { iniciarSesion, cargando, error } = useLogin();
 
-  const [correo, setCorreo] = useState('');
-  const [contrasena, setContrasena] = useState('');
-  const [mostrarContrasena, setMostrarContrasena] = useState(false);
-  const [errorForm, setErrorForm] = useState<string | null>(null);
+  const formularioValido =
+    form.email.trim() !== '' && form.contrasena.trim() !== '';
 
-  const returnTo = searchParams.get('returnTo') ?? RUTAS.INICIO;
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    setErrorForm(null);
-
-    if (!validarEmail(correo)) {
-      setErrorForm('Ingresa un correo válido.');
-      return;
-    }
-    if (contrasena.length < 6) {
-      setErrorForm('La contraseña debe tener al menos 6 caracteres.');
-      return;
-    }
-
-    // MOCK: en producción se llamará a apiClient.post('/autenticacion/login')
-    const esAdmin = correo === 'admin@gamarra360.com';
-    
-    iniciarSesion({
-      token: 'mock-jwt-' + Date.now(),
-      usuario: {
-        id: esAdmin ? 'admin-1' : 'u-' + Date.now(),
-        nombre: esAdmin ? 'Administrador' : correo.split('@')[0],
-        apellido: esAdmin ? 'Gamarra 360' : '',
-        correo,
-        rol: esAdmin ? 'ADMIN' : 'CLIENTE',
-      },
-    });
-
-    navigate(esAdmin ? RUTAS.ADMIN_DASHBOARD : returnTo, { replace: true });
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const puedeEnviar = correo.length > 0 && contrasena.length > 0;
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (formularioValido && !cargando) {
+      iniciarSesion(form);
+    }
+  };
 
   return (
-    <div className="flex min-h-screen flex-col bg-neutro-50 font-sans">
-      {/* Top bar especial: solo logo + volver al inicio */}
-      <header className="flex h-14 items-center justify-between border-b border-neutro-200 bg-white px-6">
-        <Link to={RUTAS.INICIO} aria-label="Ir al inicio">
-          <LogoGamarra size="sm" />
-        </Link>
+    <div className="min-h-screen flex flex-col font-sans">
+
+      {/* ── Barra de navegación superior ────────────────────────────────── */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-neutro-200 h-14 flex items-center px-6 justify-between">
+        <LogoGamarra size="sm" />
         <Link
           to={RUTAS.INICIO}
           className="flex items-center gap-1 text-sm font-medium transition-opacity hover:opacity-75"
@@ -85,104 +46,105 @@ export default function LoginPage() {
         </Link>
       </header>
 
-      <main className="flex flex-1 flex-col lg:flex-row">
-        {/* Left: Editorial image */}
-        <aside
-          className="relative hidden min-h-[400px] flex-[1.4] overflow-hidden lg:flex"
-          aria-hidden="true"
+      {/* ── Contenido principal ──────────────────────────────────────────── */}
+      <div className="flex flex-1 pt-14">
+
+        {/* ── Panel izquierdo — imagen hero ─────────────────────────────── */}
+        <div
+          className="hidden lg:flex flex-col justify-end relative overflow-hidden"
+          style={{ width: '58%' }}
         >
-          <img
-            src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=80"
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover"
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: "url('/login-bg.jpg')" }}
           />
-          {/* Gradient overlay para legibilidad */}
           <div
             className="absolute inset-0"
             style={{
-              background: 'linear-gradient(to top, rgba(0,0,0,0.72) 40%, rgba(0,0,0,0.25) 100%)',
+              background:
+                'linear-gradient(to top, rgba(0,0,0,0.72) 40%, rgba(0,0,0,0.25) 100%)',
             }}
           />
-          <div className="relative z-10 mt-auto flex flex-col gap-5 p-16">
+          <div className="relative z-10 p-12 pb-14">
             <span
-              className="inline-block w-fit px-4 py-1 rounded-full text-white text-xs font-bold uppercase tracking-widest"
+              className="inline-block px-4 py-1 rounded-full text-white text-xs font-bold uppercase tracking-widest mb-5"
               style={{ backgroundColor: COLORES.primario }}
             >
               DISTRITO TEXTIL
             </span>
-            <h2 className="text-white font-extrabold leading-tight" style={{ fontSize: '3rem' }}>
+            <h1 className="text-white font-extrabold leading-tight mb-4" style={{ fontSize: '3rem' }}>
               Donde la moda<br />cobra vida
-            </h2>
-            <p className="max-w-sm text-white/75 text-base leading-relaxed">
+            </h1>
+            <p className="text-white/75 text-base max-w-sm leading-relaxed">
               Únete a la red de comerciantes más vibrante de Latinoamérica.
               Gestiona tu stock, conecta con clientes y escala tu marca.
             </p>
           </div>
-        </aside>
+        </div>
 
-        {/* Right: Login form */}
-        <section className="flex flex-1 items-center justify-center bg-white px-8 py-10">
-          <div className="flex w-full max-w-sm flex-col">
-            {/* Header branding */}
+        {/* ── Panel derecho — formulario ─────────────────────────────────── */}
+        <div className="flex-1 flex items-center justify-center px-8 py-10 bg-white">
+          <div className="w-full max-w-sm">
+
             <LogoGamarra size="md" className="mb-8" />
-            
-            <h1 className="text-3xl font-extrabold text-neutro-900 mb-1">
+
+            <h2 className="text-3xl font-extrabold text-neutro-900 mb-1">
               Bienvenido de nuevo
-            </h1>
+            </h2>
             <p className="text-neutro-400 text-sm mb-8">
               Ingresa tus credenciales para acceder.
             </p>
 
-            {/* Form */}
+            {error && (
+              <div className="mb-5 flex items-start gap-2 px-4 py-3 rounded-xl bg-error-claro border border-error/20 text-error text-sm">
+                <MaterialIcon name="error_outline" style={{ fontSize: '18px', marginTop: '1px' }} />
+                <span>{error}</span>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} noValidate className="space-y-4">
               <InputTexto
                 tipo="email"
                 nombre="email"
                 placeholder="Correo electrónico"
-                valor={correo}
-                onChange={(e) => setCorreo(e.target.value)}
+                valor={form.email}
+                onChange={handleChange}
                 autoComplete="email"
               />
 
               <InputTexto
-                tipo={mostrarContrasena ? 'text' : 'password'}
+                tipo={mostrarPassword ? 'text' : 'password'}
                 nombre="contrasena"
                 placeholder="Contraseña"
-                valor={contrasena}
-                onChange={(e) => setContrasena(e.target.value)}
+                valor={form.contrasena}
+                onChange={handleChange}
                 autoComplete="current-password"
                 sufijo={
                   <button
                     type="button"
-                    onClick={() => setMostrarContrasena((v) => !v)}
+                    onClick={() => setMostrarPassword((v) => !v)}
                     className="text-neutro-400 hover:text-neutro-500 transition-colors"
                     tabIndex={-1}
-                    aria-label={mostrarContrasena ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    aria-label={mostrarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                   >
                     <MaterialIcon
-                      name={mostrarContrasena ? 'visibility_off' : 'visibility'}
+                      name={mostrarPassword ? 'visibility_off' : 'visibility'}
                       style={{ fontSize: '20px' }}
                     />
                   </button>
                 }
               />
 
-              {errorForm && (
-                <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-error-claro border border-error/20 text-error text-sm">
-                  <MaterialIcon name="error_outline" style={{ fontSize: '18px', marginTop: '1px' }} />
-                  <span>{errorForm}</span>
-                </div>
-              )}
-
               <BotonPrimario
                 type="submit"
-                disabled={!puedeEnviar}
+                disabled={!formularioValido}
+                cargando={cargando}
               >
                 Ingresar
               </BotonPrimario>
             </form>
 
-            <p className="text-center text-sm text-neutro-400 mt-5">
+            <p className="text-center text-sm text-neutro-500 mt-5">
               ¿Olvidaste tu contraseña?{' '}
               <button
                 type="button"
@@ -193,18 +155,17 @@ export default function LoginPage() {
               </button>
             </p>
 
-            {/* Divider */}
             <div className="flex items-center gap-3 my-6">
-              <div className="flex-1 h-px bg-neutro-100" />
-              <span className="text-xs text-neutro-400 uppercase tracking-widest font-medium whitespace-nowrap">
+              <div className="flex-1 h-px bg-neutro-400" />
+              <span className="text-xs text-neutro-500 uppercase tracking-widest font-medium whitespace-nowrap">
                 O continúa con
               </span>
-              <div className="flex-1 h-px bg-neutro-100" />
+              <div className="flex-1 h-px bg-neutro-400" />
             </div>
 
             <BotonGoogle />
 
-            <div className="text-center text-sm text-neutro-400 mt-6">
+            <p className="text-center text-sm text-neutro-400 mt-6">
               ¿No tienes una cuenta?{' '}
               <Link
                 to={RUTAS.REGISTRO}
@@ -213,10 +174,12 @@ export default function LoginPage() {
               >
                 Regístrate ahora
               </Link>
-            </div>
+            </p>
           </div>
-        </section>
-      </main>
+        </div>
+      </div>
     </div>
   );
-}
+};
+
+export default LoginPage;

@@ -17,8 +17,7 @@ type CategoriaUI =
   | 'HOMBRE'
   | 'MUJER'
   | 'NIÑOS'
-  | 'UNISEX ADULTOS'
-  | 'UNISEX NIÑOS';
+  | 'UNISEX ADULTOS';
 
 const CATEGORIAS_UI: CategoriaUI[] = [
   'TODO',
@@ -26,7 +25,6 @@ const CATEGORIAS_UI: CategoriaUI[] = [
   'MUJER',
   'NIÑOS',
   'UNISEX ADULTOS',
-  'UNISEX NIÑOS',
 ];
 
 /* --------------------------------- Hero ---------------------------------- */
@@ -257,14 +255,17 @@ function MerchantCTA() {
           </p>
           <div className="flex flex-wrap gap-4">
             <Link
-              to={RUTAS.VENDER}
+              to={RUTAS.REGISTRO_COMERCIANTE}
               className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-8 py-[18px] text-[15px] font-medium text-white transition-colors hover:bg-brand-600"
             >
               Empezar a vender
             </Link>
-            <button className="inline-flex items-center gap-2 rounded-lg bg-white/5 px-8 py-[18px] text-[15px] font-medium text-white ring-1 ring-white/20 transition-colors hover:bg-white/10">
+            <Link
+              to={RUTAS.VENDER}
+              className="inline-flex items-center gap-2 rounded-lg bg-white/5 px-8 py-[18px] text-[15px] font-medium text-white ring-1 ring-white/20 transition-colors hover:bg-white/10"
+            >
               Saber más
-            </button>
+            </Link>
           </div>
         </div>
         <div className="flex justify-center">
