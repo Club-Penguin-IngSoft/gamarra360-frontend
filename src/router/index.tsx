@@ -29,6 +29,8 @@ import NuevoProductoPage from '../pages/comerciante/NuevoProductoPage';
 import ComingSoonPage from '../pages/ComingSoonPage';
 import ComingSoonInternalPage from '../pages/ComingSoonInternalPage';
 import ComercianteSidebar from '../components/ComercianteSidebar';
+import CheckoutEntregaPage from '../pages/CheckoutEntregaPage';
+import PagoPage from '../pages/PagoPage';
 
 /**
  * Definición de rutas. NO incluye BrowserRouter — ese se monta en `main.tsx`
@@ -61,17 +63,16 @@ export default function AppRouter() {
           />
         }
       />
+      
+
       <Route path={RUTAS.CARRITO} element={<CarritoPage />} />
-      <Route
-        path={RUTAS.CHECKOUT}
-        element={
-          <ComingSoonPage
-            active="Inicio"
-            title="Checkout"
-            description="El flujo de pago seguro con Stripe estará disponible en el Sprint 3."
-          />
-        }
-      />
+      
+
+      <Route path={RUTAS.CHECKOUT} element={<CheckoutEntregaPage />} />
+      
+
+      <Route path={RUTAS.PAGO} element={<PagoPage />} />
+
       <Route path={RUTAS.LOGIN} element={<LoginPage />} />
       <Route path={RUTAS.REGISTRO} element={<RegistroPage />} />
       <Route

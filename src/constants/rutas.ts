@@ -17,6 +17,7 @@ export const RUTAS = {
   CUENTA: '/cuenta',
   CARRITO: '/carrito',
   CHECKOUT: '/checkout',
+  PAGO: '/pago',
   COTIZACIONES: '/cotizaciones',
   LOGIN: '/login',
   REGISTRO: '/registro',

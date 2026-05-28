@@ -10,6 +10,7 @@
 import {
   createContext,
   useCallback,
+  useEffect,  
   useMemo,
   useState,
 } from 'react';
@@ -48,7 +49,17 @@ export const CarritoContext = createContext<ICarritoContextValue | undefined>(
 );
 
 export function CarritoProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<IItemCarrito[]>([]);
+  const [items, setItems] = useState<IItemCarrito[]>(() => {
+    try {
+      const stored = localStorage.getItem('carrito');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+  useEffect(() => {
+  localStorage.setItem('carrito', JSON.stringify(items));
+}, [items]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [justAdded, setJustAdded] = useState<IJustAddedItem | null>(null);
 
