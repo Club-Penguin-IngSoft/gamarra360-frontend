@@ -8,7 +8,7 @@
  *  - ≤ 5 páginas → 1, 2, 3, 4, 5
  *  - Página actual cerca del inicio → 1, 2, 3, …, N
  *  - Página actual cerca del fin → 1, …, N-2, N-1, N
- *  - Página actual en el medio → 1, …, actual, …, N
+ *  - Página actual en el medio → 1, …, actual-1, actual, actual+1, …, N
  */
 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -33,7 +33,7 @@ export default function Pagination({
     if (page <= 3) return [1, 2, 3, '...', totalPages];
     if (page >= totalPages - 2)
       return [1, '...', totalPages - 2, totalPages - 1, totalPages];
-    return [1, '...', page, '...', totalPages];
+    return [1, '...', page - 1, page, page + 1, '...', totalPages];
   })();
 
   return (
