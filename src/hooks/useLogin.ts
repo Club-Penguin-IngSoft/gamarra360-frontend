@@ -38,6 +38,39 @@ const useLogin = () => {
         return;
       }
 
+      // MOCK FALLBACK: Permitir login de vendedor sin backend para pruebas
+      if (credentials.email === 'vendedor@gamarra360.com') {
+        iniciarSesion({
+          token: 'mock-vendedor-token-' + Date.now(),
+          usuario: {
+            id: 'vendedor-1',
+            nombre: 'Vendedor',
+            apellido: 'Prueba',
+            correo: credentials.email,
+            rol: 'COMERCIANTE',
+            idComerciante: 'comerciante-1',
+          }
+        });
+        navigate(rutaPorRol['COMERCIANTE']);
+        return;
+      }
+
+      // MOCK FALLBACK: Permitir login de cliente sin backend para pruebas
+      if (credentials.email === 'cliente@gamarra360.com') {
+        iniciarSesion({
+          token: 'mock-cliente-token-' + Date.now(),
+          usuario: {
+            id: 'cliente-1',
+            nombre: 'Cliente',
+            apellido: 'Prueba',
+            correo: credentials.email,
+            rol: 'CLIENTE',
+          }
+        });
+        navigate(rutaPorRol['CLIENTE']);
+        return;
+      }
+
       const response = await authService.login(credentials);
       
       // Integración con el estado global de AuthContext
