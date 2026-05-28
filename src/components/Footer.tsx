@@ -4,6 +4,7 @@ import instagramLogo from '../assets/images/instagram-logo.svg';
 import tiktokLogo from '../assets/images/tiktok-logo.svg';
 import libroReclamaciones from '../assets/images/Libro_de_reclamaciones.png';
 import Logo from './Logo';
+import { RUTAS } from '../constants/rutas';
 
 const social = [
   { name: 'Facebook', href: '#', icon: facebookLogo },
@@ -12,10 +13,10 @@ const social = [
 ];
 
 const enlaces: { label: string; to: string }[] = [
-  { label: 'Inicio', to: '/' },
-  { label: 'Productos', to: '/productos' },
-  { label: 'Tiendas', to: '/tiendas' },
-  { label: 'Vender', to: '/vender' },
+  { label: 'Inicio', to: RUTAS.INICIO },
+  { label: 'Productos', to: RUTAS.CATALOGO },
+  { label: 'Tiendas', to: RUTAS.TIENDAS },
+  { label: 'Vender', to: RUTAS.VENDER },
 ];
 
 export default function Footer() {

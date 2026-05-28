@@ -47,7 +47,7 @@ export default function SortSelect({
         />
       </button>
       {open && (
-        <div className="absolute left-0 right-0 top-[72px] z-10 overflow-hidden rounded border border-ink-100 bg-white shadow-lg">
+        <div className="absolute left-0 right-0 top-full mt-1 z-10 overflow-hidden rounded border border-ink-100 bg-white shadow-lg">
           {options.map((opt) => (
             <button
               key={opt}

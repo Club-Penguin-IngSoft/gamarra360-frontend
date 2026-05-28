@@ -6,6 +6,7 @@
 
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { RUTAS } from '../constants/rutas';
+import RutaProtegida from './RutaProtegida';
 import InicioPage from '../pages/InicioPage';
 import CatalogoPage from '../pages/CatalogoPage';
 import DetalleProductoPage from '../pages/DetalleProductoPage';
@@ -98,11 +99,13 @@ export default function AppRouter() {
           />
         }
       />
-      <Route path={RUTAS.ADMIN_DASHBOARD} element={<AdminDashboardPage />} />
-      <Route path={RUTAS.ADMIN_USUARIOS} element={<AdminUsuariosPage />} />
-      <Route path={RUTAS.ADMIN_APROBACIONES} element={<AdminAprobacionesPage />} />
-      <Route path={RUTAS.ADMIN_APROBACION_COMERCIANTES} element={<AdminAprobacionesPage />} />
-      <Route path={RUTAS.ADMIN_NOTIFICACIONES} element={<AdminNotificacionesPage />} />
+      <Route element={<RutaProtegida rolesPermitidos={['ADMIN']} />}>
+        <Route path={RUTAS.ADMIN_DASHBOARD} element={<AdminDashboardPage />} />
+        <Route path={RUTAS.ADMIN_USUARIOS} element={<AdminUsuariosPage />} />
+        <Route path={RUTAS.ADMIN_APROBACIONES} element={<AdminAprobacionesPage />} />
+        <Route path={RUTAS.ADMIN_APROBACION_COMERCIANTES} element={<AdminAprobacionesPage />} />
+        <Route path={RUTAS.ADMIN_NOTIFICACIONES} element={<AdminNotificacionesPage />} />
+      </Route>
       <Route path={RUTAS.COMERCIANTE_DASHBOARD} element={<DashboardPage />} />
       <Route path={RUTAS.COMERCIANTE_CATALOGO} element={<GestionInventarioPage />} />
       <Route
