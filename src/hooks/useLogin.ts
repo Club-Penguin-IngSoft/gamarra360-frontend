@@ -5,10 +5,11 @@ import { ILoginRequest, RolUsuario } from '../types/IAuth';
 import { RUTAS } from '../constants/rutas';
 import { useAuth } from './useAuth';
 
-const rutaPorRol: Record<RolUsuario, string> = {
-  CLIENTE: RUTAS.INICIO, // Ajustado a las rutas del proyecto principal
+const rutaPorRol: Record<string, string> = {
+  CLIENTE:     RUTAS.INICIO,
+  VENDEDOR:    RUTAS.COMERCIANTE_DASHBOARD,
   COMERCIANTE: RUTAS.COMERCIANTE_DASHBOARD,
-  ADMIN: RUTAS.ADMIN_DASHBOARD,
+  ADMIN:       RUTAS.ADMIN_DASHBOARD,
 };
 
 const useLogin = () => {
@@ -71,21 +72,30 @@ const useLogin = () => {
         return;
       }
 
-      const response = await authService.login(credentials);
-      
-      // Integración con el estado global de AuthContext
-      iniciarSesion({
-        token: response.token,
-        usuario: {
-          id: response.email, // O el ID real si el backend lo devuelve
-          nombre: response.nombreCompleto.split(' ')[0],
-          apellido: response.nombreCompleto.split(' ').slice(1).join(' '),
-          correo: response.email,
-          rol: response.rol,
-        }
-      });
+const response = await authService.login(credentials);
 
-      navigate(rutaPorRol[response.rol]);
+const rol = (response.rol === 'VENDEDOR' ? 'COMERCIANTE' : response.rol) as RolUsuario;
+
+localStorage.setItem('token', response.token);
+localStorage.setItem('nombreUsuario', response.nombres ?? response.email);
+
+iniciarSesion({
+  token: response.token,
+  usuario: {
+    id: String(response.usuarioId),
+    nombre: response.nombres ?? '',
+    apellido: '',
+    correo: response.email,
+    rol, 
+  }
+});
+
+navigate(rutaPorRol[rol] ?? RUTAS.INICIO); // 
+// Guardar nombre para el TopBar
+//localStorage.setItem('token', response.token);
+//localStorage.setItem('nombreUsuario', response.nombres ?? response.email);
+
+//navigate(rutaPorRol[response.rol] ?? RUTAS.INICIO);
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { mensaje?: string } } };
       const mensaje =
