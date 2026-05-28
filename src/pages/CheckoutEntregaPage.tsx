@@ -12,13 +12,34 @@ import { useCarrito } from '../hooks/useCarrito';
 import { formatearPrecio } from '../utils/formatearPrecio';
 import { RUTAS } from '../constants/rutas';
 
-const FECHAS_ENVIO = [
-  { id: 'mar26', label: 'Mar 26/05', textoLargo: 'martes 26 de mayo de 9 a 21 h.' },
-  { id: 'mie27', label: 'Mié 27/05', textoLargo: 'miércoles 27 de mayo de 9 a 21 h.' },
-  { id: 'jue28', label: 'Jue 28/05', textoLargo: 'jueves 28 de mayo de 9 a 21 h.' },
-  { id: 'vie29', label: 'Vie 29/05', textoLargo: 'viernes 29 de mayo de 9 a 21 h.' },
-  { id: 'sab30', label: 'Sáb 30/05', textoLargo: 'sábado 30 de mayo de 9 a 21 h.' },
-];
+const generarFechasEnvio = () => {
+  const dias = [];
+  const opcionesCortas: Intl.DateTimeFormatOptions = { weekday: 'short', day: '2-digit', month: '2-digit' };
+  const opcionesLargas: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };
+
+  for (let i = 1; i <= 5; i++) {
+    const fecha = new Date();
+    fecha.setDate(fecha.getDate() + i); // Incrementa un día en cada vuelta
+
+    // Genera el formato tipo: "Vie 29/05"
+    let label = new Intl.DateTimeFormat('es-PE', opcionesCortas).format(fecha);
+    label = label.replace('.', ''); // Elimina puntos molestos del formato
+    label = label.charAt(0).toUpperCase() + label.slice(1); // Pone la primera letra en mayúscula
+
+    // Genera el formato tipo: "viernes 29 de mayo de 9 a 21 h."
+    const textoLargo = `${new Intl.DateTimeFormat('es-PE', opcionesLargas).format(fecha)} de 9 a 21 h.`;
+
+    dias.push({
+      id: `dia-${i}`,
+      label: label,
+      textoLargo: textoLargo
+    });
+  }
+  return dias;
+};
+
+// Guardamos los días dinámicos en la misma constante para no romper el resto del código
+const FECHAS_ENVIO = generarFechasEnvio();
 
 export default function CheckoutEntregaPage() {
   const { items } = useCarrito();
