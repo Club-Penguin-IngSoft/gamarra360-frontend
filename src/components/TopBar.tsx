@@ -168,14 +168,22 @@ export default function TopBar({
                           <p className="truncate text-[14px] font-medium text-ink-900">{p.titulo}</p>
                           <p className="text-[12px] text-ink-500">{p.nombreTienda}</p>
                         </div>
-                        {p.precioFinal != null && (
-                          <span className="flex-shrink-0 text-[14px] font-semibold text-ink-900">
-                            S/ {p.precioFinal.toFixed(2)}
-                          </span>
-                        )}
                       </button>
                     </li>
                   ))}
+                  <li className="border-t border-ink-100">
+                    <button
+                      onMouseDown={() => {
+                        setAbierto(false);
+                        navigate(`${RUTAS.CATALOGO}?q=${encodeURIComponent(query)}`);
+                        setQuery('');
+                      }}
+                      className="flex w-full items-center justify-center gap-2 px-4 py-3 text-[14px] font-medium text-brand-600 transition-colors hover:bg-surface-muted"
+                    >
+                      <Search className="h-4 w-4" />
+                      Ver todos los resultados de "{query}"
+                    </button>
+                  </li>
                 </ul>
               )}
 
