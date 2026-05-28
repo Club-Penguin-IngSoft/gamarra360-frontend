@@ -7,8 +7,10 @@ import MaterialIcon from '../components/MaterialIcon';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import GoogleButton from '../components/GoogleButton';
+import { useLocation } from 'react-router-dom';
 import { RUTAS } from '../constants/rutas';
 import { COLORES } from '../styles/tokens';
+import axios from 'axios';
 
 const TIPOS_DOCUMENTO = ['DNI', 'Carnet de extranjería', 'Pasaporte'];
 
@@ -24,8 +26,10 @@ function validarContrasena(pass: string): boolean {
 
 export default function RegistroPage() {
   const navigate = useNavigate();
-
-  const [correo, setCorreo]                     = useState('');
+  const location = useLocation();
+  const [correo, setCorreo] = useState('');
+  const emailGoogle = location.state?.email || '';
+  /*const correoFinal = emailGoogle || correo;*/
   const [nombres, setNombres]                   = useState('');
   const [apellidos, setApellidos]               = useState('');
   const [tipoDoc, setTipoDoc]                   = useState('');
@@ -38,7 +42,7 @@ export default function RegistroPage() {
   const [errorForm, setErrorForm]               = useState<string | null>(null);
 
   const puedeEnviar =
-    correo.length > 0 &&
+    (emailGoogle || correo).length > 0 &&
     nombres.length > 0 &&
     apellidos.length > 0 &&
     tipoDoc.length > 0 &&
@@ -47,7 +51,7 @@ export default function RegistroPage() {
     validarContrasena(contrasena) &&
     contrasena === confirmar;
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrorForm(null);
 
@@ -59,9 +63,27 @@ export default function RegistroPage() {
       setErrorForm('Las contraseñas no coinciden.');
       return;
     }
-
+    
     // TODO: llamar a POST /api/v1/usuarios/registro — Responsable: equipo backend
-    navigate(RUTAS.LOGIN);
+    try {
+      await axios.post('http://localhost:8080/api/v1/auth/google/register', {
+        nombres,
+        primerApellido: apellidos.split(' ')[0] || '',
+        segundoApellido: apellidos.split(' ')[1] || '',
+        email: emailGoogle || correo,
+        contrasenha: contrasena,
+        dni: numeroDoc,
+        telefono: celular,
+        tipoDocumento: tipoDoc,
+        rol: "CLIENTE"
+      });
+
+      navigate(RUTAS.LOGIN);
+
+    } catch (error) {
+      console.error(error);
+      setErrorForm("Error al registrar usuario");
+    }
   };
 
   return (
@@ -86,9 +108,10 @@ export default function RegistroPage() {
                 type="email"
                 name="correo"
                 placeholder="Correo electrónico"
-                value={correo}
+                value={emailGoogle || correo}
                 onChange={(e) => setCorreo(e.target.value)}
                 autoComplete="email"
+                disabled={!!emailGoogle}
               />
 
               <Input
