@@ -3,7 +3,6 @@ import MaterialIcon from '../../components/MaterialIcon';
 import LogoGamarra from '../../components/LogoGamarra';
 import { RUTAS } from '../../constants/rutas';
 import { useAuth } from '../../hooks/useAuth';
-import { COLORES } from '../../styles/tokens';
 
 export default function AdminDashboardPage() {
   const { usuario, cerrarSesion } = useAuth();

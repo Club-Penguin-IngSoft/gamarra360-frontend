@@ -6,6 +6,7 @@
 
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { RUTAS } from '../constants/rutas';
+import RutaProtegida from './RutaProtegida';
 import InicioPage from '../pages/InicioPage';
 import CatalogoPage from '../pages/CatalogoPage';
 import DetalleProductoPage from '../pages/DetalleProductoPage';
@@ -82,7 +83,9 @@ export default function AppRouter() {
           />
         }
       />
-      <Route path={RUTAS.ADMIN_DASHBOARD} element={<AdminDashboardPage />} />
+      <Route element={<RutaProtegida rolesPermitidos={['ADMIN']} />}>
+        <Route path={RUTAS.ADMIN_DASHBOARD} element={<AdminDashboardPage />} />
+      </Route>
       <Route path="*" element={<Navigate to={RUTAS.INICIO} replace />} />
     </Routes>
   );

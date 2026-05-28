@@ -25,8 +25,6 @@ function FilterButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-/* ----------------------------- Filter Panel ------------------------------ */
-
 /* ---------------------------------- Page --------------------------------- */
 
 export default function CatalogoPage() {
@@ -42,15 +40,29 @@ export default function CatalogoPage() {
     setPage(1);
   };
 
-  // Cuando se conecte al backend, esta lógica se moverá al servicio (sort + paginación server-side)
-  const totalProductos = productos.length;
+  // Reset page when sort changes
+  const handleSort = (value: string) => {
+    setSort(value);
+    setPage(1);
+  };
+
+  // Ordenamiento client-side. Cuando se conecte al backend se moverá al servicio.
+  const productosSorted = [...productos].sort((a, b) => {
+    const pa = a.precioFinal ?? a.precioBase ?? Infinity;
+    const pb = b.precioFinal ?? b.precioBase ?? Infinity;
+    if (sort === SORT_OPTIONS_DEFAULT[1]) return pa - pb; // Menor precio
+    if (sort === SORT_OPTIONS_DEFAULT[2]) return pb - pa; // Mayor precio
+    return 0; // Lo más reciente — mantiene el orden original del servicio
+  });
+
+  const totalProductos = productosSorted.length;
   const totalPages = Math.max(
     1,
     Math.ceil(totalProductos / PAGINA_TAMANO_CATALOGO),
   );
   const desde = (page - 1) * PAGINA_TAMANO_CATALOGO + 1;
   const hasta = Math.min(page * PAGINA_TAMANO_CATALOGO, totalProductos);
-  const productosPagina = productos.slice(
+  const productosPagina = productosSorted.slice(
     (page - 1) * PAGINA_TAMANO_CATALOGO,
     page * PAGINA_TAMANO_CATALOGO,
   );
@@ -82,7 +94,7 @@ export default function CatalogoPage() {
               <FilterButton onClick={() => setFilterOpen(true)} />
               <SortSelect
                 value={sort}
-                onChange={setSort}
+                onChange={handleSort}
                 options={SORT_OPTIONS_DEFAULT}
               />
             </div>
