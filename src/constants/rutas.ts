@@ -20,10 +20,23 @@ export const RUTAS = {
   COTIZACIONES: '/cotizaciones',
   LOGIN: '/login',
   REGISTRO: '/registro',
+  REGISTRO_COMERCIANTE: '/registro-comerciante',
+  COMERCIANTE_DASHBOARD: '/comerciante/dashboard',
+  COMERCIANTE_CATALOGO: '/comerciante/catalogo',
+  COMERCIANTE_PEDIDOS: '/comerciante/pedidos',
+  COMERCIANTE_NUEVO_PRODUCTO: '/comerciante/catalogo/nuevo',
+  COMERCIANTE_EDITAR_PRODUCTO: (id: string | number = ':id') => `/comerciante/catalogo/${id}/editar`,
+  COMERCIANTE_PERSONALIZACIONES: '/comerciante/personalizaciones',
+  COMERCIANTE_COTIZACIONES: '/comerciante/cotizaciones',
+  COMERCIANTE_NOTIFICACIONES: '/comerciante/notificaciones',
   /** Helper: construye la ruta del formulario de personalización */
   PERSONALIZAR: (id: string | number = ':id') => `/personalizar/${id}`,
   /** Mis personalizaciones (seguimiento del cliente — HU-29) */
   PERSONALIZACIONES: '/personalizaciones',
   /** Panel de Administración */
-  ADMIN_DASHBOARD: '/admin/dashboard',
+  ADMIN_DASHBOARD: '/admin',
+  ADMIN_USUARIOS: '/admin/usuarios',
+  ADMIN_APROBACIONES: '/admin/aprobaciones',
+  ADMIN_APROBACION_COMERCIANTES: '/admin/aprobacion-comerciantes',
+  ADMIN_NOTIFICACIONES: '/admin/notificaciones',
 } as const;

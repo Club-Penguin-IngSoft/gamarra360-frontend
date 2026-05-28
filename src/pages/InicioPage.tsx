@@ -7,9 +7,10 @@ import Footer from '../components/Footer';
 import ProductCard from '../components/ProductCard';
 import StoreCard from '../components/StoreCard';
 import { RUTAS } from '../constants/rutas';
-import { useCatalogo } from '../hooks/useCatalogo';
+import { listarProductosPaginados } from '../services/catalogoService';
 import { listarTiendasDestacadas } from '../services/tiendaService';
 import type { ITienda } from '../types/ITienda';
+import type { IProducto, Categoria } from '../types/IProducto';
 
 /** Pseudo-categoría visible en UI — incluye "TODO" además de los enums del backend */
 type CategoriaUI =
@@ -17,8 +18,7 @@ type CategoriaUI =
   | 'HOMBRE'
   | 'MUJER'
   | 'NIÑOS'
-  | 'UNISEX ADULTOS'
-  | 'UNISEX NIÑOS';
+  | 'UNISEX ADULTOS';
 
 const CATEGORIAS_UI: CategoriaUI[] = [
   'TODO',
@@ -26,8 +26,43 @@ const CATEGORIAS_UI: CategoriaUI[] = [
   'MUJER',
   'NIÑOS',
   'UNISEX ADULTOS',
-  'UNISEX NIÑOS',
 ];
+
+/** Mapeo de la etiqueta visual al enum del backend */
+const CAT_MAP: Record<CategoriaUI, Categoria | null> = {
+  TODO: null,
+  HOMBRE: 'HOMBRE',
+  MUJER: 'MUJER',
+  NIÑOS: 'NINOS',
+  'UNISEX ADULTOS': 'UNISEX_ADULTOS',
+};
+
+/* ── Rotación diaria ─────────────────────────────────────────────────────── */
+
+/** Genera un número entero a partir de la fecha actual (YYYYMMDD). */
+function semillaDelDia(): number {
+  const hoy = new Date();
+  return (
+    hoy.getFullYear() * 10000 +
+    (hoy.getMonth() + 1) * 100 +
+    hoy.getDate()
+  );
+}
+
+/**
+ * Fisher-Yates determinista con LCG. Dado el mismo `seed` siempre
+ * produce el mismo orden, pero cambia cada día.
+ */
+function shuffleDiario<T>(arr: T[], seed: number): T[] {
+  const copia = [...arr];
+  let s = seed;
+  for (let i = copia.length - 1; i > 0; i--) {
+    s = Math.imul(s, 1664525) + 1013904223;
+    const j = Math.abs(s) % (i + 1);
+    [copia[i], copia[j]] = [copia[j], copia[i]];
+  }
+  return copia;
+}
 
 /* --------------------------------- Hero ---------------------------------- */
 
@@ -102,10 +137,23 @@ function CategoryTags({
 
 function CatalogoGlobal() {
   const [categoria, setCategoria] = useState<CategoriaUI>('TODO');
-  const { productos, cargando } = useCatalogo();
+  const [productos, setProductos] = useState<IProducto[]>([]);
+  const [cargando, setCargando] = useState(true);
 
-  // Solo mostramos los primeros 4 en el home
-  const destacados = productos.slice(0, 4);
+  // Carga solo 20 productos al inicio — suficiente para mezclar y mostrar 4
+  useEffect(() => {
+    setCargando(true);
+    listarProductosPaginados(0, 20)
+      .then(({ contenido }) => setProductos(contenido))
+      .finally(() => setCargando(false));
+  }, []);
+
+  // Filtra por categoría, rota diariamente y muestra 4
+  const categoriaMapeada = CAT_MAP[categoria];
+  const filtrados = categoriaMapeada
+    ? productos.filter((p) => p.categoria === categoriaMapeada)
+    : productos;
+  const destacados = shuffleDiario(filtrados, semillaDelDia()).slice(0, 4);
 
   return (
     <section className="flex flex-col gap-8 px-12 py-12">
@@ -148,7 +196,9 @@ function Directorio() {
   const [tiendas, setTiendas] = useState<ITienda[]>([]);
 
   useEffect(() => {
-    listarTiendasDestacadas().then(setTiendas);
+    listarTiendasDestacadas().then((data) =>
+      setTiendas(shuffleDiario(data, semillaDelDia())),
+    );
   }, []);
 
   return (
@@ -257,14 +307,17 @@ function MerchantCTA() {
           </p>
           <div className="flex flex-wrap gap-4">
             <Link
-              to={RUTAS.VENDER}
+              to={RUTAS.REGISTRO_COMERCIANTE}
               className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-8 py-[18px] text-[15px] font-medium text-white transition-colors hover:bg-brand-600"
             >
               Empezar a vender
             </Link>
-            <button className="inline-flex items-center gap-2 rounded-lg bg-white/5 px-8 py-[18px] text-[15px] font-medium text-white ring-1 ring-white/20 transition-colors hover:bg-white/10">
+            <Link
+              to={RUTAS.VENDER}
+              className="inline-flex items-center gap-2 rounded-lg bg-white/5 px-8 py-[18px] text-[15px] font-medium text-white ring-1 ring-white/20 transition-colors hover:bg-white/10"
+            >
               Saber más
-            </button>
+            </Link>
           </div>
         </div>
         <div className="flex justify-center">

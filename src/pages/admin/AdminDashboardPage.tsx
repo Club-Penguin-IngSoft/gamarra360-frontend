@@ -1,125 +1,180 @@
-import { Link, useNavigate } from 'react-router-dom';
-import MaterialIcon from '../../components/MaterialIcon';
-import LogoGamarra from '../../components/LogoGamarra';
-import { RUTAS } from '../../constants/rutas';
-import { useAuth } from '../../hooks/useAuth';
-import { COLORES } from '../../styles/tokens';
+import { AdminSidebar } from "../../components/admin/AdminSidebar"
+import {
+  Users,
+  DollarSign,
+  Clock,
+  ArrowUpRight,
+  Package,
+  AlertTriangle,
+  CheckCircle,
+} from "lucide-react"
+import { useAuth } from "../../hooks/useAuth"
 
 export default function AdminDashboardPage() {
-  const { usuario, cerrarSesion } = useAuth();
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    cerrarSesion();
-    navigate(RUTAS.LOGIN);
-  };
-
-  // Mock data para el dashboard
-  const stats = [
-    { label: 'Usuarios Totales', value: '1,284', icon: 'people', color: 'bg-blue-500' },
-    { label: 'Tiendas Activas', value: '156', icon: 'store', color: 'bg-primario' },
-    { label: 'Pedidos Hoy', value: '42', icon: 'shopping_cart', color: 'bg-green-500' },
-    { label: 'Personalizaciones', value: '12', icon: 'auto_fix_high', color: 'bg-yellow-500' },
-  ];
+  const { usuario } = useAuth()
 
   return (
     <div className="flex min-h-screen bg-neutro-50 font-sans">
-      {/* Sidebar */}
-      <aside className="w-64 bg-marino text-white flex flex-col shadow-lg">
-        <div className="p-6 border-b border-white/10">
-          <LogoGamarra size="sm" className="brightness-0 invert" />
-          <p className="text-xs text-white/50 mt-1 font-medium tracking-widest uppercase">Admin Panel</p>
-        </div>
-        
-        <nav className="flex-1 p-4 space-y-2">
-          <Link to={RUTAS.ADMIN_DASHBOARD} className="flex items-center gap-3 px-4 py-3 rounded-lg bg-white/10 text-white font-medium">
-            <MaterialIcon name="dashboard" />
-            Dashboard
-          </Link>
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-white/70 hover:bg-white/5 transition-colors font-medium">
-            <MaterialIcon name="people" />
-            Usuarios
-          </button>
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-white/70 hover:bg-white/5 transition-colors font-medium">
-            <MaterialIcon name="store" />
-            Tiendas
-          </button>
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-white/70 hover:bg-white/5 transition-colors font-medium">
-            <MaterialIcon name="inventory_2" />
-            Catálogo
-          </button>
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-white/70 hover:bg-white/5 transition-colors font-medium">
-            <MaterialIcon name="settings" />
-            Configuración
-          </button>
-        </nav>
+      <AdminSidebar />
 
-        <div className="p-4 border-t border-white/10">
-          <button 
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-error-claro hover:bg-error/10 transition-colors font-medium"
-          >
-            <MaterialIcon name="logout" />
-            Cerrar Sesión
-          </button>
+      <main className="flex-1 p-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-black text-neutro-900 mb-2">
+            ¡Hola, {usuario?.nombre || 'Admin'}!
+          </h1>
+          <p className="text-neutro-600 font-medium">
+            Rendimiento del sistema en tiempo real y métricas operativas del ecosistema Gamarra360.
+          </p>
         </div>
-      </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col">
-        {/* Top Header */}
-        <header className="h-16 bg-white border-b border-neutro-200 flex items-center justify-between px-8">
-          <h1 className="text-xl font-bold text-neutro-900">Resumen del Sistema</h1>
-          <div className="flex items-center gap-4">
-            <button className="p-2 text-neutro-500 hover:bg-neutro-100 rounded-full transition-colors relative">
-              <MaterialIcon name="notifications" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-primario rounded-full"></span>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Usuarios Verificados */}
+          <div className="bg-white rounded-tarjeta p-6 shadow-tarjeta border border-neutro-100">
+            <div className="w-12 h-12 rounded-xl bg-primario-claro flex items-center justify-center mb-4">
+              <Users className="w-6 h-6 text-primario" />
+            </div>
+            <p className="text-xs font-bold text-neutro-400 uppercase tracking-widest mb-1">
+              USUARIOS VERIFICADOS
+            </p>
+            <p className="text-4xl font-black text-neutro-900">24,512</p>
+          </div>
+
+          {/* Ventas Totales */}
+          <div className="bg-white rounded-tarjeta p-6 shadow-tarjeta border border-neutro-100">
+            <div className="w-12 h-12 rounded-xl bg-primario-claro flex items-center justify-center mb-4">
+              <DollarSign className="w-6 h-6 text-primario" />
+            </div>
+            <p className="text-xs font-bold text-neutro-400 uppercase tracking-widest mb-1">
+              VENTAS TOTALES
+            </p>
+            <p className="text-4xl font-black text-neutro-900">S/ 1.2M</p>
+          </div>
+
+          {/* Aprobaciones Pendientes */}
+          <div className="bg-white rounded-tarjeta p-6 shadow-tarjeta border-l-4 border-l-primario border-y-neutro-100 border-r-neutro-100">
+            <div className="w-12 h-12 rounded-xl bg-primario-claro flex items-center justify-center mb-4">
+              <Clock className="w-6 h-6 text-primario" />
+            </div>
+            <p className="text-xs font-bold text-neutro-400 uppercase tracking-widest mb-1">
+              APROBACIONES PENDIENTES
+            </p>
+            <p className="text-4xl font-black text-neutro-900">142</p>
+          </div>
+        </div>
+
+        {/* Activity and Vendor Status */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Activity Feed */}
+          <div className="lg:col-span-2 bg-white rounded-tarjeta p-6 shadow-tarjeta border border-neutro-100">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-black text-neutro-900">Actividad Reciente</h2>
+              <button className="text-primario text-sm font-bold hover:underline uppercase tracking-tight">
+                VER TODOS LOS REGISTROS
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Activity Item 1 */}
+              <div className="flex items-start gap-4 p-3 rounded-xl hover:bg-neutro-50 transition-colors">
+                <div className="w-10 h-10 rounded-full bg-primario-claro flex items-center justify-center flex-shrink-0">
+                  <ArrowUpRight className="w-5 h-5 text-primario" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold text-neutro-900">Nueva Solicitud de Vendedor</p>
+                    <span className="text-sm text-neutro-400 font-medium">hace 2 min</span>
+                  </div>
+                  <p className="text-sm text-neutro-600 mt-1">
+                    Textiles Gamarra S.A. envió documentación para verificación Nivel 2.
+                  </p>
+                </div>
+              </div>
+
+              {/* Activity Item 2 */}
+              <div className="flex items-start gap-4 p-3 rounded-xl hover:bg-neutro-50 transition-colors">
+                <div className="w-10 h-10 rounded-full bg-advertencia-claro flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-advertencia" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold text-neutro-900">Advertencia del Sistema</p>
+                    <span className="text-sm text-neutro-400 font-medium">hace 45 min</span>
+                  </div>
+                  <p className="text-sm text-neutro-600 mt-1">
+                    Alta latencia detectada en pasarela de pagos 'Gateway-7'. Auto-escalado iniciado.
+                  </p>
+                </div>
+              </div>
+
+              {/* Activity Item 3 */}
+              <div className="flex items-start gap-4 p-3 rounded-xl hover:bg-neutro-50 transition-colors">
+                <div className="w-10 h-10 rounded-full bg-info-claro flex items-center justify-center flex-shrink-0">
+                  <Package className="w-5 h-5 text-info" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold text-neutro-900">Actualización Masiva de Inventario</p>
+                    <span className="text-sm text-neutro-400 font-medium">hace 2 horas</span>
+                  </div>
+                  <p className="text-sm text-neutro-600 mt-1">
+                    El Vendedor ID #9042 actualizó 1,200 SKUs en la categoría 'Colección Verano'.
+                  </p>
+                </div>
+              </div>
+
+              {/* Activity Item 4 */}
+              <div className="flex items-start gap-4 p-3 rounded-xl hover:bg-neutro-50 transition-colors">
+                <div className="w-10 h-10 rounded-full bg-neutro-100 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle className="w-5 h-5 text-neutro-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold text-neutro-900">Vendedor Verificado</p>
+                    <span className="text-sm text-neutro-400 font-medium">hace 5 horas</span>
+                  </div>
+                  <p className="text-sm text-neutro-600 mt-1">
+                    La Admin 'María Q.' aprobó la verificación de 'Andean Alpaca Designs'.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Vendor Status Panel */}
+          <div className="bg-marino rounded-tarjeta p-6 text-white shadow-xl shadow-marino/20">
+            <h2 className="text-lg font-black mb-1">Estado de Vendedores</h2>
+            <p className="text-white/60 text-sm font-medium mb-6 uppercase tracking-wider">Análisis de la Cola</p>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-white/80 font-medium">Verificados</span>
+                <span className="font-black text-xl">1,842</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-white/80 font-medium">Pendientes</span>
+                <span className="font-black text-xl text-dorado">142</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-white/80 font-medium">Rechazados</span>
+                <span className="font-black text-xl text-red-400">34</span>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="mt-6 mb-6">
+              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                <div className="h-full bg-dorado rounded-full shadow-[0_0_10px_rgba(245,205,64,0.5)]" style={{ width: "91%" }} />
+              </div>
+            </div>
+
+            <button className="w-full py-3 bg-white text-marino font-black rounded-xl hover:bg-white/90 transition-all uppercase text-sm tracking-wide">
+              REVISAR COLA
             </button>
-            <div className="h-8 w-px bg-neutro-200"></div>
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <p className="text-sm font-bold text-neutro-900">{usuario?.nombre} {usuario?.apellido}</p>
-                <p className="text-xs text-neutro-500 capitalize">{usuario?.rol.toLowerCase()}</p>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-primario-claro flex items-center justify-center text-primario font-bold">
-                {usuario?.nombre.charAt(0)}
-              </div>
-            </div>
-          </div>
-        </header>
-
-        {/* Dashboard Content */}
-        <div className="p-8 space-y-8">
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {stats.map((stat, idx) => (
-              <div key={idx} className="bg-white p-6 rounded-tarjeta shadow-tarjeta border border-neutro-100 flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-xl ${stat.color} flex items-center justify-center text-white shadow-lg`}>
-                  <MaterialIcon name={stat.icon} />
-                </div>
-                <div>
-                  <p className="text-sm text-neutro-500 font-medium">{stat.label}</p>
-                  <p className="text-2xl font-black text-neutro-900">{stat.value}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Table Placeholder */}
-          <div className="bg-white rounded-tarjeta shadow-tarjeta border border-neutro-100 overflow-hidden">
-            <div className="p-6 border-b border-neutro-200 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-neutro-900">Últimas Solicitudes de Personalización</h2>
-              <button className="text-sm font-bold text-primario hover:underline">Ver todas</button>
-            </div>
-            <div className="p-12 text-center">
-              <div className="w-16 h-16 bg-neutro-50 rounded-full flex items-center justify-center mx-auto mb-4 text-neutro-300">
-                <MaterialIcon name="assignment" style={{ fontSize: '32px' }} />
-              </div>
-              <p className="text-neutro-500 font-medium">No hay solicitudes recientes que mostrar.</p>
-            </div>
           </div>
         </div>
       </main>
     </div>
-  );
+  )
 }
