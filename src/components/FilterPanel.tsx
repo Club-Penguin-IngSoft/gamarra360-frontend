@@ -225,10 +225,11 @@ export default function FilterPanel({ open, filtros, onChange, onClose }: Props)
         : [...b.tallas, t],
     }));
 
-  // Limpia el borrador Y aplica de inmediato al padre
+  // Limpia el borrador, aplica de inmediato al padre y cierra el panel
   const limpiarTodo = () => {
     setBorrador(FILTROS_VACIOS);
     onChange(FILTROS_VACIOS);
+    onClose();
   };
 
   // Aplica el borrador al padre y cierra el panel
