@@ -137,6 +137,23 @@ export default function CatalogoPage() {
 
         </section>
       </main>
+
+      <section className="px-12 pb-10">
+        <div className="overflow-hidden rounded-xl bg-gradient-to-r from-[#AD225E] to-[#CF2F77] px-6 py-8 md:px-8 md:py-10">
+          <div className="max-w-none">
+            <h2 className="whitespace-nowrap text-[40px] font-extrabold leading-tight text-white">
+              ¿Listo para tu Cotización Personalizada?
+            </h2>
+            <p className="mt-2 whitespace-nowrap text-[16px] text-white/85">
+              Solicita tu cotización para productos exclusivos y personalizados.
+              ¡Te damos el mejor precio a medida de tus necesidades!
+            </p>
+            <button className="mt-5 inline-flex h-11 items-center rounded-md bg-white px-5 text-[16px] font-semibold text-[#AD225E] hover:bg-white/95">
+              Cotiza ahora
+            </button>
+          </div>
+        </div>
+      </section>
       <Footer />
     </div>
   );
