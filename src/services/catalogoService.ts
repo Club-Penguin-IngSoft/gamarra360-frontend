@@ -2,8 +2,11 @@
  * Capa de acceso al backend para el módulo `catalogo`.
  *
  * Conectado al backend Spring Boot en /api/v1/productos.
- * El filtrado se aplica client-side porque el backend aún no acepta
- * query params de filtro en el endpoint GET /productos.
+ * El endpoint acepta ?page=N&size=M y devuelve PaginaResponse<ProductoResponse>.
+ *
+ * Estrategia de filtrado:
+ *  - Sin filtros  → paginación server-side (eficiente con miles de productos)
+ *  - Con filtros  → lote grande (size=500) + filtrado client-side (backend work pendiente)
  */
 
 import type { IProducto, IVarianteProducto, EtiquetaProducto, Categoria, TipoServicio } from '../types/IProducto';
@@ -35,10 +38,24 @@ interface IProductoBackend {
   }[];
 }
 
+interface IPaginaRespuestaBackend {
+  contenido: IProductoBackend[];
+  paginaActual: number;
+  totalPaginas: number;
+  totalElementos: number;
+}
+
+/** Resultado paginado expuesto al resto del frontend */
+export interface IPaginaProductos {
+  contenido: IProducto[];
+  paginaActual: number;
+  totalPaginas: number;
+  totalElementos: number;
+}
+
 /* ── Mapeo de nombre de categoría DB → enum frontend ──────────────────── */
 
 function mapearCategoria(nombre: string): Categoria {
-  // Normaliza: mayúsculas, sin tildes, espacios → guiones bajos
   const n = nombre
     .toUpperCase()
     .normalize('NFD')
@@ -77,7 +94,6 @@ function derivarTipoServicio(p: IProductoBackend): TipoServicio {
 function adaptarProducto(p: IProductoBackend): IProducto {
   const tipoServicio = derivarTipoServicio(p);
 
-  // Imágenes: primero las principales, luego el resto
   const urlsImagenes = [...p.imagenes]
     .sort((a, b) => (b.esPrincipal ? 1 : 0) - (a.esPrincipal ? 1 : 0))
     .map((i) => i.url)
@@ -86,7 +102,6 @@ function adaptarProducto(p: IProductoBackend): IProducto {
   const variantes: IVarianteProducto[] = p.variantes.map((v) => ({
     id: String(v.idVariante),
     stock: v.stock ?? 0,
-    // talla y color requieren llamadas adicionales al backend (pendiente)
   }));
 
   return {
@@ -106,36 +121,67 @@ function adaptarProducto(p: IProductoBackend): IProducto {
   };
 }
 
-/* ── API pública ───────────────────────────────────────────────────────── */
+/* ── Helpers internos ──────────────────────────────────────────────────── */
 
-/**
- * Lista productos del catálogo aplicando filtros opcionales (client-side).
- */
-export async function listarProductos(
-  filtros?: Partial<IFiltrosCatalogo>,
-): Promise<IProducto[]> {
-  const { data } = await apiClient.get<IProductoBackend[]>('/productos');
-  let resultado = data.map(adaptarProducto);
-
-  // Filtrado client-side (el backend aún no acepta query params de filtro)
-  if (filtros?.categorias && filtros.categorias.length > 0) {
+function aplicarFiltrosClienteSide(
+  productos: IProducto[],
+  filtros: Partial<IFiltrosCatalogo>,
+): IProducto[] {
+  let resultado = productos;
+  if (filtros.categorias && filtros.categorias.length > 0) {
     resultado = resultado.filter((p) => filtros.categorias!.includes(p.categoria));
   }
-  if (filtros?.tipoServicio) {
+  if (filtros.tipoServicio) {
     resultado = resultado.filter((p) => p.tipoServicio === filtros.tipoServicio);
   }
-  if (filtros?.precioMin != null) {
+  if (filtros.precioMin != null) {
     resultado = resultado.filter(
       (p) => (p.precioFinal ?? Infinity) >= filtros.precioMin!,
     );
   }
-  if (filtros?.precioMax != null) {
+  if (filtros.precioMax != null) {
     resultado = resultado.filter(
       (p) => (p.precioFinal ?? 0) <= filtros.precioMax!,
     );
   }
-
   return resultado;
+}
+
+/* ── API pública ───────────────────────────────────────────────────────── */
+
+/**
+ * Trae una página de productos del backend (server-side pagination).
+ * Usar en CatalogoPage sin filtros para máxima eficiencia.
+ */
+export async function listarProductosPaginados(
+  page: number = 0,
+  size: number = 12,
+): Promise<IPaginaProductos> {
+  const { data } = await apiClient.get<IPaginaRespuestaBackend>('/productos', {
+    params: { page, size },
+  });
+  return {
+    contenido:      data.contenido.map(adaptarProducto),
+    paginaActual:   data.paginaActual,
+    totalPaginas:   data.totalPaginas,
+    totalElementos: data.totalElementos,
+  };
+}
+
+/**
+ * Trae un lote grande y aplica filtros client-side.
+ * Usar cuando hay filtros activos (categoría, tipo, precio).
+ * Tamaño máximo configurable — por defecto 500.
+ */
+export async function listarProductos(
+  filtros?: Partial<IFiltrosCatalogo>,
+  maxSize: number = 500,
+): Promise<IProducto[]> {
+  const { data } = await apiClient.get<IPaginaRespuestaBackend>('/productos', {
+    params: { page: 0, size: maxSize },
+  });
+  const todos = data.contenido.map(adaptarProducto);
+  return filtros ? aplicarFiltrosClienteSide(todos, filtros) : todos;
 }
 
 /**

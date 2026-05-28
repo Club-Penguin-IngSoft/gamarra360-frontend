@@ -28,44 +28,39 @@ function FilterButton({ onClick }: { onClick: () => void }) {
 /* ---------------------------------- Page --------------------------------- */
 
 export default function CatalogoPage() {
-  const [sort, setSort] = useState(SORT_OPTIONS_DEFAULT[0]);
-  const [page, setPage] = useState(1);
+  const [sort, setSort]           = useState(SORT_OPTIONS_DEFAULT[0]);
+  const [page, setPage]           = useState(1);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [filtros, setFiltros] = useState<IFiltrosCatalogo>(FILTROS_VACIOS);
-  const { productos, cargando } = useCatalogo(filtros);
+  const [filtros, setFiltros]     = useState<IFiltrosCatalogo>(FILTROS_VACIOS);
 
-  // Reset page to 1 when filters change
+  // El hook devuelve SOLO los productos de la página actual + metadata
+  const { productos, cargando, totalPaginas, totalElementos } = useCatalogo(
+    filtros,
+    page,
+    PAGINA_TAMANO_CATALOGO,
+  );
+
+  // Reset de página al cambiar filtros o sort
   const handleChangeFiltros = (f: IFiltrosCatalogo) => {
     setFiltros(f);
     setPage(1);
   };
-
-  // Reset page when sort changes
   const handleSort = (value: string) => {
     setSort(value);
     setPage(1);
   };
 
-  // Ordenamiento client-side. Cuando se conecte al backend se moverá al servicio.
+  // Ordenamiento de la página actual (client-side sobre los ~12 items recibidos)
   const productosSorted = [...productos].sort((a, b) => {
     const pa = a.precioFinal ?? a.precioBase ?? Infinity;
     const pb = b.precioFinal ?? b.precioBase ?? Infinity;
     if (sort === SORT_OPTIONS_DEFAULT[1]) return pa - pb; // Menor precio
     if (sort === SORT_OPTIONS_DEFAULT[2]) return pb - pa; // Mayor precio
-    return 0; // Lo más reciente — mantiene el orden original del servicio
+    return 0;
   });
 
-  const totalProductos = productosSorted.length;
-  const totalPages = Math.max(
-    1,
-    Math.ceil(totalProductos / PAGINA_TAMANO_CATALOGO),
-  );
-  const desde = (page - 1) * PAGINA_TAMANO_CATALOGO + 1;
-  const hasta = Math.min(page * PAGINA_TAMANO_CATALOGO, totalProductos);
-  const productosPagina = productosSorted.slice(
-    (page - 1) * PAGINA_TAMANO_CATALOGO,
-    page * PAGINA_TAMANO_CATALOGO,
-  );
+  const desde = totalElementos === 0 ? 0 : (page - 1) * PAGINA_TAMANO_CATALOGO + 1;
+  const hasta = Math.min(page * PAGINA_TAMANO_CATALOGO, totalElementos);
 
   return (
     <div className="min-h-screen bg-surface-muted">
@@ -84,7 +79,7 @@ export default function CatalogoPage() {
               <span className="block text-brand-600">Productos</span>
             </h1>
             <p className="text-[18px] text-ink-700">
-              Explorando {totalProductos} productos únicos de los mejores
+              Explorando {totalElementos} productos únicos de los mejores
               talleres.
             </p>
           </div>
@@ -100,7 +95,7 @@ export default function CatalogoPage() {
             </div>
             <Pagination
               page={page}
-              totalPages={totalPages}
+              totalPages={totalPaginas}
               onChange={setPage}
               compact
             />
@@ -114,16 +109,16 @@ export default function CatalogoPage() {
                     className="aspect-[3/4] animate-pulse rounded-xl bg-white"
                   />
                 ))
-              : productosPagina.map((p) => (
+              : productosSorted.map((p) => (
                   <ProductCard key={p.id} producto={p} />
                 ))}
           </div>
 
           <div className="flex justify-between">
             <span className="hidden self-center text-[14px] text-ink-500 md:inline">
-              Mostrando {desde}-{hasta} de {totalProductos}
+              Mostrando {desde}-{hasta} de {totalElementos}
             </span>
-            <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+            <Pagination page={page} totalPages={totalPaginas} onChange={setPage} />
             <span className="hidden md:inline" />
           </div>
         </section>
@@ -135,12 +130,10 @@ export default function CatalogoPage() {
             <h2 className="whitespace-nowrap text-[40px] font-extrabold leading-tight text-white">
               ¿Listo para tu Cotización Personalizada?
             </h2>
-
             <p className="mt-2 whitespace-nowrap text-[16px] text-white/85">
               Solicita tu cotización para productos exclusivos y personalizados.
               ¡Te damos el mejor precio a medida de tus necesidades!
             </p>
-
             <button className="mt-5 inline-flex h-11 items-center rounded-md bg-white px-5 text-[16px] font-semibold text-[#AD225E] hover:bg-white/95">
               Cotiza ahora
             </button>
