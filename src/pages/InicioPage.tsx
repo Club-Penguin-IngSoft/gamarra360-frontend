@@ -10,6 +10,7 @@ import { RUTAS } from '../constants/rutas';
 import { useCatalogo } from '../hooks/useCatalogo';
 import { listarTiendasDestacadas } from '../services/tiendaService';
 import type { ITienda } from '../types/ITienda';
+import type { Categoria } from '../types/IProducto';
 
 /** Pseudo-categoría visible en UI — incluye "TODO" además de los enums del backend */
 type CategoriaUI =
@@ -26,6 +27,15 @@ const CATEGORIAS_UI: CategoriaUI[] = [
   'NIÑOS',
   'UNISEX ADULTOS',
 ];
+
+/** Mapeo de la etiqueta visual al enum del backend */
+const CAT_MAP: Record<CategoriaUI, Categoria | null> = {
+  TODO: null,
+  HOMBRE: 'HOMBRE',
+  MUJER: 'MUJER',
+  NIÑOS: 'NINOS',
+  'UNISEX ADULTOS': 'UNISEX_ADULTOS',
+};
 
 /* --------------------------------- Hero ---------------------------------- */
 
@@ -102,8 +112,12 @@ function CatalogoGlobal() {
   const [categoria, setCategoria] = useState<CategoriaUI>('TODO');
   const { productos, cargando } = useCatalogo();
 
-  // Solo mostramos los primeros 4 en el home
-  const destacados = productos.slice(0, 4);
+  // Filtra por categoría y muestra los primeros 4
+  const categoriaMapeada = CAT_MAP[categoria];
+  const filtrados = categoriaMapeada
+    ? productos.filter((p) => p.categoria === categoriaMapeada)
+    : productos;
+  const destacados = filtrados.slice(0, 4);
 
   return (
     <section className="flex flex-col gap-8 px-12 py-12">
