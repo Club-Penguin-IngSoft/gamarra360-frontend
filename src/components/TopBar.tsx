@@ -143,6 +143,7 @@ export default function TopBar({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={manejarTecla}
+                onFocus={() => { if (resultados.length > 0) setAbierto(true); }}
                 placeholder="Buscar productos"
                 className="h-11 w-full rounded-full border border-ink-100 bg-white pl-10 pr-4 text-[15px] text-ink-900 placeholder:text-ink-500 focus:border-brand-500 focus:outline-none"
                 autoComplete="off"
