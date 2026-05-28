@@ -1,9 +1,8 @@
 /**
  * Capa de acceso al backend para el módulo `catalogo`.
  *
- * Conectado al backend Spring Boot en /api/v1/productos.
- * El filtrado se aplica client-side porque el backend aún no acepta
- * query params de filtro en el endpoint GET /productos.
+ * El backend SIEMPRE devuelve PaginaResponse<ProductoResponse>, nunca un array plano.
+ * Estructura: { contenido: [...], paginaActual, totalPaginas, totalElementos }
  */
 
 import type { IProducto, IVarianteProducto, EtiquetaProducto, Categoria, TipoServicio } from '../types/IProducto';
@@ -11,7 +10,7 @@ import { ETIQUETA_POR_TIPO_SERVICIO } from '../types/IProducto';
 import type { IFiltrosCatalogo } from '../types/IFiltro';
 import apiClient from './apiClient';
 
-/* ── Tipo que devuelve el backend ──────────────────────────────────────── */
+/* ── Tipos del backend ─────────────────────────────────────────────────── */
 
 interface IProductoBackend {
   idProducto: number;
@@ -35,36 +34,43 @@ interface IProductoBackend {
   }[];
 }
 
-/* ── Mapeo de nombre de categoría DB → enum frontend ──────────────────── */
+/** El backend SIEMPRE devuelve esta estructura — validado en Postman */
+interface IPageBackend {
+  contenido: IProductoBackend[];
+  paginaActual: number;
+  totalPaginas: number;
+  totalElementos: number;
+}
+
+/* ── Mapeo categoría ───────────────────────────────────────────────────── */
 
 function mapearCategoria(nombre: string): Categoria {
-  // Normaliza: mayúsculas, sin tildes, espacios → guiones bajos
   const n = nombre
     .toUpperCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .trim()
     .replace(/\s+/g, '_');
 
   const tabla: Record<string, Categoria> = {
-    HOMBRE:          'HOMBRE',
-    MUJER:           'MUJER',
-    NINOS:           'NINOS',
-    NINO:            'NINOS',
-    NINAS:           'NINOS',
-    NINA:            'NINOS',
-    INFANTIL:        'NINOS',
-    UNISEX_ADULTOS:  'UNISEX_ADULTOS',
-    UNISEX_ADULTO:   'UNISEX_ADULTOS',
-    UNISEX:          'UNISEX_ADULTOS',
-    UNISEX_NINOS:    'UNISEX_NINOS',
-    UNISEX_NINO:     'UNISEX_NINOS',
+    HOMBRE:         'HOMBRE',
+    MUJER:          'MUJER',
+    NINOS:          'NINOS',
+    NINO:           'NINOS',
+    NINAS:          'NINOS',
+    NINA:           'NINOS',
+    INFANTIL:       'NINOS',
+    UNISEX_ADULTOS: 'UNISEX_ADULTOS',
+    UNISEX_ADULTO:  'UNISEX_ADULTOS',
+    UNISEX:         'UNISEX_ADULTOS',
+    UNISEX_NINOS:   'UNISEX_NINOS',
+    UNISEX_NINO:    'UNISEX_NINOS',
   };
 
   return tabla[n] ?? 'HOMBRE';
 }
 
-/* ── Derivar TipoServicio desde campos del backend ────────────────────── */
+/* ── Derivar TipoServicio ──────────────────────────────────────────────── */
 
 function derivarTipoServicio(p: IProductoBackend): TipoServicio {
   if (p.esPersonalizable) return 'PERSONALIZABLE';
@@ -77,7 +83,6 @@ function derivarTipoServicio(p: IProductoBackend): TipoServicio {
 function adaptarProducto(p: IProductoBackend): IProducto {
   const tipoServicio = derivarTipoServicio(p);
 
-  // Imágenes: primero las principales, luego el resto
   const urlsImagenes = [...p.imagenes]
     .sort((a, b) => (b.esPrincipal ? 1 : 0) - (a.esPrincipal ? 1 : 0))
     .map((i) => i.url)
@@ -86,7 +91,6 @@ function adaptarProducto(p: IProductoBackend): IProducto {
   const variantes: IVarianteProducto[] = p.variantes.map((v) => ({
     id: String(v.idVariante),
     stock: v.stock ?? 0,
-    // talla y color requieren llamadas adicionales al backend (pendiente)
   }));
 
   return {
@@ -109,63 +113,58 @@ function adaptarProducto(p: IProductoBackend): IProducto {
 /* ── API pública ───────────────────────────────────────────────────────── */
 
 /**
- * Lista productos del catálogo aplicando filtros opcionales (client-side).
+ * Función central: llama a GET /productos?page=X&size=Y
+ * El backend siempre devuelve PaginaResponse, nunca array plano.
+ *
+ * @param page    Página 0-indexed
+ * @param size    Items por página (usar 500 para traer todo en modo filtros)
+ */
+export async function listarProductosPaginados(
+  page: number = 0,
+  size: number = 12,
+  _filtros?: Partial<IFiltrosCatalogo>,
+): Promise<{ contenido: IProducto[]; totalPaginas: number; totalElementos: number }> {
+  const { data } = await apiClient.get<IPageBackend>('/productos', {
+    params: { page, size },
+  });
+
+  return {
+    contenido: data.contenido.map(adaptarProducto),
+    totalPaginas: data.totalPaginas,
+    totalElementos: data.totalElementos,
+  };
+}
+
+/**
+ * Alias para compatibilidad — trae hasta 500 productos para filtrado client-side.
  */
 export async function listarProductos(
   filtros?: Partial<IFiltrosCatalogo>,
 ): Promise<IProducto[]> {
-  const { data } = await apiClient.get<IProductoBackend[]>('/productos');
-  let resultado = data.map(adaptarProducto);
-
-  // Filtrado client-side (el backend aún no acepta query params de filtro)
-  if (filtros?.categorias && filtros.categorias.length > 0) {
-    resultado = resultado.filter((p) => filtros.categorias!.includes(p.categoria));
-  }
-  if (filtros?.tipoServicio) {
-    resultado = resultado.filter((p) => p.tipoServicio === filtros.tipoServicio);
-  }
-  if (filtros?.precioMin != null) {
-    resultado = resultado.filter(
-      (p) => (p.precioFinal ?? Infinity) >= filtros.precioMin!,
-    );
-  }
-  if (filtros?.precioMax != null) {
-    resultado = resultado.filter(
-      (p) => (p.precioFinal ?? 0) <= filtros.precioMax!,
-    );
-  }
-
-  return resultado;
+  const { contenido } = await listarProductosPaginados(0, 500, filtros);
+  return contenido;
 }
 
-/**
- * Devuelve el detalle de un producto por id. Lanza error si no existe.
- */
+/** Devuelve el detalle de un producto por id. */
 export async function obtenerProducto(id: string): Promise<IProducto> {
   const { data } = await apiClient.get<IProductoBackend>(`/productos/${id}`);
   return adaptarProducto(data);
 }
 
-/**
- * Devuelve los productos de una tienda específica (excluyendo opcionalmente uno).
- */
+/** Devuelve los productos de una tienda específica. */
 export async function listarProductosDeTienda(
   idComerciante: string,
   excluirId?: string,
 ): Promise<IProducto[]> {
-  const { data } = await apiClient.get<IProductoBackend[]>(
-    `/productos/tienda/${idComerciante}`,
-  );
-  let resultado = data.map(adaptarProducto);
-  if (excluirId) {
-    resultado = resultado.filter((p) => p.id !== excluirId);
-  }
-  return resultado;
+  const { data } = await apiClient.get<any>(`/productos/tienda/${idComerciante}`);
+  const lista = Array.isArray(data)
+    ? (data as IProductoBackend[]).map(adaptarProducto)
+    : (data as IPageBackend).contenido.map(adaptarProducto);
+
+  return excluirId ? lista.filter((p) => p.id !== excluirId) : lista;
 }
 
-/**
- * Convierte el enum TipoServicio del backend a la etiqueta visible en la UI.
- */
+/** Convierte TipoServicio a etiqueta visible en la UI. */
 export function etiquetaDeProducto(producto: IProducto): EtiquetaProducto {
   return ETIQUETA_POR_TIPO_SERVICIO[producto.tipoServicio];
 }
