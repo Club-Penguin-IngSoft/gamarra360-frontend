@@ -13,7 +13,6 @@ import type { ReactNode } from 'react';
 import {
   ChevronDown,
   SlidersHorizontal,
-  Store as StoreIcon,
   X,
 } from 'lucide-react';
 import type { Categoria, TipoServicio } from '../types/IProducto';
