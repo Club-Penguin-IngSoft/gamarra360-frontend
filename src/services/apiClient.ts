@@ -33,7 +33,8 @@ const apiClient: AxiosInstance = axios.create({
 
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem(TOKEN_KEY);
+    // Intentar con TOKEN_KEY (gamarra_token) y con el fallback 'token'
+    const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }

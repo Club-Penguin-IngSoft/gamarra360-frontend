@@ -23,56 +23,7 @@ const useLogin = () => {
       setCargando(true);
       setError(null);
 
-      // MOCK FALLBACK: Permitir login de admin sin backend para pruebas
-      if (credentials.email === 'admin@gamarra360.com') {
-        iniciarSesion({
-          token: 'mock-admin-token-' + Date.now(),
-          usuario: {
-            id: 'admin-1',
-            nombre: 'Administrador',
-            apellido: 'Gamarra360',
-            correo: credentials.email,
-            rol: 'ADMIN',
-          }
-        });
-        navigate(rutaPorRol['ADMIN']);
-        return;
-      }
-
-      // MOCK FALLBACK: Permitir login de vendedor sin backend para pruebas
-      if (credentials.email === 'vendedor@gamarra360.com') {
-        iniciarSesion({
-          token: 'mock-vendedor-token-' + Date.now(),
-          usuario: {
-            id: 'vendedor-1',
-            nombre: 'Vendedor',
-            apellido: 'Prueba',
-            correo: credentials.email,
-            rol: 'COMERCIANTE',
-            idComerciante: 'comerciante-1',
-          }
-        });
-        navigate(rutaPorRol['COMERCIANTE']);
-        return;
-      }
-
-      // MOCK FALLBACK: Permitir login de cliente sin backend para pruebas
-      if (credentials.email === 'cliente@gamarra360.com') {
-        iniciarSesion({
-          token: 'mock-cliente-token-' + Date.now(),
-          usuario: {
-            id: 'cliente-1',
-            nombre: 'Cliente',
-            apellido: 'Prueba',
-            correo: credentials.email,
-            rol: 'CLIENTE',
-          }
-        });
-        navigate(rutaPorRol['CLIENTE']);
-        return;
-      }
-
-const response = await authService.login(credentials);
+      const response = await authService.login(credentials);
 
 const rol = (response.rol === 'VENDEDOR' ? 'COMERCIANTE' : response.rol) as RolUsuario;
 

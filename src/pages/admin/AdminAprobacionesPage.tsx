@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AdminSidebar } from "../../components/admin/AdminSidebar";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import axios from 'axios';
-
-const BASE = 'http://localhost:8080/api/v1/admin/vendedores';
-const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+import apiClient from '../../services/apiClient';
 
 interface Solicitud {
   comercianteId: number;
@@ -24,9 +21,8 @@ export default function AdminAprobacionesPage() {
   const cargar = async (p = 0) => {
     setLoading(true);
     try {
-      const res = await axios.get(`${BASE}/pendientes`, {
-        params: { page: p, size: 10 },
-        headers: authHeaders(),
+      const res = await apiClient.get('/admin/vendedores/pendientes', {
+        params: { page: p, size: 10 }
       });
       setVendors(res.data.content);
       setTotal(res.data.totalElements);
@@ -43,10 +39,10 @@ export default function AdminAprobacionesPage() {
   const handleAprobar = async (id: number) => {
     setProcesando(id);
     try {
-      await axios.post(`${BASE}/${id}/aprobar`, {}, { headers: authHeaders() });
+      await apiClient.post(`/admin/vendedores/${id}/aprobar`, {});
       cargar(page);
     } catch (e: any) {
-      alert(e.response?.data?.message || 'Error al aprobar');
+      alert(e.response?.data?.mensaje || 'Error al aprobar');
     } finally {
       setProcesando(null);
     }
@@ -57,10 +53,10 @@ export default function AdminAprobacionesPage() {
     if (!razon?.trim()) return;
     setProcesando(id);
     try {
-      await axios.post(`${BASE}/${id}/rechazar`, { razon }, { headers: authHeaders() });
+      await apiClient.post(`/admin/vendedores/${id}/rechazar`, { razon });
       cargar(page);
     } catch (e: any) {
-      alert(e.response?.data?.message || 'Error al rechazar');
+      alert(e.response?.data?.mensaje || 'Error al rechazar');
     } finally {
       setProcesando(null);
     }
