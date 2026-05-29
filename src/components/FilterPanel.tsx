@@ -175,9 +175,11 @@ interface Props {
   filtros: IFiltrosCatalogo;
   onChange: (f: IFiltrosCatalogo) => void;
   onClose: () => void;
+  /** Si true, oculta secciones de "Tipo de Producto" y "Tipo de Entrega" para modo tiendas */
+  isTienda?: boolean;
 }
 
-export default function FilterPanel({ open, filtros, onChange, onClose }: Props) {
+export default function FilterPanel({ open, filtros, onChange, onClose, isTienda = false }: Props) {
   // Estado borrador: se edita internamente y solo se aplica al padre con "Aplicar filtros"
   const [borrador, setBorrador] = useState<IFiltrosCatalogo>(filtros);
 
@@ -274,26 +276,29 @@ export default function FilterPanel({ open, filtros, onChange, onClose }: Props)
 
         {/* Secciones scrollables */}
         <div className="flex-1 overflow-y-auto px-6">
-          <Section
-            title="Tipo de Entrega"
-            open={sections.entrega}
-            onToggle={() => toggleSection('entrega')}
-          >
-            <Radio
-              name="entrega"
-              label="Envío a domicilio"
-              icon={<Truck className="h-4 w-4 text-ink-500" />}
-              checked={borrador.entrega === 'DOMICILIO'}
-              onChange={() => setBorrador((b) => ({ ...b, entrega: 'DOMICILIO' }))}
-            />
-            <Radio
-              name="entrega"
-              label="Retiro en tienda"
-              icon={<StoreIcon className="h-4 w-4 text-ink-500" />}
-              checked={borrador.entrega === 'TIENDA'}
-              onChange={() => setBorrador((b) => ({ ...b, entrega: 'TIENDA' }))}
-            />
-          </Section>
+          {/* Solo mostrar si NO es modo tiendas */}
+          {!isTienda && (
+            <Section
+              title="Tipo de Entrega"
+              open={sections.entrega}
+              onToggle={() => toggleSection('entrega')}
+            >
+              <Radio
+                name="entrega"
+                label="Envío a domicilio"
+                icon={<Truck className="h-4 w-4 text-ink-500" />}
+                checked={borrador.entrega === 'DOMICILIO'}
+                onChange={() => setBorrador((b) => ({ ...b, entrega: 'DOMICILIO' }))}
+              />
+              <Radio
+                name="entrega"
+                label="Retiro en tienda"
+                icon={<StoreIcon className="h-4 w-4 text-ink-500" />}
+                checked={borrador.entrega === 'TIENDA'}
+                onChange={() => setBorrador((b) => ({ ...b, entrega: 'TIENDA' }))}
+              />
+            </Section>
+          )}
 
           <Section
             title="Categoría"
@@ -312,22 +317,25 @@ export default function FilterPanel({ open, filtros, onChange, onClose }: Props)
             </div>
           </Section>
 
-          <Section
-            title="Tipo de Producto"
-            open={sections.producto}
-            onToggle={() => toggleSection('producto')}
-          >
-            <div className="flex flex-wrap gap-2">
-              {TIPOS_PRODUCTO.map((t) => (
-                <Pill
-                  key={t}
-                  label={t}
-                  active={borrador.tiposProducto.includes(t)}
-                  onClick={() => toggleTipoProducto(t)}
-                />
-              ))}
-            </div>
-          </Section>
+          {/* Solo mostrar si NO es modo tiendas */}
+          {!isTienda && (
+            <Section
+              title="Tipo de Producto"
+              open={sections.producto}
+              onToggle={() => toggleSection('producto')}
+            >
+              <div className="flex flex-wrap gap-2">
+                {TIPOS_PRODUCTO.map((t) => (
+                  <Pill
+                    key={t}
+                    label={t}
+                    active={borrador.tiposProducto.includes(t)}
+                    onClick={() => toggleTipoProducto(t)}
+                  />
+                ))}
+              </div>
+            </Section>
+          )}
 
           <Section
             title="Tipo de Servicio"
@@ -347,86 +355,91 @@ export default function FilterPanel({ open, filtros, onChange, onClose }: Props)
             ))}
           </Section>
 
-          <Section
-            title="Color"
-            open={sections.color}
-            onToggle={() => toggleSection('color')}
-          >
-            <Select
-              placeholder="Todos"
-              value={borrador.color ?? ''}
-              onChange={(v) =>
-                setBorrador((b) => ({ ...b, color: v ? v : null }))
-              }
-              options={['Negro', 'Blanco', 'Azul', 'Rojo', 'Verde']}
-            />
-          </Section>
-
-          <Section
-            title="Material"
-            open={sections.material}
-            onToggle={() => toggleSection('material')}
-          >
-            <Select
-              placeholder="Todos"
-              value={borrador.material ?? ''}
-              onChange={(v) =>
-                setBorrador((b) => ({ ...b, material: v ? v : null }))
-              }
-              options={['Algodón', 'Denim', 'Cuero', 'Poliéster', 'Lana']}
-            />
-          </Section>
-
-          <Section
-            title="Talla"
-            open={sections.talla}
-            onToggle={() => toggleSection('talla')}
-          >
-            <div className="flex flex-wrap gap-2">
-              {TALLAS.map((t) => (
-                <Pill
-                  key={t}
-                  label={t}
-                  active={borrador.tallas.includes(t)}
-                  onClick={() => toggleTalla(t)}
+          {/* Solo mostrar si NO es modo tiendas */}
+          {!isTienda && (
+            <>
+              <Section
+                title="Color"
+                open={sections.color}
+                onToggle={() => toggleSection('color')}
+              >
+                <Select
+                  placeholder="Todos"
+                  value={borrador.color ?? ''}
+                  onChange={(v) =>
+                    setBorrador((b) => ({ ...b, color: v ? v : null }))
+                  }
+                  options={['Negro', 'Blanco', 'Azul', 'Rojo', 'Verde']}
                 />
-              ))}
-            </div>
-          </Section>
+              </Section>
 
-          <Section
-            title="Rango de Precio"
-            open={sections.precio}
-            onToggle={() => toggleSection('precio')}
-          >
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                placeholder="Mín"
-                value={borrador.precioMin ?? ''}
-                onChange={(e) =>
-                  setBorrador((b) => ({
-                    ...b,
-                    precioMin: e.target.value ? Number(e.target.value) : null,
-                  }))
-                }
-                className="h-10 w-full rounded-md border border-ink-100 bg-white px-3 text-[14px] text-ink-700 focus:border-brand-500 focus:outline-none"
-              />
-              <span className="text-ink-500">—</span>
-              <input
-                type="number"
-                placeholder="Máx"
-                value={borrador.precioMax ?? ''}
-                onChange={(e) =>
-                  setBorrador((b) => ({
-                    ...b,
-                    precioMax: e.target.value ? Number(e.target.value) : null,
-                  }))
-                }
-                className="h-10 w-full rounded-md border border-ink-100 bg-white px-3 text-[14px] text-ink-700 focus:border-brand-500 focus:outline-none"
-              />
-            </div>
-          </Section>
+              <Section
+                title="Material"
+                open={sections.material}
+                onToggle={() => toggleSection('material')}
+              >
+                <Select
+                  placeholder="Todos"
+                  value={borrador.material ?? ''}
+                  onChange={(v) =>
+                    setBorrador((b) => ({ ...b, material: v ? v : null }))
+                  }
+                  options={['Algodón', 'Denim', 'Cuero', 'Poliéster', 'Lana']}
+                />
+              </Section>
+
+              <Section
+                title="Talla"
+                open={sections.talla}
+                onToggle={() => toggleSection('talla')}
+              >
+                <div className="flex flex-wrap gap-2">
+                  {TALLAS.map((t) => (
+                    <Pill
+                      key={t}
+                      label={t}
+                      active={borrador.tallas.includes(t)}
+                      onClick={() => toggleTalla(t)}
+                    />
+                  ))}
+                </div>
+              </Section>
+
+              <Section
+                title="Rango de Precio"
+                open={sections.precio}
+                onToggle={() => toggleSection('precio')}
+              >
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    placeholder="Mín"
+                    value={borrador.precioMin ?? ''}
+                    onChange={(e) =>
+                      setBorrador((b) => ({
+                        ...b,
+                        precioMin: e.target.value ? Number(e.target.value) : null,
+                      }))
+                    }
+                    className="h-10 w-full rounded-md border border-ink-100 bg-white px-3 text-[14px] text-ink-700 focus:border-brand-500 focus:outline-none"
+                  />
+                  <span className="text-ink-500">—</span>
+                  <input
+                    type="number"
+                    placeholder="Máx"
+                    value={borrador.precioMax ?? ''}
+                    onChange={(e) =>
+                      setBorrador((b) => ({
+                        ...b,
+                        precioMax: e.target.value ? Number(e.target.value) : null,
+                      }))
+                    }
+                    className="h-10 w-full rounded-md border border-ink-100 bg-white px-3 text-[14px] text-ink-700 focus:border-brand-500 focus:outline-none"
+                  />
+                </div>
+              </Section>
+            </>
+          )}
         </div>
 
         {/* Footer buttons */}

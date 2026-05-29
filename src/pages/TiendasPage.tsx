@@ -275,6 +275,8 @@ function TiendasFilterPanel({
             </div>
           </FilterSection>
 
+          {/* Oculto temporalmente: El atributo tiposProducto aún no está presente en la data de Tienda */}
+          {/* 
           <FilterSection
             title="Tipo de Producto"
             open={sections.producto}
@@ -291,6 +293,7 @@ function TiendasFilterPanel({
               ))}
             </div>
           </FilterSection>
+          */}
 
           <FilterSection
             title="Tipo de Servicio"
@@ -310,6 +313,8 @@ function TiendasFilterPanel({
             ))}
           </FilterSection>
 
+          {/* Oculto temporalmente: El atributo galeria aún no se recibe del backend para tiendas */}
+          {/* 
           <FilterSection
             title="Galería"
             open={sections.galeria}
@@ -320,6 +325,7 @@ function TiendasFilterPanel({
               onChange={(g) => onChange({ ...filtros, galeria: g })}
             />
           </FilterSection>
+          */}
         </div>
 
         {/* Footer buttons */}
