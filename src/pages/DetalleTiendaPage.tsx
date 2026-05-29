@@ -135,9 +135,9 @@ function BrandHero({ tienda }: { tienda: ITienda }) {
           )}
 
           {/* Descripción larga */}
-          {tienda.descripcionLarga && (
+          {tienda.descripcion && (
             <p className="mt-2 max-w-3xl text-[15px] leading-relaxed text-white/90">
-              {tienda.descripcionLarga}
+              {tienda.descripcion}
             </p>
           )}
         </div>

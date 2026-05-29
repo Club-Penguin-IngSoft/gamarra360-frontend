@@ -27,8 +27,8 @@ import StoreCard from '../components/StoreCard';
 import EmptyState from '../components/EmptyState';
 import { Store as StoreIcon } from 'lucide-react';
 import { listarTiendas } from '../services/tiendaService';
-import type { ITienda, GaleriaGamarra } from '../types/ITienda';
-import { ETIQUETA_GALERIA } from '../types/ITienda';
+import type { ITienda } from '../types/ITienda';
+// GaleriaGamarra y ETIQUETA_GALERIA: pendiente cuando el backend exponga galeria
 import type { Categoria, TipoServicio } from '../types/IProducto';
 import type { IFiltrosTiendas } from '../types/IFiltro';
 import { FILTROS_TIENDAS_VACIOS } from '../types/IFiltro';
@@ -45,16 +45,8 @@ const CATEGORIAS_UI: { value: Categoria; label: string }[] = [
   { value: 'UNISEX_NINOS', label: 'Unisex Niños' },
 ];
 
-const TIPOS_PRODUCTO = [
-  'Polos',
-  'Blusas',
-  'Pantalones',
-  'Casacas',
-  'Vestidos',
-  'Pijamas',
-  'Ropa Interior',
-  'Ropa de Baño',
-];
+// TIPOS_PRODUCTO: pendiente cuando el backend exponga este atributo en tiendas
+// const TIPOS_PRODUCTO = ['Polos','Blusas','Pantalones','Casacas','Vestidos','Pijamas','Ropa Interior','Ropa de Baño'];
 
 const TIPOS_SERVICIO_UI: { value: TipoServicio; label: string }[] = [
   { value: 'COMPRA_DIRECTA', label: 'Compra directa' },
@@ -62,9 +54,8 @@ const TIPOS_SERVICIO_UI: { value: TipoServicio; label: string }[] = [
   { value: 'COTIZACION', label: 'Cotización' },
 ];
 
-const GALERIAS_UI: { value: GaleriaGamarra; label: string }[] = (
-  Object.keys(ETIQUETA_GALERIA) as GaleriaGamarra[]
-).map((value) => ({ value, label: ETIQUETA_GALERIA[value] }));
+// GALERIAS_UI: pendiente cuando el backend exponga galeria en tiendas
+// const GALERIAS_UI = (Object.keys(ETIQUETA_GALERIA) as GaleriaGamarra[]).map(...);
 
 const TIENDAS_POR_PAGINA = 9;
 
@@ -151,33 +142,8 @@ function RadioOption({
   );
 }
 
-function GaleriaSelect({
-  value,
-  onChange,
-}: {
-  value: GaleriaGamarra | null;
-  onChange: (v: GaleriaGamarra | null) => void;
-}) {
-  return (
-    <div className="relative">
-      <select
-        value={value ?? ''}
-        onChange={(e) =>
-          onChange(e.target.value ? (e.target.value as GaleriaGamarra) : null)
-        }
-        className="h-10 w-full appearance-none rounded-md border border-ink-100 bg-white px-3 pr-8 text-[14px] text-ink-700 focus:border-brand-500 focus:outline-none"
-      >
-        <option value="">Todas</option>
-        {GALERIAS_UI.map((g) => (
-          <option key={g.value} value={g.value}>
-            {g.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-500" />
-    </div>
-  );
-}
+// GaleriaSelect: pendiente cuando el backend exponga galeria en tiendas
+// function GaleriaSelect(...) { ... }
 
 function TiendasFilterPanel({
   open,
@@ -209,14 +175,8 @@ function TiendasFilterPanel({
     });
   };
 
-  const toggleTipoProducto = (t: string) => {
-    onChange({
-      ...filtros,
-      tiposProducto: filtros.tiposProducto.includes(t)
-        ? filtros.tiposProducto.filter((x) => x !== t)
-        : [...filtros.tiposProducto, t],
-    });
-  };
+  // toggleTipoProducto: pendiente cuando tiposProducto esté disponible en la BD
+  // const toggleTipoProducto = (t: string) => { ... };
 
   const limpiarTodo = () => {
     onChange(FILTROS_TIENDAS_VACIOS);
@@ -275,6 +235,8 @@ function TiendasFilterPanel({
             </div>
           </FilterSection>
 
+          {/* Oculto temporalmente: El atributo tiposProducto aún no está presente en la data de Tienda */}
+          {/* 
           <FilterSection
             title="Tipo de Producto"
             open={sections.producto}
@@ -291,6 +253,7 @@ function TiendasFilterPanel({
               ))}
             </div>
           </FilterSection>
+          */}
 
           <FilterSection
             title="Tipo de Servicio"
@@ -310,6 +273,8 @@ function TiendasFilterPanel({
             ))}
           </FilterSection>
 
+          {/* Oculto temporalmente: El atributo galeria aún no se recibe del backend para tiendas */}
+          {/* 
           <FilterSection
             title="Galería"
             open={sections.galeria}
@@ -320,6 +285,7 @@ function TiendasFilterPanel({
               onChange={(g) => onChange({ ...filtros, galeria: g })}
             />
           </FilterSection>
+          */}
         </div>
 
         {/* Footer buttons */}
