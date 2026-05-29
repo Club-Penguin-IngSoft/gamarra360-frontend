@@ -54,9 +54,9 @@ export default function CatalogoPage() {
   const productosSorted = [...productos].sort((a, b) => {
     const pa = a.precioFinal ?? a.precioBase ?? Infinity;
     const pb = b.precioFinal ?? b.precioBase ?? Infinity;
-    if (sort === SORT_OPTIONS_DEFAULT[1]) return pa - pb; // Menor precio
-    if (sort === SORT_OPTIONS_DEFAULT[2]) return pb - pa; // Mayor precio
-    return 0;
+    if (sort === SORT_OPTIONS_DEFAULT[1]) return pa - pb;          // Menor precio
+    if (sort === SORT_OPTIONS_DEFAULT[2]) return pb - pa;          // Mayor precio
+    return Number(b.id) - Number(a.id);                           // Lo más reciente → ID desc
   });
 
   const desde = totalElementos === 0 ? 0 : (page - 1) * PAGINA_TAMANO_CATALOGO + 1;

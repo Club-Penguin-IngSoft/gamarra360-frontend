@@ -19,7 +19,11 @@ function tieneFiltrosActivos(filtros?: Partial<IFiltrosCatalogo>): boolean {
   if (!filtros) return false;
   return (
     (filtros.categorias?.length ?? 0) > 0 ||
+    (filtros.tiposProducto?.length ?? 0) > 0 ||
     filtros.tipoServicio != null ||
+    filtros.material != null ||
+    filtros.color != null ||
+    (filtros.tallas?.length ?? 0) > 0 ||
     filtros.precioMin != null ||
     filtros.precioMax != null
   );

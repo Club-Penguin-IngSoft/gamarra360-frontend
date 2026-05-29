@@ -21,11 +21,14 @@ interface IProductoBackend {
   nombre: string;
   descripcion?: string;
   precioBase?: number;
+  precioFinal?: number;
   esPersonalizable: boolean;
   activo: boolean;
   idTienda?: number;
   nombreTienda?: string;
   categorias: { idCategoria: number; nombre: string }[];
+  tipoProducto?: { idTipoProducto: number; nombre: string } | null;
+  especificaciones?: { nombre: string; descripcion: string }[];
   imagenes: { idImagen: number; url: string; esPrincipal: boolean }[];
   variantes: {
     idVariante: number;
@@ -33,8 +36,9 @@ interface IProductoBackend {
     stock?: number;
     precioAjustado?: number;
     disponible?: boolean;
-    idTalla?: number;
-    idColor?: number;
+    talla?: string;
+    color?: string;
+    colorHex?: string;
   }[];
 }
 
@@ -102,6 +106,9 @@ function adaptarProducto(p: IProductoBackend): IProducto {
   const variantes: IVarianteProducto[] = p.variantes.map((v) => ({
     id: String(v.idVariante),
     stock: v.stock ?? 0,
+    talla: v.talla ?? undefined,
+    color: v.color ?? undefined,
+    colorHex: v.colorHex ?? undefined,
   }));
 
   return {
@@ -115,8 +122,13 @@ function adaptarProducto(p: IProductoBackend): IProducto {
       ? mapearCategoria(p.categorias[0].nombre)
       : 'HOMBRE',
     tipoServicio,
+    tipoProducto: p.tipoProducto?.nombre ?? undefined,
+    especificaciones: p.especificaciones?.map((e) => ({
+      etiqueta: e.nombre,
+      valor: e.descripcion,
+    })),
     precioBase: p.precioBase ?? undefined,
-    precioFinal: p.precioBase ?? undefined,
+    precioFinal: p.precioFinal ?? p.precioBase ?? undefined,
     variantes: variantes.length > 0 ? variantes : undefined,
   };
 }
@@ -131,8 +143,33 @@ function aplicarFiltrosClienteSide(
   if (filtros.categorias && filtros.categorias.length > 0) {
     resultado = resultado.filter((p) => filtros.categorias!.includes(p.categoria));
   }
+  if (filtros.tiposProducto && filtros.tiposProducto.length > 0) {
+    resultado = resultado.filter(
+      (p) => p.tipoProducto != null && filtros.tiposProducto!.includes(p.tipoProducto),
+    );
+  }
   if (filtros.tipoServicio) {
     resultado = resultado.filter((p) => p.tipoServicio === filtros.tipoServicio);
+  }
+  // Filtra por material: busca en especificaciones la que tiene nombre='Material'
+  if (filtros.material != null) {
+    resultado = resultado.filter((p) =>
+      p.especificaciones?.some(
+        (e) => e.etiqueta === 'Material' && e.valor === filtros.material,
+      ),
+    );
+  }
+  // Filtra por color: el producto debe tener al menos una variante con ese color
+  if (filtros.color != null) {
+    resultado = resultado.filter(
+      (p) => p.variantes?.some((v) => v.color === filtros.color),
+    );
+  }
+  // Filtra por tallas: el producto debe tener al menos una variante con alguna de las tallas
+  if (filtros.tallas && filtros.tallas.length > 0) {
+    resultado = resultado.filter(
+      (p) => p.variantes?.some((v) => v.talla != null && filtros.tallas!.includes(v.talla)),
+    );
   }
   if (filtros.precioMin != null) {
     resultado = resultado.filter(
@@ -214,4 +251,42 @@ export async function listarProductosDeTienda(
  */
 export function etiquetaDeProducto(producto: IProducto): EtiquetaProducto {
   return ETIQUETA_POR_TIPO_SERVICIO[producto.tipoServicio];
+}
+
+/* ── Opciones de filtros dinámicas ─────────────────────────────────────── */
+
+export interface IOpcionesFiltro {
+  colores: string[];
+  materiales: string[];
+  tallas: string[];
+  tiposProducto: string[];
+}
+
+/**
+ * Devuelve los valores disponibles para cada filtro del catálogo,
+ * derivados directamente de la BD (no hardcodeados).
+ * Llamada a GET /api/v1/productos/opciones-filtro
+ */
+export async function obtenerOpcionesFiltro(): Promise<IOpcionesFiltro> {
+  const { data } = await apiClient.get<IOpcionesFiltro>('/productos/opciones-filtro');
+  return data;
+}
+
+/**
+ * Trae los N productos más recientes por cada categoría activa.
+ * Diseñado para la sección "Catálogo" del inicio.
+ * Llamada a GET /api/v1/productos/destacados?porCategoria=8
+ *
+ * Devuelve una lista plana de IProducto (todas las categorías mezcladas).
+ * El frontend agrupa/filtra por p.categoria según el tab activo.
+ */
+export async function listarProductosDestacados(
+  porCategoria = 8,
+): Promise<IProducto[]> {
+  const { data } = await apiClient.get<Record<string, IProductoBackend[]>>(
+    '/productos/destacados',
+    { params: { porCategoria } },
+  );
+  // Aplanar el mapa { "Hombre": [...], "Mujer": [...] } en una lista única
+  return Object.values(data).flat().map(adaptarProducto);
 }

@@ -15,6 +15,7 @@
 
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useOpcionesFiltro } from '../hooks/useOpcionesFiltro';
 import {
   ChevronDown,
   ListFilter,
@@ -45,8 +46,7 @@ const CATEGORIAS_UI: { value: Categoria; label: string }[] = [
   { value: 'UNISEX_NINOS', label: 'Unisex Niños' },
 ];
 
-// TIPOS_PRODUCTO: pendiente cuando el backend exponga este atributo en tiendas
-// const TIPOS_PRODUCTO = ['Polos','Blusas','Pantalones','Casacas','Vestidos','Pijamas','Ropa Interior','Ropa de Baño'];
+// TIPOS_PRODUCTO: ahora viene dinámico desde el hook useOpcionesFiltro (sin hardcodear)
 
 const TIPOS_SERVICIO_UI: { value: TipoServicio; label: string }[] = [
   { value: 'COMPRA_DIRECTA', label: 'Compra directa' },
@@ -156,6 +156,20 @@ function TiendasFilterPanel({
   onChange: (f: IFiltrosTiendas) => void;
   onClose: () => void;
 }) {
+  // Patrón borrador: igual que FilterPanel en CatalogoPage.
+  // Los cambios se acumulan localmente y solo se propagan al padre
+  // cuando el usuario presiona "Aplicar filtros".
+  // Tipos de producto dinámicos desde la BD (mismo hook que FilterPanel, con caché)
+  const opciones = useOpcionesFiltro();
+
+  const [borrador, setBorrador] = useState<IFiltrosTiendas>(filtros);
+
+  // Sincroniza el borrador cada vez que el panel se abre
+  useEffect(() => {
+    if (open) setBorrador(filtros);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   const [sections, setSections] = useState<Record<SeccionFiltro, boolean>>({
     categoria: true,
     producto: true,
@@ -167,19 +181,32 @@ function TiendasFilterPanel({
     setSections((s) => ({ ...s, [k]: !s[k] }));
 
   const toggleCategoria = (c: Categoria) => {
-    onChange({
-      ...filtros,
-      categorias: filtros.categorias.includes(c)
-        ? filtros.categorias.filter((x) => x !== c)
-        : [...filtros.categorias, c],
-    });
+    setBorrador((b) => ({
+      ...b,
+      categorias: b.categorias.includes(c)
+        ? b.categorias.filter((x) => x !== c)
+        : [...b.categorias, c],
+    }));
   };
 
-  // toggleTipoProducto: pendiente cuando tiposProducto esté disponible en la BD
-  // const toggleTipoProducto = (t: string) => { ... };
+  const toggleTipoProducto = (t: string) => {
+    setBorrador((b) => ({
+      ...b,
+      tiposProducto: b.tiposProducto.includes(t)
+        ? b.tiposProducto.filter((x) => x !== t)
+        : [...b.tiposProducto, t],
+    }));
+  };
 
   const limpiarTodo = () => {
+    setBorrador(FILTROS_TIENDAS_VACIOS);
     onChange(FILTROS_TIENDAS_VACIOS);
+    onClose();
+  };
+
+  const aplicarFiltros = () => {
+    onChange(borrador);
+    onClose();
   };
 
   return (
@@ -228,32 +255,29 @@ function TiendasFilterPanel({
                 <PillButton
                   key={c.value}
                   label={c.label}
-                  active={filtros.categorias.includes(c.value)}
+                  active={borrador.categorias.includes(c.value)}
                   onClick={() => toggleCategoria(c.value)}
                 />
               ))}
             </div>
           </FilterSection>
 
-          {/* Oculto temporalmente: El atributo tiposProducto aún no está presente en la data de Tienda */}
-          {/* 
           <FilterSection
             title="Tipo de Producto"
             open={sections.producto}
             onToggle={() => toggleSection('producto')}
           >
             <div className="flex flex-wrap gap-2">
-              {TIPOS_PRODUCTO.map((t) => (
+              {opciones.tiposProducto.map((t) => (
                 <PillButton
                   key={t}
                   label={t}
-                  active={filtros.tiposProducto.includes(t)}
+                  active={borrador.tiposProducto.includes(t)}
                   onClick={() => toggleTipoProducto(t)}
                 />
               ))}
             </div>
           </FilterSection>
-          */}
 
           <FilterSection
             title="Tipo de Servicio"
@@ -265,9 +289,9 @@ function TiendasFilterPanel({
                 key={s.value}
                 name="tipoServicio"
                 label={s.label}
-                checked={filtros.tipoServicio === s.value}
+                checked={borrador.tipoServicio === s.value}
                 onChange={() =>
-                  onChange({ ...filtros, tipoServicio: s.value })
+                  setBorrador((b) => ({ ...b, tipoServicio: s.value }))
                 }
               />
             ))}
@@ -291,7 +315,7 @@ function TiendasFilterPanel({
         {/* Footer buttons */}
         <div className="flex flex-col gap-2 border-t border-ink-100 p-6">
           <button
-            onClick={onClose}
+            onClick={aplicarFiltros}
             className="h-11 rounded-lg bg-brand-500 text-[15px] font-medium text-white transition-colors hover:bg-brand-600"
           >
             Aplicar filtros
