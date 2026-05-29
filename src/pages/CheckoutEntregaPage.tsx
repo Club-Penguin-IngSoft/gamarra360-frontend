@@ -3,12 +3,14 @@
  * Diseño basado en mockup: stepper + dirección + paquete con opciones de entrega inline.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Truck, Store as StoreIcon, ShoppingBag, Package } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
 import { useCarrito } from '../hooks/useCarrito';
+import { useAuth } from '../hooks/useAuth';
+import { obtenerCliente, actualizarDireccionCliente } from '../services/clienteService';
 import { formatearPrecio } from '../utils/formatearPrecio';
 import { RUTAS } from '../constants/rutas';
 
@@ -44,6 +46,7 @@ const FECHAS_ENVIO = generarFechasEnvio();
 export default function CheckoutEntregaPage() {
   const { items } = useCarrito();
   const navigate = useNavigate();
+  const { usuario } = useAuth();
 
   const [tipoEntrega, setTipoEntrega] = useState<'DELIVERY' | 'RECOJO_TIENDA'>('DELIVERY');
   const [mostrarFechas, setMostrarFechas] = useState(false);
@@ -54,11 +57,38 @@ export default function CheckoutEntregaPage() {
   const [distrito, setDistrito] = useState('');
   const [provincia, setProvincia] = useState('Lima');
   const [editandoDireccion, setEditandoDireccion] = useState(true);
+  const [guardandoDireccion, setGuardandoDireccion] = useState(false);
 
   const direccionCompleta = calle.trim() && distrito.trim();
 
-  const guardarDireccion = () => {
-    if (direccionCompleta) setEditandoDireccion(false);
+  // Carga la dirección guardada del cliente al montar
+  useEffect(() => {
+    if (!usuario?.id) return;
+    obtenerCliente(usuario.id).then((cliente) => {
+      if (cliente.direccion) {
+        // Parsea "Calle | Distrito | Provincia" si existe
+        const partes = cliente.direccion.split(' | ');
+        setCalle(partes[0] ?? '');
+        setDistrito(partes[1] ?? '');
+        setProvincia(partes[2] ?? 'Lima');
+        setEditandoDireccion(false);
+      }
+    }).catch(() => { /* sin dirección guardada, mantiene formulario vacío */ });
+  }, [usuario?.id]);
+
+  const guardarDireccion = async () => {
+    if (!direccionCompleta || !usuario?.id) return;
+    setGuardandoDireccion(true);
+    try {
+      const direccionFormateada = `${calle.trim()} | ${distrito.trim()} | ${provincia.trim()}`;
+      await actualizarDireccionCliente(usuario.id, direccionFormateada);
+      setEditandoDireccion(false);
+    } catch {
+      // Si falla el guardado en BD, igual permite continuar localmente
+      setEditandoDireccion(false);
+    } finally {
+      setGuardandoDireccion(false);
+    }
   };
 
   if (!items || items.length === 0) {
@@ -177,10 +207,10 @@ export default function CheckoutEntregaPage() {
                   <button
                     type="button"
                     onClick={guardarDireccion}
-                    disabled={!direccionCompleta}
+                    disabled={!direccionCompleta || guardandoDireccion}
                     className="self-end rounded-md bg-brand-500 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    Guardar dirección
+                    {guardandoDireccion ? 'Guardando...' : 'Guardar dirección'}
                   </button>
                 </div>
               )}
