@@ -1,13 +1,16 @@
 import { useState, useRef } from 'react';
 import type { FormEvent, ChangeEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import GoogleButton from '../components/GoogleButton';
+import { useLocation } from 'react-router-dom';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
 import MaterialIcon from '../components/MaterialIcon';
 import Input from '../components/Input';
 import { RUTAS } from '../constants/rutas';
 import { COLORES } from '../styles/tokens';
-
+import { useGoogleLogin } from '@react-oauth/google';
+import axios from 'axios';
 /* ── Datos de selects ───────────────────────────────────────────────────── */
 
 const GALERIAS = [
@@ -114,9 +117,35 @@ function SuccessModal({ onClose }: { onClose: () => void }) {
 /* ── Page ───────────────────────────────────────────────────────────────── */
 
 export default function RegistroComerciantePage() {
+  const loginGoogle = useGoogleLogin({
+    flow: 'implicit',
+    onSuccess: async (tokenResponse) => {
+      try {
+        const response = await axios.post(
+          'http://localhost:8080/api/v1/auth/google',
+          { accessToken: tokenResponse.access_token }
+        );
+        // Si ya tiene cuenta, redirige al home
+        if (!response.data.needsRegistration) {
+          localStorage.setItem('token', response.data.token);
+          window.location.href = '/home';
+          return;
+        }
+        // Si no tiene cuenta, pre-rellena el email
+        navigate(RUTAS.REGISTRO_COMERCIANTE, {
+          state: { email: response.data.email }
+        });
+      } catch (error) {
+        console.error('Error Google login:', error);
+        setErrorForm('Error al autenticar con Google');
+      }
+    },
+    onError: () => setErrorForm('No se pudo conectar con Google'),
+  });
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const location = useLocation();
+  const emailGoogle = location.state?.email || '';
   /* Datos del negocio */
   const [nombreTienda, setNombreTienda]   = useState('');
   const [razonSocial, setRazonSocial]     = useState('');
@@ -145,9 +174,9 @@ export default function RegistroComerciantePage() {
   const [enviado, setEnviado]             = useState(false);
 
   const puedeEnviar =
-    nombreTienda && razonSocial && ruc && galeria &&
-    correo && nombres && apellidos && tipoDoc && numeroDoc && celular &&
-    validarContrasena(contrasena) && contrasena === confirmar;
+  nombreTienda && razonSocial && ruc && galeria &&
+  (emailGoogle || correo) && nombres && apellidos && tipoDoc && numeroDoc && celular &&
+  validarContrasena(contrasena) && contrasena === confirmar;
 
   const handleLogoFile = (file: File | null) => {
     if (!file) return;
@@ -157,7 +186,7 @@ export default function RegistroComerciantePage() {
     setLogoFile(file);
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrorForm(null);
     if (!validarContrasena(contrasena)) {
@@ -169,7 +198,44 @@ export default function RegistroComerciantePage() {
       return;
     }
     // TODO: POST /api/v1/comerciantes/registro — Responsable: equipo backend
-    setEnviado(true);
+    try {
+      const apellidosArr = apellidos.split(' ');
+
+      const payload = {
+        nombres,
+        primerApellido: apellidosArr[0] || '',
+        segundoApellido: apellidosArr[1] || '',
+        email: emailGoogle || correo,
+        contrasenha: contrasena,
+        dni: numeroDoc,
+        telefono: celular,
+        tipoDocumento: tipoDoc,
+        rol: "VENDEDOR",
+
+        ruc,
+        razonSocial,
+
+        nombreTienda,
+        piso,
+        stand,
+        galeria,
+
+        logoUrl: null
+      };
+
+      await axios.post(
+        "http://localhost:8080/api/v1/auth/google/register-comerciante",
+      payload
+      );
+
+      setEnviado(true);
+
+    } catch (error: any) {
+      console.log("ERROR COMPLETO:", error);
+      console.log("RESPUESTA BACKEND:", error.response?.data);
+      setErrorForm("Error al registrar comerciante");
+    }
+
   };
 
   return (
@@ -194,7 +260,18 @@ export default function RegistroComerciantePage() {
           Escala tu negocio de Gamarra al mundo digital con nuestra infraestructura premium.
         </p>
       </div>
-
+      {/* ── Google ──────────────────────────────────────────────────── */}
+      <div className="mx-auto w-full max-w-[960px] px-8 flex flex-col gap-3 pb-2">
+      {/* 👇 Google primero, divider abajo */}
+        <GoogleButton onClick={() => loginGoogle()} />
+        <div className="flex items-center gap-3">
+          < div className="flex-1 h-px bg-gray-200" />
+            <span className="text-xs text-gray-400 uppercase tracking-widest font-medium whitespace-nowrap">
+              O continua con tus datos
+            </span>
+          <div className="flex-1 h-px bg-gray-200" />
+        </div>
+      </div>
       {/* ── Form ────────────────────────────────────────────────────── */}
       <form
         onSubmit={handleSubmit}
@@ -305,8 +382,10 @@ export default function RegistroComerciantePage() {
           <div className="flex flex-col gap-3">
             <Input
               type="email" name="correo" placeholder="Correo electrónico corporativo"
-              value={correo} onChange={(e) => setCorreo(e.target.value)}
+              value={emailGoogle ||correo} 
+              onChange={(e) => setCorreo(e.target.value)}
               autoComplete="email"
+              disabled={!!emailGoogle}
             />
             <Input
               type="text" name="nombres" placeholder="Nombre(s)"
@@ -392,7 +471,7 @@ export default function RegistroComerciantePage() {
             <span>{errorForm}</span>
           </div>
         )}
-
+        
         {/* ── Acciones ─────────────────────────────────────────────── */}
         <div className="flex items-center justify-end gap-3">
           <button

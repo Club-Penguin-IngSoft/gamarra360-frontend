@@ -7,10 +7,10 @@ import Footer from '../components/Footer';
 import ProductCard from '../components/ProductCard';
 import StoreCard from '../components/StoreCard';
 import { RUTAS } from '../constants/rutas';
-import { useCatalogo } from '../hooks/useCatalogo';
+import { listarProductosPaginados } from '../services/catalogoService';
 import { listarTiendasDestacadas } from '../services/tiendaService';
 import type { ITienda } from '../types/ITienda';
-import type { Categoria } from '../types/IProducto';
+import type { IProducto, Categoria } from '../types/IProducto';
 
 /** Pseudo-categoría visible en UI — incluye "TODO" además de los enums del backend */
 type CategoriaUI =
@@ -137,7 +137,16 @@ function CategoryTags({
 
 function CatalogoGlobal() {
   const [categoria, setCategoria] = useState<CategoriaUI>('TODO');
-  const { productos, cargando } = useCatalogo();
+  const [productos, setProductos] = useState<IProducto[]>([]);
+  const [cargando, setCargando] = useState(true);
+
+  // Carga solo 20 productos al inicio — suficiente para mezclar y mostrar 4
+  useEffect(() => {
+    setCargando(true);
+    listarProductosPaginados(0, 20)
+      .then(({ contenido }) => setProductos(contenido))
+      .finally(() => setCargando(false));
+  }, []);
 
   // Filtra por categoría, rota diariamente y muestra 4
   const categoriaMapeada = CAT_MAP[categoria];

@@ -9,14 +9,57 @@ import useLogin from '../hooks/useLogin';
 import { RUTAS } from '../constants/rutas';
 import { ILoginRequest } from '../types/IAuth';
 import { COLORES } from '../styles/tokens';
+import { useGoogleLogin } from '@react-oauth/google';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const LoginPage = () => {
-  const [form, setForm] = useState<ILoginRequest>({ email: '', contrasena: '' });
+  const [form, setForm] = useState<ILoginRequest>({ email: '', contrasenha: '' });
   const [mostrarPassword, setMostrarPassword] = useState(false);
+  const navigate = useNavigate();
   const { iniciarSesion, cargando, error } = useLogin();
+  const [showGoogleRegister, setShowGoogleRegister] = useState(false);
+  const [emailGoogle, setEmailGoogle] = useState("");
+  // GOOGLE LOGIN
+  const loginGoogle = useGoogleLogin({
+    flow: 'implicit',
+
+    onSuccess: async (tokenResponse) => {
+      try {
+        console.log("GOOGLE TOKEN: ", tokenResponse);
+
+        const response = await axios.post(
+          "http://localhost:8080/api/v1/auth/google",
+          { accessToken: tokenResponse.access_token }
+        );
+        console.log("RESPUESTA BACKEND:", response.data);
+        //usuario no existe
+        if (response.data.needsRegistration) {
+          console.log("Usuario no registrado, redirigiendo a registro con email:", response.data.email);
+          navigate(RUTAS.REGISTRO, {
+          state: {
+            email: response.data.email
+            }
+          });
+          return;
+        }
+        //usuario existe
+        localStorage.setItem("token", response.data.token);
+        localStorage.setItem("nombreUsuario", response.data.nombres);
+        // ejemplo redirect
+        window.location.href = "/home";
+      }catch (error) {
+        console.error("ERROR COMPLETO:", error);
+      }
+    },
+
+    onError: () => {
+      console.log('Google Login Failed');
+    },
+  });
 
   const formularioValido =
-    form.email.trim() !== '' && form.contrasena.trim() !== '';
+    form.email.trim() !== '' && form.contrasenha.trim() !== '';
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -114,9 +157,9 @@ const LoginPage = () => {
 
               <InputTexto
                 tipo={mostrarPassword ? 'text' : 'password'}
-                nombre="contrasena"
+                nombre="contrasenha"
                 placeholder="Contraseña"
-                valor={form.contrasena}
+                valor={form.contrasenha}
                 onChange={handleChange}
                 autoComplete="current-password"
                 sufijo={
@@ -163,7 +206,7 @@ const LoginPage = () => {
               <div className="flex-1 h-px bg-neutro-400" />
             </div>
 
-            <BotonGoogle />
+            <BotonGoogle onClick={() => loginGoogle()} />
 
             <p className="text-center text-sm text-neutro-400 mt-6">
               ¿No tienes una cuenta?{' '}

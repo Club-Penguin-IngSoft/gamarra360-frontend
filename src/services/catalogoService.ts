@@ -110,7 +110,7 @@ function adaptarProducto(p: IProductoBackend): IProducto {
   };
 }
 
-/* ── API pública ───────────────────────────────────────────────────────── */
+/* ── Helpers internos ──────────────────────────────────────────────────── */
 
 /**
  * Función central: llama a GET /productos?page=X&size=Y
