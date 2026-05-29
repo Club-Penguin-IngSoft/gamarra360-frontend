@@ -1,24 +1,16 @@
-import { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import ComercianteSidebar from '../../components/ComercianteSidebar';
 import { RUTAS } from '../../constants/rutas';
-
-const CATEGORIAS = ['Hombre', 'Mujer', 'Niños', 'Unisex Adultos'];
-
-const BASE_TIPOS = [
-  'Polos', 'Camisas', 'Pantalones', 'Shorts', 'Leggins',
-  'Casacas y Abrigos', 'Poleras', 'Suéteres', 'Chalecos', 'Pijamas',
-  'Ropa interior', 'Trajes y Blazers', 'Ropa deportiva', 'Bufandas',
-  'Gorras', 'Sombreros', 'Guantes', 'Medias', 'Uniformes',
-  'Overoles', 'Delantales', 'Batas',
-];
-
-const TIPOS_POR_CATEGORIA: Record<string, string[]> = {
-  Hombre: BASE_TIPOS,
-  Mujer: [...BASE_TIPOS, 'Faldas', 'Vestidos', 'Tops', 'Blusas'],
-  Niños: [...BASE_TIPOS, 'Faldas', 'Vestidos'],
-  'Unisex Adultos': BASE_TIPOS,
-};
+import {
+  listarCategorias,
+  listarTiposPorCategoria,
+  actualizarProducto,
+  eliminarProducto,
+  type ICategoriaOpcion,
+  type ITipoProductoOpcion,
+} from '../../services/catalogoService';
+import apiClient from '../../services/apiClient';
 
 const CAT_ABREV: Record<string, string> = {
   Hombre: 'HON', Mujer: 'MUJ', Niños: 'NIN', 'Unisex Adultos': 'UNI',
@@ -60,11 +52,6 @@ interface IEspecificacion {
   descripcion: string;
 }
 
-const MOCK_VARIANTES: IVarianteEditable[] = [
-  { id: 1, talla: 'M', colorNombre: 'Negro', colorHex: '#1a1a1a', precioBase: 249.90, stock: 40, stockMinimo: 5, activo: true, imagenes: [] },
-  { id: 2, talla: 'S', colorNombre: 'Blanco', colorHex: '#f5f5f5', precioBase: 249.90, stock: 62, stockMinimo: 5, activo: true, imagenes: [] },
-  { id: 3, talla: 'L', colorNombre: 'Blanco', colorHex: '#f5f5f5', precioBase: 249.90, stock: 55, stockMinimo: 5, activo: false, imagenes: [] },
-];
 
 const MAX_IMG_VISIBLES = 3;
 
@@ -96,29 +83,31 @@ function PrecioInput({ value, onChange }: { value: number; onChange: (v: number)
 }
 
 export default function EditarProductoPage() {
-  const [nombreProducto, setNombreProducto] = useState('Blazer Cotton');
-  const [descripcion, setDescripcion] = useState(
-    'Blazer de corte confeccionado en mezcla de lino Milano. Corte slim fit contemporáneo con bolsillos de chaleco y solapa enrollada en cada extremo.'
-  );
-  const [categoria, setCategoria] = useState('');
-  const [tipoProducto, setTipoProducto] = useState('');
+  const { id } = useParams<{ id: string }>();
+  const [nombreProducto, setNombreProducto] = useState('');
+  const [descripcion, setDescripcion] = useState('');
+  const [idCategoria, setIdCategoria] = useState<number | ''>('');
+  const [idTipoProducto, setIdTipoProducto] = useState<number | ''>('');
+  const [categorias, setCategorias] = useState<ICategoriaOpcion[]>([]);
+  const [tipos, setTipos] = useState<ITipoProductoOpcion[]>([]);
   const [correlativo] = useState(1);
-  const [skuInterno, setSkuInterno] = useState('GEN-PRD-001-GEN');
+  const [skuInterno, setSkuInterno] = useState('');
+  const [imagenesExistentes, setImagenesExistentes] = useState<{ url: string; esPrincipal: boolean }[]>([]);
+  const [imagenUrl, setImagenUrl] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [errorApi, setErrorApi] = useState('');
 
-  const [precioBase, setPrecioBase] = useState(249.90);
+  const [precioBase, setPrecioBase] = useState(0);
   const [publicado, setPublicado] = useState(true);
 
-  const [tallas, setTallas] = useState<string[]>(['S', 'M', 'L']);
+  const [tallas, setTallas] = useState<string[]>([]);
   const [tallaInput, setTallaInput] = useState('');
 
-  const [colores, setColores] = useState<IColor[]>([
-    { nombre: 'Negro', hex: '#1a1a1a' },
-    { nombre: 'Blanco', hex: '#f5f5f5' },
-  ]);
+  const [colores, setColores] = useState<IColor[]>([]);
   const [colorNombreInput, setColorNombreInput] = useState('');
   const [colorHexInput, setColorHexInput] = useState('#000000');
 
-  const [variantes, setVariantes] = useState<IVarianteEditable[]>(MOCK_VARIANTES);
+  const [variantes, setVariantes] = useState<IVarianteEditable[]>([]);
 
   const [especificaciones, setEspecificaciones] = useState<IEspecificacion[]>([]);
   const [especTitulo, setEspecTitulo] = useState('');
@@ -131,29 +120,75 @@ export default function EditarProductoPage() {
   const [submitted, setSubmitted] = useState(false);
 
   const navigate = useNavigate();
-  const tiposDisponibles = categoria ? TIPOS_POR_CATEGORIA[categoria] ?? [] : [];
+
+  useEffect(() => {
+    listarCategorias().then(setCategorias).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (!id) return;
+    apiClient.get<any>(`/productos/${id}`).then(({ data }) => {
+      setNombreProducto(data.nombre ?? '');
+      setDescripcion(data.descripcion ?? '');
+      setPrecioBase(data.precioBase ?? 0);
+      setPublicado(data.activo ?? true);
+      setImagenesExistentes((data.imagenes ?? []).map((i: any) => ({ url: i.url, esPrincipal: i.esPrincipal ?? false })));
+      const catId = data.idCategoria ?? '';
+      const tipoId = data.idTipoProducto ?? '';
+      setIdCategoria(catId);
+      setIdTipoProducto(tipoId);
+      const variantesApi: IVarianteEditable[] = (data.variantes ?? []).map((v: any, i: number) => ({
+        id: v.idVariante,
+        talla: v.sku?.split('-')[3] ?? `V${i + 1}`,
+        colorNombre: v.sku?.split('-')[4] ?? '',
+        colorHex: '#888888',
+        precioBase: v.precioAjustado ?? data.precioBase ?? 0,
+        stock: v.stock ?? 0,
+        stockMinimo: 5,
+        activo: v.disponible ?? true,
+        imagenes: [],
+      }));
+      setVariantes(variantesApi);
+      if (catId !== '') {
+        listarTiposPorCategoria(catId as number).then(setTipos).catch(console.error);
+      }
+    }).catch(console.error);
+  }, [id]);
+
+  useEffect(() => {
+    if (idCategoria !== '') {
+      listarTiposPorCategoria(idCategoria as number).then(setTipos).catch(console.error);
+    } else {
+      setTipos([]);
+    }
+  }, [idCategoria]);
 
   const totalStock = variantes.reduce((sum, v) => sum + v.stock, 0);
 
   const errores = {
     nombreProducto: !nombreProducto.trim() ? 'El nombre es obligatorio' : '',
     descripcion: !descripcion.trim() ? 'La descripción es obligatoria' : '',
-    categoria: !categoria ? 'Selecciona una categoría' : '',
-    tipoProducto: !tipoProducto ? 'Selecciona un tipo de producto' : '',
+    categoria: idCategoria === '' ? 'Selecciona una categoría' : '',
+    tipoProducto: idTipoProducto === '' ? 'Selecciona un tipo de producto' : '',
     precioBase: precioBase <= 0 ? 'El precio debe ser mayor a 0' : '',
     variantes: variantes.length === 0 ? 'Debe haber al menos una variante' : '',
   };
   const hayErrores = Object.values(errores).some(Boolean);
 
   const handleCategoriaChange = (val: string) => {
-    setCategoria(val);
-    setTipoProducto('');
-    setSkuInterno(generarSKUBase(val, '', correlativo));
+    const newId = val === '' ? '' : Number(val);
+    setIdCategoria(newId as number | '');
+    setIdTipoProducto('');
+    const cat = categorias.find((c) => c.idCategoria === Number(val));
+    setSkuInterno(cat ? generarSKUBase(cat.nombre, '', correlativo) : '');
   };
 
   const handleTipoChange = (val: string) => {
-    setTipoProducto(val);
-    setSkuInterno(generarSKUBase(categoria, val, correlativo));
+    const newId = val === '' ? '' : Number(val);
+    setIdTipoProducto(newId as number | '');
+    const cat = categorias.find((c) => c.idCategoria === idCategoria);
+    const tipo = tipos.find((t) => t.idTipoProducto === Number(val));
+    if (cat && tipo) setSkuInterno(generarSKUBase(cat.nombre, tipo.nombre, correlativo));
   };
 
   const agregarTalla = () => {
@@ -224,13 +259,42 @@ export default function EditarProductoPage() {
   const eliminarEspecificacion = (id: number) =>
     setEspecificaciones((p) => p.filter((e) => e.id !== id));
 
-  const handleGuardar = () => {
+  const handleGuardar = async () => {
     setSubmitted(true);
     if (hayErrores) return;
-    // TODO: integrar catalogoService.actualizarProducto() - Kevin
+    if (!id) return;
+    setEnviando(true);
+    setErrorApi('');
+    try {
+      await actualizarProducto(id, {
+        nombre: nombreProducto,
+        descripcion,
+        precioBase,
+        esPersonalizable: false,
+        idCategoria: idCategoria as number,
+        idTipoProducto: idTipoProducto as number,
+        imagenes: imagenUrl.trim()
+          ? [{ url: imagenUrl.trim(), esPrincipal: true }, ...imagenesExistentes.filter((i) => !i.esPrincipal)]
+          : imagenesExistentes,
+      });
+      navigate(RUTAS.COMERCIANTE_CATALOGO);
+    } catch (err: any) {
+      setErrorApi(err.response?.data?.mensaje ?? 'Error al guardar los cambios');
+    } finally {
+      setEnviando(false);
+    }
   };
-  const handleEliminar = () => {
-    // TODO: integrar catalogoService.eliminarProducto() - Kevin
+
+  const handleEliminar = async () => {
+    if (!id || !window.confirm('¿Eliminar este producto? Esta acción no se puede deshacer.')) return;
+    setEnviando(true);
+    try {
+      await eliminarProducto(id);
+      navigate(RUTAS.COMERCIANTE_CATALOGO);
+    } catch (err: any) {
+      setErrorApi(err.response?.data?.mensaje ?? 'No se pudo eliminar el producto');
+      setEnviando(false);
+    }
   };
 
   const labelClass = 'block text-[11px] font-semibold text-gray-600 uppercase tracking-[0.4px] mb-1.5';
@@ -310,9 +374,9 @@ export default function EditarProductoPage() {
                 <label className={labelClass}>
                   Categoría <span className="text-red-500 normal-case font-normal">*</span>
                 </label>
-                <select className={fc('categoria')} value={categoria} onChange={(e) => handleCategoriaChange(e.target.value)}>
+                <select className={fc('categoria')} value={idCategoria} onChange={(e) => handleCategoriaChange(e.target.value)}>
                   <option value="">Seleccionar</option>
-                  {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
+                  {categorias.map((c) => <option key={c.idCategoria} value={c.idCategoria}>{c.nombre}</option>)}
                 </select>
                 {errMsg('categoria')}
               </div>
@@ -320,14 +384,27 @@ export default function EditarProductoPage() {
                 <label className={labelClass}>
                   Tipo de Producto <span className="text-red-500 normal-case font-normal">*</span>
                 </label>
-                <select className={fc('tipoProducto')} value={tipoProducto} onChange={(e) => handleTipoChange(e.target.value)} disabled={!categoria}>
-                  <option value="">{categoria ? 'Seleccionar' : 'Elige categoría primero'}</option>
-                  {tiposDisponibles.map((t) => <option key={t} value={t}>{t}</option>)}
+                <select className={fc('tipoProducto')} value={idTipoProducto} onChange={(e) => handleTipoChange(e.target.value)} disabled={idCategoria === ''}>
+                  <option value="">{idCategoria !== '' ? 'Seleccionar' : 'Elige categoría primero'}</option>
+                  {tipos.map((t) => <option key={t.idTipoProducto} value={t.idTipoProducto}>{t.nombre}</option>)}
                 </select>
                 {errMsg('tipoProducto')}
               </div>
             </div>
 
+            <div className="mb-4">
+              <label className={labelClass}>URL de imagen principal</label>
+              <input
+                type="url"
+                className="w-full h-[42px] border border-gray-300 rounded-lg px-3.5 text-[13px] text-gray-900 bg-white focus:border-primario focus:outline-none transition-colors"
+                placeholder="https://ejemplo.com/imagen.jpg"
+                value={imagenUrl}
+                onChange={(e) => setImagenUrl(e.target.value)}
+              />
+              <p className="text-[11px] text-gray-400 mt-1">
+                Opcional. Deja vacío para conservar la imagen actual.
+              </p>
+            </div>
 
           </div>
 
@@ -377,15 +454,20 @@ export default function EditarProductoPage() {
               <Toggle on={publicado} onClick={() => setPublicado((v) => !v)} />
             </div>
 
+            {errorApi && (
+              <p className="text-[11px] text-red-500 mb-2 text-center">{errorApi}</p>
+            )}
             <button
-              className="w-full h-[42px] bg-primario text-white rounded-lg text-[13px] font-semibold mb-2.5 hover:bg-primario-hover transition-colors"
+              className="w-full h-[42px] bg-primario text-white rounded-lg text-[13px] font-semibold mb-2.5 hover:bg-primario-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleGuardar}
+              disabled={enviando}
             >
-              Guardar Cambios
+              {enviando ? 'Guardando...' : 'Guardar Cambios'}
             </button>
             <button
-              className="w-full h-[42px] bg-white text-red-600 rounded-lg text-[13px] font-semibold border-[1.5px] border-red-500 hover:bg-[#FEE2E2] transition-colors"
+              className="w-full h-[42px] bg-white text-red-600 rounded-lg text-[13px] font-semibold border-[1.5px] border-red-500 hover:bg-[#FEE2E2] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleEliminar}
+              disabled={enviando}
             >
               Eliminar Producto
             </button>

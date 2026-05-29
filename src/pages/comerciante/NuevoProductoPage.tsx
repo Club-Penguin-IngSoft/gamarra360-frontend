@@ -1,24 +1,17 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ComercianteSidebar from '../../components/ComercianteSidebar';
 import { RUTAS } from '../../constants/rutas';
-
-const CATEGORIAS = ['Hombre', 'Mujer', 'Niños', 'Unisex Adultos'];
-
-const BASE_TIPOS = [
-  'Polos', 'Camisas', 'Pantalones', 'Shorts', 'Leggins',
-  'Casacas y Abrigos', 'Poleras', 'Suéteres', 'Chalecos', 'Pijamas',
-  'Ropa interior', 'Trajes y Blazers', 'Ropa deportiva', 'Bufandas',
-  'Gorras', 'Sombreros', 'Guantes', 'Medias', 'Uniformes',
-  'Overoles', 'Delantales', 'Batas',
-];
-
-const TIPOS_POR_CATEGORIA: Record<string, string[]> = {
-  Hombre: BASE_TIPOS,
-  Mujer: [...BASE_TIPOS, 'Faldas', 'Vestidos', 'Tops', 'Blusas'],
-  Niños: [...BASE_TIPOS, 'Faldas', 'Vestidos'],
-  'Unisex Adultos': BASE_TIPOS,
-};
+import {
+  listarCategorias,
+  listarTiposPorCategoria,
+  crearProducto,
+  crearVariante,
+  resolverTalla,
+  resolverColor,
+  type ICategoriaOpcion,
+  type ITipoProductoOpcion,
+} from '../../services/catalogoService';
 
 const CAT_ABREV: Record<string, string> = {
   Hombre: 'HON', Mujer: 'MUJ', Niños: 'NIN', 'Unisex Adultos': 'UNI',
@@ -92,10 +85,15 @@ function PrecioInput({ value, onChange }: { value: number; onChange: (v: number)
 export default function NuevoProductoPage() {
   const [nombreProducto, setNombreProducto] = useState('');
   const [descripcion, setDescripcion] = useState('');
-  const [categoria, setCategoria] = useState('');
-  const [tipoProducto, setTipoProducto] = useState('');
+  const [idCategoria, setIdCategoria] = useState<number | ''>('');
+  const [idTipoProducto, setIdTipoProducto] = useState<number | ''>('');
+  const [categorias, setCategorias] = useState<ICategoriaOpcion[]>([]);
+  const [tipos, setTipos] = useState<ITipoProductoOpcion[]>([]);
   const [correlativo] = useState(1);
   const [skuInterno, setSkuInterno] = useState('');
+  const [imagenUrl, setImagenUrl] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [errorApi, setErrorApi] = useState('');
 
   const [precioBase, setPrecioBase] = useState(0);
   const [publicado, setPublicado] = useState(true);
@@ -120,29 +118,47 @@ export default function NuevoProductoPage() {
   const [submitted, setSubmitted] = useState(false);
 
   const navigate = useNavigate();
-  const tiposDisponibles = categoria ? TIPOS_POR_CATEGORIA[categoria] ?? [] : [];
+
+  useEffect(() => {
+    listarCategorias().then(setCategorias).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (idCategoria !== '') {
+      listarTiposPorCategoria(idCategoria as number).then(setTipos).catch(console.error);
+    } else {
+      setTipos([]);
+      setIdTipoProducto('');
+    }
+  }, [idCategoria]);
+
   const totalStock = variantes.reduce((sum, v) => sum + v.stock, 0);
   const puedeGenerar = tallas.length > 0 && colores.length > 0;
 
   const errores = {
     nombreProducto: !nombreProducto.trim() ? 'El nombre es obligatorio' : '',
     descripcion: !descripcion.trim() ? 'La descripción es obligatoria' : '',
-    categoria: !categoria ? 'Selecciona una categoría' : '',
-    tipoProducto: !tipoProducto ? 'Selecciona un tipo de producto' : '',
+    categoria: idCategoria === '' ? 'Selecciona una categoría' : '',
+    tipoProducto: idTipoProducto === '' ? 'Selecciona un tipo de producto' : '',
     precioBase: precioBase <= 0 ? 'El precio debe ser mayor a 0' : '',
     variantes: variantes.length === 0 ? 'Debes generar al menos una variante' : '',
   };
   const hayErrores = Object.values(errores).some(Boolean);
 
   const handleCategoriaChange = (val: string) => {
-    setCategoria(val);
-    setTipoProducto('');
-    setSkuInterno(val ? generarSKUBase(val, '', correlativo) : '');
+    const id = val === '' ? '' : Number(val);
+    setIdCategoria(id as number | '');
+    setIdTipoProducto('');
+    const cat = categorias.find((c) => c.idCategoria === Number(val));
+    setSkuInterno(cat ? generarSKUBase(cat.nombre, '', correlativo) : '');
   };
 
   const handleTipoChange = (val: string) => {
-    setTipoProducto(val);
-    setSkuInterno(generarSKUBase(categoria, val, correlativo));
+    const id = val === '' ? '' : Number(val);
+    setIdTipoProducto(id as number | '');
+    const cat = categorias.find((c) => c.idCategoria === idCategoria);
+    const tipo = tipos.find((t) => t.idTipoProducto === Number(val));
+    if (cat && tipo) setSkuInterno(generarSKUBase(cat.nombre, tipo.nombre, correlativo));
   };
 
   const agregarTalla = () => {
@@ -237,10 +253,48 @@ export default function NuevoProductoPage() {
   const eliminarEspecificacion = (id: number) =>
     setEspecificaciones((p) => p.filter((e) => e.id !== id));
 
-  const handlePublicar = () => {
+  const handlePublicar = async () => {
     setSubmitted(true);
     if (hayErrores) return;
-    // TODO: integrar catalogoService.crearProducto() - Kevin
+    setEnviando(true);
+    setErrorApi('');
+    try {
+      const producto = await crearProducto({
+        nombre: nombreProducto,
+        descripcion,
+        precioBase,
+        esPersonalizable: false,
+        idCategoria: idCategoria as number,
+        idTipoProducto: idTipoProducto as number,
+        imagenes: imagenUrl.trim() ? [{ url: imagenUrl.trim(), esPrincipal: true }] : [],
+      });
+      const idProducto = Number(producto.id);
+
+      await Promise.all(
+        variantes.map(async (v) => {
+          const [idTalla, idColor] = await Promise.all([
+            resolverTalla(v.talla),
+            resolverColor(v.colorNombre, v.colorHex),
+          ]);
+          await crearVariante({
+            sku: skuInterno ? generarSKUVariante(skuInterno, v.talla, v.colorNombre) : v.talla + '-' + v.colorNombre,
+            stock: v.stock,
+            minimoStock: v.stockMinimo,
+            precioAjustado: v.precioBase,
+            disponible: v.activo,
+            producto: { idProducto },
+            color: { idColor },
+            talla: { idTalla },
+          });
+        })
+      );
+
+      navigate(RUTAS.COMERCIANTE_CATALOGO);
+    } catch (err: any) {
+      setErrorApi(err.response?.data?.mensaje ?? 'Error al publicar el producto');
+    } finally {
+      setEnviando(false);
+    }
   };
 
   const labelClass = 'block text-[11px] font-semibold text-gray-600 uppercase tracking-[0.4px] mb-1.5';
@@ -323,9 +377,9 @@ export default function NuevoProductoPage() {
                 <label className={labelClass}>
                   Categoría <span className="text-red-500 normal-case font-normal">*</span>
                 </label>
-                <select className={fc('categoria')} value={categoria} onChange={(e) => handleCategoriaChange(e.target.value)}>
+                <select className={fc('categoria')} value={idCategoria} onChange={(e) => handleCategoriaChange(e.target.value)}>
                   <option value="">Seleccionar</option>
-                  {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
+                  {categorias.map((c) => <option key={c.idCategoria} value={c.idCategoria}>{c.nombre}</option>)}
                 </select>
                 {errMsg('categoria')}
               </div>
@@ -333,14 +387,25 @@ export default function NuevoProductoPage() {
                 <label className={labelClass}>
                   Tipo de Producto <span className="text-red-500 normal-case font-normal">*</span>
                 </label>
-                <select className={fc('tipoProducto')} value={tipoProducto} onChange={(e) => handleTipoChange(e.target.value)} disabled={!categoria}>
-                  <option value="">{categoria ? 'Seleccionar' : 'Elige categoría primero'}</option>
-                  {tiposDisponibles.map((t) => <option key={t} value={t}>{t}</option>)}
+                <select className={fc('tipoProducto')} value={idTipoProducto} onChange={(e) => handleTipoChange(e.target.value)} disabled={idCategoria === ''}>
+                  <option value="">{idCategoria !== '' ? 'Seleccionar' : 'Elige categoría primero'}</option>
+                  {tipos.map((t) => <option key={t.idTipoProducto} value={t.idTipoProducto}>{t.nombre}</option>)}
                 </select>
                 {errMsg('tipoProducto')}
               </div>
             </div>
 
+            <div className="mb-4">
+              <label className={labelClass}>URL de imagen principal</label>
+              <input
+                type="url"
+                className="w-full h-[42px] border border-gray-300 rounded-lg px-3.5 text-[13px] text-gray-900 bg-white focus:border-primario focus:outline-none transition-colors"
+                placeholder="https://ejemplo.com/imagen.jpg"
+                value={imagenUrl}
+                onChange={(e) => setImagenUrl(e.target.value)}
+              />
+              <p className="text-[11px] text-gray-400 mt-1">Opcional. Pega un link directo a una imagen.</p>
+            </div>
 
           </div>
 
@@ -388,11 +453,15 @@ export default function NuevoProductoPage() {
               <Toggle on={publicado} onClick={() => setPublicado((v) => !v)} />
             </div>
 
+            {errorApi && (
+              <p className="text-[11px] text-red-500 mb-2 text-center">{errorApi}</p>
+            )}
             <button
-              className="w-full h-[42px] bg-primario text-white rounded-lg text-[13px] font-semibold hover:bg-primario-hover transition-colors"
+              className="w-full h-[42px] bg-primario text-white rounded-lg text-[13px] font-semibold hover:bg-primario-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handlePublicar}
+              disabled={enviando}
             >
-              Publicar Producto
+              {enviando ? 'Publicando...' : 'Publicar Producto'}
             </button>
           </div>
         </div>
