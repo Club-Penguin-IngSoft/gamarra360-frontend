@@ -45,9 +45,21 @@ export default function CheckoutEntregaPage() {
   const { items } = useCarrito();
   const navigate = useNavigate();
 
-  const [tipoEntrega, setTipoEntrega] = useState<'DELIVERY' | 'RECOJO_TIENDA'>('DELIVERY');
-  const [mostrarFechas, setMostrarFechas] = useState(false);
-  const [fechaSeleccionada, setFechaSeleccionada] = useState(FECHAS_ENVIO[0]);
+  // Estado POR TIENDA — cada paquete tiene su propia opción de entrega
+  const [tipoEntregaPorTienda, setTipoEntregaPorTienda] = useState<Record<string, 'DELIVERY' | 'RECOJO_TIENDA'>>({});
+  const [mostrarFechasPorTienda, setMostrarFechasPorTienda] = useState<Record<string, boolean>>({});
+  const [fechaPorTienda, setFechaPorTienda] = useState<Record<string, typeof FECHAS_ENVIO[0]>>({});
+
+  const getTipoEntrega = (tienda: string) => tipoEntregaPorTienda[tienda] ?? 'DELIVERY';
+  const getMostrarFechas = (tienda: string) => mostrarFechasPorTienda[tienda] ?? false;
+  const getFecha = (tienda: string) => fechaPorTienda[tienda] ?? FECHAS_ENVIO[0];
+
+  const setTipoEntrega = (tienda: string, tipo: 'DELIVERY' | 'RECOJO_TIENDA') =>
+    setTipoEntregaPorTienda(prev => ({ ...prev, [tienda]: tipo }));
+  const setMostrarFechas = (tienda: string, val: boolean) =>
+    setMostrarFechasPorTienda(prev => ({ ...prev, [tienda]: val }));
+  const setFecha = (tienda: string, fecha: typeof FECHAS_ENVIO[0]) =>
+    setFechaPorTienda(prev => ({ ...prev, [tienda]: fecha }));
 
   // Dirección de entrega — estado local, se pasa a PagoPage al continuar
   const [calle, setCalle] = useState('');
@@ -91,7 +103,10 @@ export default function CheckoutEntregaPage() {
     const ahorro = base > final ? base - final : 0;
     return acc + ahorro * i.cantidad;
   }, 0);
-  const costoEnvio = tipoEntrega === 'DELIVERY' ? COSTO_ENVIO_DELIVERY : 0;
+  // Agrupa items por tienda para calcular cuántos paquetes usan delivery
+  const tiendas = [...new Set(items.map(i => i.producto?.nombreTienda ?? 'Tienda'))];
+  const paquetesDelivery = tiendas.filter(t => getTipoEntrega(t) === 'DELIVERY').length;
+  const costoEnvio = paquetesDelivery * COSTO_ENVIO_DELIVERY;
   const total = subtotalSinDescuento - descuentos + costoEnvio;
 
   return (
@@ -196,15 +211,19 @@ export default function CheckoutEntregaPage() {
                 return acc;
               }, {});
 
-              const tiendas = Object.entries(porTienda);
+              const tiendasEntries = Object.entries(porTienda);
 
-              return tiendas.map(([nombreTienda, itemsTienda], idxPaquete) => (
+              return tiendasEntries.map(([nombreTienda, itemsTienda], idxPaquete) => {
+                const entrega = getTipoEntrega(nombreTienda);
+                const mostrarFechas = getMostrarFechas(nombreTienda);
+                const fechaSeleccionada = getFecha(nombreTienda);
+                return (
                 <div key={nombreTienda} className="rounded-xl border border-ink-100 bg-white shadow-sm overflow-hidden">
                   {/* Cabecera del paquete */}
                   <div className="flex items-center justify-between border-b border-ink-100 px-5 py-3">
                     <div className="flex flex-col">
                       <span className="text-[11px] font-medium uppercase tracking-wider text-ink-400">
-                        Paquete {idxPaquete + 1} de {tiendas.length}
+                        Paquete {idxPaquete + 1} de {tiendasEntries.length}
                       </span>
                       <span className="text-[15px] font-bold text-ink-900">{nombreTienda}</span>
                     </div>
@@ -236,32 +255,32 @@ export default function CheckoutEntregaPage() {
                     {/* Envío a domicilio */}
                     <div
                       className={`rounded-lg border px-4 py-3 cursor-pointer transition-all ${
-                        tipoEntrega === 'DELIVERY'
+                        entrega === 'DELIVERY'
                           ? 'border-brand-400 bg-brand-50/40'
                           : 'border-ink-100 hover:border-ink-200'
                       }`}
-                      onClick={() => setTipoEntrega('DELIVERY')}
+                      onClick={() => setTipoEntrega(nombreTienda, 'DELIVERY')}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <Truck className={`mt-0.5 h-4 w-4 shrink-0 ${tipoEntrega === 'DELIVERY' ? 'text-brand-500' : 'text-ink-400'}`} />
+                          <Truck className={`mt-0.5 h-4 w-4 shrink-0 ${entrega === 'DELIVERY' ? 'text-brand-500' : 'text-ink-400'}`} />
                           <div className="flex flex-col min-w-0">
                             <span className="text-[14px] font-semibold text-ink-900">Envío a domicilio</span>
-                            {tipoEntrega === 'DELIVERY' ? (
+                            {entrega === 'DELIVERY' ? (
                               <span className="text-[13px] text-ink-500">
                                 Llega el {fechaSeleccionada.textoLargo}
                               </span>
                             ) : (
-                              <span className="text-[13px] text-ink-500">S/ 12.00</span>
+                              <span className="text-[13px] text-ink-500">{formatearPrecio(COSTO_ENVIO_DELIVERY)}</span>
                             )}
-                            {tipoEntrega === 'DELIVERY' && (
+                            {entrega === 'DELIVERY' && (
                               <div className="mt-1 flex items-center gap-3">
-                                <span className="text-[13px] text-ink-500">S/ 12.00</span>
+                                <span className="text-[13px] text-ink-500">{formatearPrecio(COSTO_ENVIO_DELIVERY)}</span>
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setMostrarFechas(!mostrarFechas);
+                                    setMostrarFechas(nombreTienda, !mostrarFechas);
                                   }}
                                   className="text-[13px] font-medium text-brand-500 hover:text-brand-700"
                                 >
@@ -271,14 +290,13 @@ export default function CheckoutEntregaPage() {
                             )}
                           </div>
                         </div>
-                        {/* Radio button */}
-                        <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${tipoEntrega === 'DELIVERY' ? 'border-brand-500' : 'border-ink-300'}`}>
-                          {tipoEntrega === 'DELIVERY' && <div className="h-2 w-2 rounded-full bg-brand-500" />}
+                        <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${entrega === 'DELIVERY' ? 'border-brand-500' : 'border-ink-300'}`}>
+                          {entrega === 'DELIVERY' && <div className="h-2 w-2 rounded-full bg-brand-500" />}
                         </div>
                       </div>
 
                       {/* Selector de fechas */}
-                      {tipoEntrega === 'DELIVERY' && mostrarFechas && (
+                      {entrega === 'DELIVERY' && mostrarFechas && (
                         <div className="mt-3 border-t border-ink-100 pt-3">
                           <div className="flex flex-wrap gap-2">
                             {FECHAS_ENVIO.map((fecha) => (
@@ -287,8 +305,8 @@ export default function CheckoutEntregaPage() {
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setFechaSeleccionada(fecha);
-                                  setMostrarFechas(false);
+                                  setFecha(nombreTienda, fecha);
+                                  setMostrarFechas(nombreTienda, false);
                                 }}
                                 className={`rounded-md border px-3 py-1.5 text-[12px] font-medium transition-all ${
                                   fechaSeleccionada.id === fecha.id
@@ -307,18 +325,18 @@ export default function CheckoutEntregaPage() {
                     {/* Retiro en tienda */}
                     <div
                       className={`rounded-lg border px-4 py-3 cursor-pointer transition-all ${
-                        tipoEntrega === 'RECOJO_TIENDA'
+                        entrega === 'RECOJO_TIENDA'
                           ? 'border-brand-400 bg-brand-50/40'
                           : 'border-ink-100 hover:border-ink-200'
                       }`}
                       onClick={() => {
-                        setTipoEntrega('RECOJO_TIENDA');
-                        setMostrarFechas(false);
+                        setTipoEntrega(nombreTienda, 'RECOJO_TIENDA');
+                        setMostrarFechas(nombreTienda, false);
                       }}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <StoreIcon className={`mt-0.5 h-4 w-4 shrink-0 ${tipoEntrega === 'RECOJO_TIENDA' ? 'text-brand-500' : 'text-ink-400'}`} />
+                          <StoreIcon className={`mt-0.5 h-4 w-4 shrink-0 ${entrega === 'RECOJO_TIENDA' ? 'text-brand-500' : 'text-ink-400'}`} />
                           <div className="flex flex-col min-w-0">
                             <span className="text-[14px] font-semibold text-ink-900">Retiro en tienda</span>
                             <span className="text-[13px] text-ink-500">
@@ -327,17 +345,19 @@ export default function CheckoutEntregaPage() {
                             <span className="mt-0.5 text-[13px] font-medium text-brand-500">(Gratis)</span>
                           </div>
                         </div>
-                        <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${tipoEntrega === 'RECOJO_TIENDA' ? 'border-brand-500' : 'border-ink-300'}`}>
-                          {tipoEntrega === 'RECOJO_TIENDA' && <div className="h-2 w-2 rounded-full bg-brand-500" />}
+                        <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${entrega === 'RECOJO_TIENDA' ? 'border-brand-500' : 'border-ink-300'}`}>
+                          {entrega === 'RECOJO_TIENDA' && <div className="h-2 w-2 rounded-full bg-brand-500" />}
                         </div>
                       </div>
                     </div>
 
                   </div>
                 </div>
-              ));
+                );
+              });
             })()}
           </section>
+
 
           {/* Aside — Resumen */}
           <aside className="flex h-fit flex-col gap-5 rounded-xl border border-ink-100 bg-white p-6 shadow-sm lg:sticky lg:top-24">
@@ -355,9 +375,11 @@ export default function CheckoutEntregaPage() {
                 </div>
               )}
               <div className="flex items-center justify-between text-[14px]">
-                <span className="text-ink-600">Entrega (1)</span>
-                <span className={tipoEntrega === 'RECOJO_TIENDA' ? 'font-medium text-brand-500' : 'text-ink-900'}>
-                  {tipoEntrega === 'RECOJO_TIENDA' ? 'Gratis' : formatearPrecio(costoEnvio)}
+                <span className="text-ink-600">
+                  Envío {paquetesDelivery > 0 ? `(${paquetesDelivery} paquete${paquetesDelivery > 1 ? 's' : ''})` : ''}
+                </span>
+                <span className={paquetesDelivery === 0 ? 'font-medium text-brand-500' : 'text-ink-900'}>
+                  {paquetesDelivery === 0 ? 'Gratis' : formatearPrecio(costoEnvio)}
                 </span>
               </div>
             </div>
@@ -372,16 +394,15 @@ export default function CheckoutEntregaPage() {
               onClick={() =>
                 navigate(RUTAS.PAGO, {
                   state: {
-                    tipoEntrega,
-                    direccionEntrega:
-                      tipoEntrega === 'DELIVERY'
-                        ? `${calle.trim()}, ${distrito.trim()}, ${provincia.trim()}`
-                        : null,
-                    fechaEntrega: tipoEntrega === 'DELIVERY' ? fechaSeleccionada.textoLargo : null,
+                    tipoEntregaPorTienda,
+                    direccionEntrega: direccionCompleta
+                      ? `${calle.trim()}, ${distrito.trim()}, ${provincia.trim()}`
+                      : null,
+                    costoEnvio,
                   },
                 })
               }
-              disabled={tipoEntrega === 'DELIVERY' && !direccionCompleta}
+              disabled={paquetesDelivery > 0 && !direccionCompleta}
               className="h-12 w-full rounded-lg bg-[#c83a71] text-[15px] font-semibold text-white shadow-sm transition-colors hover:bg-[#a62b5a] disabled:cursor-not-allowed disabled:opacity-40"
             >
               Continuar al pago
