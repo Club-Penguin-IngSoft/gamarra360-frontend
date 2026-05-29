@@ -21,3 +21,6 @@ export const HTTP_TIMEOUT_MS = 15000;
 
 /** Cantidad de productos por página en el catálogo */
 export const PAGINA_TAMANO_CATALOGO = 12;
+
+/** Costo de envío a domicilio (S/). Valor fijo — la BD no almacena tarifa de envío. */
+export const COSTO_ENVIO_DELIVERY = 12.00;
