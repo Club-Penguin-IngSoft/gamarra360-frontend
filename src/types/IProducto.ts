@@ -31,6 +31,8 @@ export interface IProducto {
   imagenes: string[];
   categoria: Categoria;
   tipoServicio: TipoServicio;
+  /** Tipo de producto (ej. "Polos", "Blusas", "Casacas") — usado por filtros */
+  tipoProducto?: string;
   /** Precio base sin descuento. Undefined cuando es COTIZACION */
   precioBase?: number;
   /** Precio final con descuentos aplicados. Undefined cuando es COTIZACION */

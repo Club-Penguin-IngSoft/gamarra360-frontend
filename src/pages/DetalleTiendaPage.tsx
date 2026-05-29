@@ -226,17 +226,27 @@ function CatalogoSection({
   const [filterOpen, setFilterOpen] = useState(false);
   const [filtros, setFiltros] = useState<IFiltrosCatalogo>(FILTROS_VACIOS);
 
-  // Filtrado client-side sobre los productos de ESTA tienda
+  // Filtrado + ordenado client-side sobre los productos de ESTA tienda
   const productosFiltrados = useMemo(
     () => aplicarFiltrosCliente(productos, filtros),
     [productos, filtros],
   );
 
+  const productosSorted = useMemo(() => {
+    return [...productosFiltrados].sort((a, b) => {
+      const pa = a.precioFinal ?? a.precioBase ?? Infinity;
+      const pb = b.precioFinal ?? b.precioBase ?? Infinity;
+      if (sort === SORT_OPTIONS_DEFAULT[1]) return pa - pb;   // Menor precio
+      if (sort === SORT_OPTIONS_DEFAULT[2]) return pb - pa;   // Mayor precio
+      return Number(b.id) - Number(a.id);                    // Lo más reciente → ID desc
+    });
+  }, [productosFiltrados, sort]);
+
   const totalPages = Math.max(
     1,
-    Math.ceil(productosFiltrados.length / PRODUCTOS_POR_PAGINA),
+    Math.ceil(productosSorted.length / PRODUCTOS_POR_PAGINA),
   );
-  const productosPagina = productosFiltrados.slice(
+  const productosPagina = productosSorted.slice(
     (page - 1) * PRODUCTOS_POR_PAGINA,
     page * PRODUCTOS_POR_PAGINA,
   );
@@ -244,6 +254,11 @@ function CatalogoSection({
   const handleChangeFiltros = (f: IFiltrosCatalogo) => {
     setFiltros(f);
     setPage(1); // resetear paginación al filtrar
+  };
+
+  const handleChangeSort = (v: string) => {
+    setSort(v);
+    setPage(1); // resetear paginación al reordenar
   };
 
   return (
@@ -259,8 +274,8 @@ function CatalogoSection({
       <div className="flex flex-col gap-2">
         <h2 className="text-[32px] font-bold text-ink-900">Catálogo</h2>
         <p className="text-[15px] text-ink-500">
-          Explorando {productosFiltrados.length}{' '}
-          {productosFiltrados.length === 1 ? 'producto único' : 'productos únicos'}{' '}
+          Explorando {productosSorted.length}{' '}
+          {productosSorted.length === 1 ? 'producto único' : 'productos únicos'}{' '}
           de la tienda.
         </p>
       </div>
@@ -278,7 +293,7 @@ function CatalogoSection({
 
           <SortSelect
             value={sort}
-            onChange={setSort}
+            onChange={handleChangeSort}
             options={SORT_OPTIONS_DEFAULT}
           />
         </div>
@@ -324,8 +339,8 @@ function CatalogoSection({
         <div className="flex justify-between">
           <span className="hidden self-center text-[14px] text-ink-500 md:inline">
             Mostrando {(page - 1) * PRODUCTOS_POR_PAGINA + 1}–
-            {Math.min(page * PRODUCTOS_POR_PAGINA, productosFiltrados.length)} de{' '}
-            {productosFiltrados.length}
+            {Math.min(page * PRODUCTOS_POR_PAGINA, productosSorted.length)} de{' '}
+            {productosSorted.length}
           </span>
           <Pagination page={page} totalPages={totalPages} onChange={setPage} />
           <span className="hidden md:inline" />

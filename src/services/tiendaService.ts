@@ -4,6 +4,7 @@
  */
 
 import type { ITienda } from '../types/ITienda';
+import type { Categoria } from '../types/IProducto';
 import type { IFiltrosTiendas } from '../types/IFiltro';
 import apiClient from './apiClient';
 
@@ -17,6 +18,36 @@ interface ITiendaBackend {
   verificada?: boolean;
   categorias?: string[];     // Categorías que vende la tienda
   tiposServicio?: string[];  // Tipos de servicio que ofrece
+  tiposProducto?: string[];  // Tipos de producto (Polos, Blusas, etc.)
+}
+
+/* ── Normaliza nombre de categoría DB → enum frontend ─────────────────── */
+// Mismo algoritmo que mapearCategoria en catalogoService.ts
+
+function normalizarCategoria(nombre: string): Categoria {
+  const n = nombre
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .trim()
+    .replace(/\s+/g, '_');
+
+  const tabla: Record<string, Categoria> = {
+    HOMBRE:          'HOMBRE',
+    MUJER:           'MUJER',
+    NINOS:           'NINOS',
+    NINO:            'NINOS',
+    NINAS:           'NINOS',
+    NINA:            'NINOS',
+    INFANTIL:        'NINOS',
+    UNISEX_ADULTOS:  'UNISEX_ADULTOS',
+    UNISEX_ADULTO:   'UNISEX_ADULTOS',
+    UNISEX:          'UNISEX_ADULTOS',
+    UNISEX_NINOS:    'UNISEX_NINOS',
+    UNISEX_NINO:     'UNISEX_NINOS',
+  };
+
+  return tabla[n] ?? 'HOMBRE';
 }
 
 /* ── Adaptador backend → ITienda ──────────────────────────────────────── */
@@ -26,11 +57,12 @@ function adaptarTienda(t: ITiendaBackend): ITienda {
     id: String(t.idTienda),
     nombre: t.nombreComercial,
     descripcion: t.informacion,
-    //informacion: t.informacion,
     logo: t.foto,
     verificada: t.verificada,
-    categorias: t.categorias as any, // Mapear al tipo Categoria[] del frontend
+    // Normaliza "Hombre" → 'HOMBRE', "Mujer" → 'MUJER', etc.
+    categorias: t.categorias?.map(normalizarCategoria) ?? [],
     tiposServicio: (t.tiposServicio as any) ?? ['COMPRA_DIRECTA'],
+    tiposProducto: t.tiposProducto ?? [],
   };
 }
 
@@ -46,6 +78,13 @@ function aplicarFiltrosTiendaClienteSide(
   if (filtros.categorias && filtros.categorias.length > 0) {
     resultado = resultado.filter((t) =>
       t.categorias?.some((c) => filtros.categorias!.includes(c)),
+    );
+  }
+
+  // Filtrar por tipos de producto: la tienda debe vender AL MENOS UNO de los seleccionados
+  if (filtros.tiposProducto && filtros.tiposProducto.length > 0) {
+    resultado = resultado.filter((t) =>
+      t.tiposProducto?.some((tp) => filtros.tiposProducto!.includes(tp)),
     );
   }
 
@@ -78,12 +117,28 @@ export async function listarTiendas(
 }
 
 /**
- * Obtiene tiendas destacadas (temporalmente trae todas y retorna los primeros 4).
- * Cuando el backend implemente /tiendas/publico/destacadas, cambiar aquí.
+ * Obtiene tiendas destacadas: trae todas, baraja con semilla del día y devuelve 4.
+ * Así cada día rotan CUÁLES tiendas aparecen (no solo el orden), igual que los productos.
  */
 export async function listarTiendasDestacadas(): Promise<ITienda[]> {
   const tiendas = await listarTiendas();
-  return tiendas.slice(0, 4);
+  return shuffleDiario(tiendas).slice(0, 4);
+}
+
+/** Fisher-Yates determinista con semilla del día (YYYYMMDD). */
+function shuffleDiario<T>(arr: T[]): T[] {
+  const hoy = new Date();
+  let seed =
+    hoy.getFullYear() * 10000 +
+    (hoy.getMonth() + 1) * 100 +
+    hoy.getDate();
+  const copia = [...arr];
+  for (let i = copia.length - 1; i > 0; i--) {
+    seed = Math.imul(seed, 1664525) + 1013904223;
+    const j = Math.abs(seed) % (i + 1);
+    [copia[i], copia[j]] = [copia[j], copia[i]];
+  }
+  return copia;
 }
 
 /**
