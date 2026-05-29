@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import ComercianteSidebar from '../../components/ComercianteSidebar';
 import { RUTAS } from '../../constants/rutas';
+import { useAuth } from '../../hooks/useAuth';
 import {
   listarCategorias,
   listarTiposPorCategoria,
@@ -84,6 +85,7 @@ function PrecioInput({ value, onChange }: { value: number; onChange: (v: number)
 }
 
 export default function EditarProductoPage() {
+  const { usuario } = useAuth();
   const { id } = useParams<{ id: string }>();
   const [nombreProducto, setNombreProducto] = useState('');
   const [descripcion, setDescripcion] = useState('');
@@ -305,6 +307,7 @@ export default function EditarProductoPage() {
         esPersonalizable: false,
         idCategoria: idCategoria as number,
         idTipoProducto: idTipoProducto as number,
+        idTienda: Number(usuario?.idComerciante || 1),
         imagenes: imagenPrincipalUrl
           ? [{ url: imagenPrincipalUrl, esPrincipal: true }, ...imagenesExistentes.filter((i) => !i.esPrincipal)]
           : imagenesExistentes,

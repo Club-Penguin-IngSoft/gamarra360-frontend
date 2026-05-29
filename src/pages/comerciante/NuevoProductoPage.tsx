@@ -2,8 +2,10 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ComercianteSidebar from '../../components/ComercianteSidebar';
 import { RUTAS } from '../../constants/rutas';
+import { useAuth } from '../../hooks/useAuth';
 import {
   listarCategorias,
+  listarTiposPorCategoria,
   crearProducto,
   crearVariante,
   resolverTalla,
@@ -83,6 +85,7 @@ function PrecioInput({ value, onChange }: { value: number; onChange: (v: number)
 }
 
 export default function NuevoProductoPage() {
+  const { usuario } = useAuth();
   const [nombreProducto, setNombreProducto] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [idCategoria, setIdCategoria] = useState<number | ''>('');
@@ -127,10 +130,7 @@ export default function NuevoProductoPage() {
 
   useEffect(() => {
     if (idCategoria !== '') {
-      // Mapeo estático de "Polos" según categoría
-      const polosMap: Record<number, number> = { 1: 1, 2: 5, 3: 9, 4: 12 };
-      setIdTipoProducto(polosMap[idCategoria as number] || 1);
-      setTipos([]); // No necesitamos cargar la lista
+      listarTiposPorCategoria(idCategoria as number).then(setTipos).catch(console.error);
     } else {
       setTipos([]);
       setIdTipoProducto('');
@@ -144,7 +144,7 @@ export default function NuevoProductoPage() {
     nombreProducto: !nombreProducto.trim() ? 'El nombre es obligatorio' : '',
     descripcion: !descripcion.trim() ? 'La descripción es obligatoria' : '',
     categoria: idCategoria === '' ? 'Selecciona una categoría' : '',
-    // tipoProducto: idTipoProducto === '' ? 'Selecciona un tipo de producto' : '',
+    tipoProducto: idTipoProducto === '' ? 'Selecciona un tipo de producto' : '',
     precioBase: precioBase <= 0 ? 'El precio debe ser mayor a 0' : '',
     variantes: variantes.length === 0 ? 'Debes generar al menos una variante' : '',
   };
@@ -290,6 +290,7 @@ export default function NuevoProductoPage() {
         esPersonalizable: false,
         idCategoria: idCategoria as number,
         idTipoProducto: idTipoProducto as number,
+        idTienda: Number(usuario?.idComerciante || 1), // Usamos el ID del usuario logueado
         imagenes: imagenPrincipalUrl ? [{ url: imagenPrincipalUrl, esPrincipal: true }] : [],
       });
       const idProducto = Number(producto.id);
@@ -414,16 +415,15 @@ export default function NuevoProductoPage() {
                 </select>
                 {errMsg('categoria')}
               </div>
-              {/* Oculto temporalmente: Tipo de Producto estático "Polos" */}
-              <div className="hidden">
+              <div>
                 <label className={labelClass}>
                   Tipo de Producto <span className="text-red-500 normal-case font-normal">*</span>
                 </label>
-                <select className={fc('tipoProducto' as any)} value={idTipoProducto} onChange={(e) => handleTipoChange(e.target.value)} disabled={idCategoria === ''}>
+                <select className={fc('tipoProducto')} value={idTipoProducto} onChange={(e) => handleTipoChange(e.target.value)} disabled={idCategoria === ''}>
                   <option value="">{idCategoria !== '' ? 'Seleccionar' : 'Elige categoría primero'}</option>
                   {tipos.map((t) => <option key={t.idTipoProducto} value={t.idTipoProducto}>{t.nombre}</option>)}
                 </select>
-                {errMsg('tipoProducto' as any)}
+                {errMsg('tipoProducto')}
               </div>
             </div>
 

@@ -56,6 +56,7 @@ export interface IProductoPayload {
   esPersonalizable: boolean;
   idCategoria: number;
   idTipoProducto: number;
+  idTienda: number;
   imagenes: { url: string; esPrincipal: boolean }[];
 }
 
