@@ -39,6 +39,8 @@ export default function TopBar({
 }) {
   const { cantidadTotal } = useCarrito();
   const token = localStorage.getItem('token');
+  const navigate = useNavigate();
+
   const nombreUsuario = (() => {
     if (!token) return null;
     const guardado = localStorage.getItem("nombreUsuario");
@@ -50,7 +52,6 @@ export default function TopBar({
       return null;
     }
   })();
-  const navigate = useNavigate();
 
   const [query, setQuery] = useState('');
   const [resultados, setResultados] = useState<IProducto[]>([]);
@@ -96,6 +97,14 @@ export default function TopBar({
       setAbierto(false);
       setQuery('');
     }
+  }
+
+  // 👇 AQUI ESTA LA FUNCION FALTANTE QUE SOLUCIONA EL ERROR
+  function cerrarSesion() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('nombreUsuario');
+    // Forzamos la recarga para que React limpie el estado del carrito y usuario
+    window.location.href = RUTAS.LOGIN; 
   }
 
   return (
