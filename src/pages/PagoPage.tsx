@@ -15,6 +15,7 @@ import Footer from '../components/Footer';
 import { useCarrito } from '../hooks/useCarrito';
 import { formatearPrecio } from '../utils/formatearPrecio';
 import { RUTAS } from '../constants/rutas';
+import { crearPedido } from '../services/checkoutService';
 
 export default function PagoPage() {
   const { items, vaciarCarrito } = useCarrito();
@@ -48,29 +49,78 @@ export default function PagoPage() {
   const total = subtotalSinDescuento - descuentos + costoEnvio;
 
   const actualizar = (campo: keyof typeof campos, valor: string) => {
-    setCampos(p => ({ ...p, [campo]: valor }));
-    // Limpiar error del campo al escribir
-    if (errores[campo]) setErrores(p => ({ ...p, [campo]: '' }));
+    let nuevoValor = valor;
+
+    // 1. Campos que SOLO aceptan números
+    if (['numeroTarjeta', 'ccv', 'celular', 'codigoYape'].includes(campo)) {
+      nuevoValor = valor.replace(/\D/g, ''); // Borra todo lo que no sea número
+    }
+
+    // 2. Límites de caracteres exactos
+    if (campo === 'numeroTarjeta') nuevoValor = nuevoValor.slice(0, 16);
+    if (campo === 'ccv') nuevoValor = nuevoValor.slice(0, 4); // Visa/MC usan 3, Amex 4
+    if (campo === 'celular') nuevoValor = nuevoValor.slice(0, 9); // Celular de Perú
+    if (campo === 'codigoYape') nuevoValor = nuevoValor.slice(0, 6); // Código de 6 dígitos
+
+    // 3. Formato automático para Vencimiento (MM/AA)
+    if (campo === 'vencimiento') {
+      const soloNumeros = valor.replace(/\D/g, '');
+      if (soloNumeros.length > 2) {
+        nuevoValor = `${soloNumeros.slice(0, 2)}/${soloNumeros.slice(2, 4)}`;
+      } else {
+        nuevoValor = soloNumeros;
+      }
+    }
+
+    // 4. Nombre del Titular: Solo letras y espacios
+    if (campo === 'titular') {
+      nuevoValor = valor.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '');
+    }
+
+    setCampos((p) => ({ ...p, [campo]: nuevoValor }));
+    // Limpiar error al escribir
+    if (errores[campo]) setErrores((p) => ({ ...p, [campo]: '' }));
   };
 
-  const handlePagar = () => {
+  const handlePagar = async () => {
     const nuevosErrores: Record<string, string> = {};
 
+    // Validaciones estrictas
     if (metodoPago === 'TARJETA') {
-      if (!campos.numeroTarjeta.trim()) nuevosErrores.numeroTarjeta = 'Ingresa el número de tarjeta';
-      if (!campos.vencimiento.trim()) nuevosErrores.vencimiento = 'Ingresa la fecha de vencimiento';
-      if (!campos.ccv.trim()) nuevosErrores.ccv = 'Ingresa el CCV';
-      if (!campos.titular.trim()) nuevosErrores.titular = 'Ingresa el nombre del titular';
+      if (campos.numeroTarjeta.length < 16) nuevosErrores.numeroTarjeta = 'La tarjeta debe tener 16 dígitos';
+      if (campos.vencimiento.length < 5) nuevosErrores.vencimiento = 'Formato incompleto (MM/AA)';
+      if (campos.ccv.length < 3) nuevosErrores.ccv = 'El CCV debe tener 3 o 4 dígitos';
+      if (!campos.titular.trim() || campos.titular.length < 3) nuevosErrores.titular = 'Ingresa el nombre completo del titular';
     } else {
-      if (!campos.celular.trim()) nuevosErrores.celular = 'Ingresa tu número de celular';
-      if (!campos.codigoYape.trim()) nuevosErrores.codigoYape = 'Ingresa el código de aprobación';
+      if (campos.celular.length !== 9) nuevosErrores.celular = 'El número debe tener exactamente 9 dígitos';
+      if (campos.codigoYape.length !== 6) nuevosErrores.codigoYape = 'El código de aprobación tiene 6 dígitos';
     }
 
     setErrores(nuevosErrores);
     if (Object.keys(nuevosErrores).length > 0) return;
 
-    setPagoExitoso(true);
-    vaciarCarrito();
+    try {
+      const payload = {
+        clienteId: 1, // REQUERIDO POR LA BASE DE DATOS
+        vendedorId: Number(items[0]?.producto?.idComerciante ?? 1),
+        tipoEntrega: 'DELIVERY' as const,
+        direccionEntrega: 'Av. Arequipa 3421, San Isidro, Lima',
+        total,
+        items: items.map((item) => ({
+          idVarianteProducto: item.idVariante ? Number(item.idVariante) : 1, // Mejor mandar 1 que 0 si no hay variante
+          cantidad: item.cantidad,
+          precio: item.precioUnitario,
+        })),
+      };
+
+      await crearPedido(payload);
+      vaciarCarrito();
+      setPagoExitoso(true);
+
+    } catch (err: any) {
+      const mensaje = err?.response?.data?.mensaje ?? 'Error al procesar el pago. Intenta de nuevo.';
+      alert(mensaje);
+    }
   };
 
   const inputClass = (campo: string) =>
