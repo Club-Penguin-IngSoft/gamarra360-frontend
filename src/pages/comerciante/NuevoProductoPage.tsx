@@ -1,24 +1,18 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ComercianteSidebar from '../../components/ComercianteSidebar';
 import { RUTAS } from '../../constants/rutas';
-
-const CATEGORIAS = ['Hombre', 'Mujer', 'Niños', 'Unisex Adultos'];
-
-const BASE_TIPOS = [
-  'Polos', 'Camisas', 'Pantalones', 'Shorts', 'Leggins',
-  'Casacas y Abrigos', 'Poleras', 'Suéteres', 'Chalecos', 'Pijamas',
-  'Ropa interior', 'Trajes y Blazers', 'Ropa deportiva', 'Bufandas',
-  'Gorras', 'Sombreros', 'Guantes', 'Medias', 'Uniformes',
-  'Overoles', 'Delantales', 'Batas',
-];
-
-const TIPOS_POR_CATEGORIA: Record<string, string[]> = {
-  Hombre: BASE_TIPOS,
-  Mujer: [...BASE_TIPOS, 'Faldas', 'Vestidos', 'Tops', 'Blusas'],
-  Niños: [...BASE_TIPOS, 'Faldas', 'Vestidos'],
-  'Unisex Adultos': BASE_TIPOS,
-};
+import {
+  listarCategorias,
+  listarTiposPorCategoria,
+  crearProducto,
+  crearVariante,
+  resolverTalla,
+  resolverColor,
+  subirImagenS3,
+  type ICategoriaOpcion,
+  type ITipoProductoOpcion,
+} from '../../services/catalogoService';
 
 const CAT_ABREV: Record<string, string> = {
   Hombre: 'HON', Mujer: 'MUJ', Niños: 'NIN', 'Unisex Adultos': 'UNI',
@@ -49,6 +43,7 @@ interface IVarianteNueva {
   colorHex: string;
   precioBase: number;
   stock: number;
+  stockMinimo: number;
   activo: boolean;
   imagenes: string[];
 }
@@ -91,15 +86,19 @@ function PrecioInput({ value, onChange }: { value: number; onChange: (v: number)
 export default function NuevoProductoPage() {
   const [nombreProducto, setNombreProducto] = useState('');
   const [descripcion, setDescripcion] = useState('');
-  const [categoria, setCategoria] = useState('');
-  const [tipoProducto, setTipoProducto] = useState('');
+  const [idCategoria, setIdCategoria] = useState<number | ''>('');
+  const [idTipoProducto, setIdTipoProducto] = useState<number | ''>('');
+  const [categorias, setCategorias] = useState<ICategoriaOpcion[]>([]);
+  const [tipos, setTipos] = useState<ITipoProductoOpcion[]>([]);
   const [correlativo] = useState(1);
   const [skuInterno, setSkuInterno] = useState('');
-  const [envioADomicilio, setEnvioADomicilio] = useState(false);
-  const [retiroEnTienda, setRetiroEnTienda] = useState(false);
+  const [imagenPrincipalUrl, setImagenPrincipalUrl] = useState('');
+  const [subiendoImagenPrincipal, setSubiendoImagenPrincipal] = useState(false);
+  const imagenPrincipalRef = useRef<HTMLInputElement>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [errorApi, setErrorApi] = useState('');
 
   const [precioBase, setPrecioBase] = useState(0);
-  const [stockMinimo, setStockMinimo] = useState(5);
   const [publicado, setPublicado] = useState(true);
 
   const [tallas, setTallas] = useState<string[]>([]);
@@ -122,30 +121,47 @@ export default function NuevoProductoPage() {
   const [submitted, setSubmitted] = useState(false);
 
   const navigate = useNavigate();
-  const tiposDisponibles = categoria ? TIPOS_POR_CATEGORIA[categoria] ?? [] : [];
+
+  useEffect(() => {
+    listarCategorias().then(setCategorias).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (idCategoria !== '') {
+      listarTiposPorCategoria(idCategoria as number).then(setTipos).catch(console.error);
+    } else {
+      setTipos([]);
+      setIdTipoProducto('');
+    }
+  }, [idCategoria]);
+
   const totalStock = variantes.reduce((sum, v) => sum + v.stock, 0);
   const puedeGenerar = tallas.length > 0 && colores.length > 0;
 
   const errores = {
     nombreProducto: !nombreProducto.trim() ? 'El nombre es obligatorio' : '',
     descripcion: !descripcion.trim() ? 'La descripción es obligatoria' : '',
-    categoria: !categoria ? 'Selecciona una categoría' : '',
-    tipoProducto: !tipoProducto ? 'Selecciona un tipo de producto' : '',
+    categoria: idCategoria === '' ? 'Selecciona una categoría' : '',
+    tipoProducto: idTipoProducto === '' ? 'Selecciona un tipo de producto' : '',
     precioBase: precioBase <= 0 ? 'El precio debe ser mayor a 0' : '',
-    tipoEntrega: !envioADomicilio && !retiroEnTienda ? 'Selecciona al menos un tipo de entrega' : '',
     variantes: variantes.length === 0 ? 'Debes generar al menos una variante' : '',
   };
   const hayErrores = Object.values(errores).some(Boolean);
 
   const handleCategoriaChange = (val: string) => {
-    setCategoria(val);
-    setTipoProducto('');
-    setSkuInterno(val ? generarSKUBase(val, '', correlativo) : '');
+    const id = val === '' ? '' : Number(val);
+    setIdCategoria(id as number | '');
+    setIdTipoProducto('');
+    const cat = categorias.find((c) => c.idCategoria === Number(val));
+    setSkuInterno(cat ? generarSKUBase(cat.nombre, '', correlativo) : '');
   };
 
   const handleTipoChange = (val: string) => {
-    setTipoProducto(val);
-    setSkuInterno(generarSKUBase(categoria, val, correlativo));
+    const id = val === '' ? '' : Number(val);
+    setIdTipoProducto(id as number | '');
+    const cat = categorias.find((c) => c.idCategoria === idCategoria);
+    const tipo = tipos.find((t) => t.idTipoProducto === Number(val));
+    if (cat && tipo) setSkuInterno(generarSKUBase(cat.nombre, tipo.nombre, correlativo));
   };
 
   const agregarTalla = () => {
@@ -177,6 +193,7 @@ export default function NuevoProductoPage() {
           colorHex: color.hex,
           precioBase,
           stock: 0,
+          stockMinimo: 5,
           activo: true,
           imagenes: [],
         });
@@ -194,20 +211,43 @@ export default function NuevoProductoPage() {
   const updateVarianteStock = (id: number, stock: number) =>
     setVariantes((p) => p.map((v) => (v.id === id ? { ...v, stock } : v)));
 
+  const updateVarianteStockMinimo = (id: number, stockMinimo: number) =>
+    setVariantes((p) => p.map((v) => (v.id === id ? { ...v, stockMinimo } : v)));
+
   const eliminarVariante = (id: number) =>
     setVariantes((p) => p.filter((v) => v.id !== id));
+
+  const handleImagenPrincipalChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSubiendoImagenPrincipal(true);
+    try {
+      const url = await subirImagenS3(file);
+      setImagenPrincipalUrl(url);
+    } catch {
+      setErrorApi('No se pudo subir la imagen principal. Intenta de nuevo.');
+    } finally {
+      setSubiendoImagenPrincipal(false);
+      e.target.value = '';
+    }
+  };
 
   const handleClickAgregarImagen = (varianteId: number) => {
     setActiveVarianteId(varianteId);
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || activeVarianteId === null) return;
-    const nuevas = Array.from(e.target.files).map((f) => URL.createObjectURL(f));
-    setVariantes((p) =>
-      p.map((v) => (v.id === activeVarianteId ? { ...v, imagenes: [...v.imagenes, ...nuevas] } : v))
-    );
+    const files = Array.from(e.target.files);
+    try {
+      const urls = await Promise.all(files.map((f) => subirImagenS3(f)));
+      setVariantes((p) =>
+        p.map((v) => (v.id === activeVarianteId ? { ...v, imagenes: [...v.imagenes, ...urls] } : v))
+      );
+    } catch {
+      setErrorApi('No se pudo subir alguna imagen. Intenta de nuevo.');
+    }
     e.target.value = '';
   };
 
@@ -216,7 +256,6 @@ export default function NuevoProductoPage() {
       p.map((v) => {
         if (v.id !== varianteId) return v;
         const copia = [...v.imagenes];
-        URL.revokeObjectURL(copia[index]);
         copia.splice(index, 1);
         return { ...v, imagenes: copia };
       })
@@ -236,10 +275,48 @@ export default function NuevoProductoPage() {
   const eliminarEspecificacion = (id: number) =>
     setEspecificaciones((p) => p.filter((e) => e.id !== id));
 
-  const handlePublicar = () => {
+  const handlePublicar = async () => {
     setSubmitted(true);
     if (hayErrores) return;
-    // TODO: integrar catalogoService.crearProducto() - Kevin
+    setEnviando(true);
+    setErrorApi('');
+    try {
+      const producto = await crearProducto({
+        nombre: nombreProducto,
+        descripcion,
+        precioBase,
+        esPersonalizable: false,
+        idCategoria: idCategoria as number,
+        idTipoProducto: idTipoProducto as number,
+        imagenes: imagenPrincipalUrl ? [{ url: imagenPrincipalUrl, esPrincipal: true }] : [],
+      });
+      const idProducto = Number(producto.id);
+
+      await Promise.all(
+        variantes.map(async (v) => {
+          const [idTalla, idColor] = await Promise.all([
+            resolverTalla(v.talla),
+            resolverColor(v.colorNombre, v.colorHex),
+          ]);
+          await crearVariante({
+            sku: skuInterno ? generarSKUVariante(skuInterno, v.talla, v.colorNombre) : v.talla + '-' + v.colorNombre,
+            stock: v.stock,
+            minimoStock: v.stockMinimo,
+            precioAjustado: v.precioBase,
+            disponible: v.activo,
+            producto: { idProducto },
+            color: { idColor },
+            talla: { idTalla },
+          });
+        })
+      );
+
+      navigate(RUTAS.COMERCIANTE_CATALOGO);
+    } catch (err: any) {
+      setErrorApi(err.response?.data?.mensaje ?? 'Error al publicar el producto');
+    } finally {
+      setEnviando(false);
+    }
   };
 
   const labelClass = 'block text-[11px] font-semibold text-gray-600 uppercase tracking-[0.4px] mb-1.5';
@@ -259,6 +336,13 @@ export default function NuevoProductoPage() {
     <div className="flex min-h-screen">
       <ComercianteSidebar />
 
+      <input
+        ref={imagenPrincipalRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleImagenPrincipalChange}
+      />
       <input
         ref={fileInputRef}
         type="file"
@@ -322,9 +406,9 @@ export default function NuevoProductoPage() {
                 <label className={labelClass}>
                   Categoría <span className="text-red-500 normal-case font-normal">*</span>
                 </label>
-                <select className={fc('categoria')} value={categoria} onChange={(e) => handleCategoriaChange(e.target.value)}>
+                <select className={fc('categoria')} value={idCategoria} onChange={(e) => handleCategoriaChange(e.target.value)}>
                   <option value="">Seleccionar</option>
-                  {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
+                  {categorias.map((c) => <option key={c.idCategoria} value={c.idCategoria}>{c.nombre}</option>)}
                 </select>
                 {errMsg('categoria')}
               </div>
@@ -332,56 +416,40 @@ export default function NuevoProductoPage() {
                 <label className={labelClass}>
                   Tipo de Producto <span className="text-red-500 normal-case font-normal">*</span>
                 </label>
-                <select className={fc('tipoProducto')} value={tipoProducto} onChange={(e) => handleTipoChange(e.target.value)} disabled={!categoria}>
-                  <option value="">{categoria ? 'Seleccionar' : 'Elige categoría primero'}</option>
-                  {tiposDisponibles.map((t) => <option key={t} value={t}>{t}</option>)}
+                <select className={fc('tipoProducto')} value={idTipoProducto} onChange={(e) => handleTipoChange(e.target.value)} disabled={idCategoria === ''}>
+                  <option value="">{idCategoria !== '' ? 'Seleccionar' : 'Elige categoría primero'}</option>
+                  {tipos.map((t) => <option key={t.idTipoProducto} value={t.idTipoProducto}>{t.nombre}</option>)}
                 </select>
                 {errMsg('tipoProducto')}
               </div>
             </div>
 
             <div className="mb-4">
-              <label className={labelClass}>SKU Interno</label>
-              <input
-                type="text"
-                readOnly
-                className={`w-full h-[42px] border rounded-lg px-3.5 text-[13px] font-mono cursor-default select-all transition-colors ${
-                  skuInterno ? 'border-gray-200 text-gray-500 bg-gray-50' : 'border-gray-200 text-gray-400 bg-gray-50'
-                }`}
-                value={skuInterno || 'Se genera al elegir categoría y tipo'}
-              />
-              <p className="text-[11px] text-gray-400 mt-1">Autogenerado: categoría · tipo · correlativo · GEN</p>
+              <label className={labelClass}>Imagen principal</label>
+              {imagenPrincipalUrl && (
+                <div className="relative w-full rounded-lg overflow-hidden border border-gray-200 mb-2" style={{ aspectRatio: '16/9' }}>
+                  <img src={imagenPrincipalUrl} className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setImagenPrincipalUrl('')}
+                    className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                  >
+                    <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  </button>
+                </div>
+              )}
+              <button
+                type="button"
+                disabled={subiendoImagenPrincipal}
+                onClick={() => imagenPrincipalRef.current?.click()}
+                className="w-full h-10 border-2 border-dashed border-gray-300 rounded-lg text-[13px] text-gray-500 hover:border-primario hover:text-primario transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                {subiendoImagenPrincipal ? 'Subiendo...' : imagenPrincipalUrl ? 'Cambiar imagen' : 'Seleccionar imagen'}
+              </button>
+              <p className="text-[11px] text-gray-400 mt-1">Opcional. Se sube a S3 automáticamente.</p>
             </div>
 
-            <div className="mb-4">
-              <label className={labelClass}>
-                Tipo de Entrega <span className="text-red-500 normal-case font-normal">*</span>
-              </label>
-              <div className="flex gap-3">
-                {[
-                  { label: 'Envío a domicilio', val: envioADomicilio, toggle: () => setEnvioADomicilio((v) => !v) },
-                  { label: 'Retiro en tienda', val: retiroEnTienda, toggle: () => setRetiroEnTienda((v) => !v) },
-                ].map(({ label, val, toggle }) => (
-                  <button
-                    key={label}
-                    onClick={toggle}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border-[1.5px] text-[13px] font-medium transition-colors ${
-                      val ? 'border-primario bg-primario-claro text-primario' : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
-                    }`}
-                  >
-                    <span className={`w-4 h-4 rounded border-[1.5px] flex items-center justify-center flex-shrink-0 transition-colors ${val ? 'border-primario bg-primario' : 'border-gray-400 bg-white'}`}>
-                      {val && (
-                        <svg width={9} height={9} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3.5}>
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      )}
-                    </span>
-                    {label}
-                  </button>
-                ))}
-              </div>
-              {errMsg('tipoEntrega')}
-            </div>
           </div>
 
           {/* Right: seller card */}
@@ -419,22 +487,6 @@ export default function NuevoProductoPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
-              <div>
-                <p className="text-[12px] font-semibold text-gray-900">Alerta de stock bajo</p>
-                <p className="text-[11px] text-gray-500">Notificar al llegar a</p>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="number"
-                  min={0}
-                  className="w-14 h-9 border border-gray-300 rounded-lg px-2 text-[13px] text-gray-900 text-center focus:border-primario focus:outline-none"
-                  value={stockMinimo}
-                  onChange={(e) => setStockMinimo(Number(e.target.value))}
-                />
-                <span className="text-[11px] text-gray-500">uds.</span>
-              </div>
-            </div>
 
             <div className="flex items-center justify-between mb-5">
               <div>
@@ -444,11 +496,15 @@ export default function NuevoProductoPage() {
               <Toggle on={publicado} onClick={() => setPublicado((v) => !v)} />
             </div>
 
+            {errorApi && (
+              <p className="text-[11px] text-red-500 mb-2 text-center">{errorApi}</p>
+            )}
             <button
-              className="w-full h-[42px] bg-primario text-white rounded-lg text-[13px] font-semibold hover:bg-primario-hover transition-colors"
+              className="w-full h-[42px] bg-primario text-white rounded-lg text-[13px] font-semibold hover:bg-primario-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handlePublicar}
+              disabled={enviando}
             >
-              Publicar Producto
+              {enviando ? 'Publicando...' : 'Publicar Producto'}
             </button>
           </div>
         </div>
@@ -564,11 +620,11 @@ export default function NuevoProductoPage() {
               <table className="w-full border-collapse">
                 <thead>
                   <tr>
-                    {['Variante', 'SKU', 'Precio Base', 'Stock', 'Imágenes', 'Estado', ''].map((col, i) => (
+                    {['Variante', 'SKU', 'Precio Base', 'Stock', 'Stock Mín.', 'Imágenes', 'Estado', ''].map((col, i) => (
                       <th
                         key={i}
                         className={`text-left text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] px-3 py-2 bg-gray-100 border-b border-gray-200 whitespace-nowrap ${
-                          i === 0 ? 'rounded-tl' : i === 6 ? 'rounded-tr w-8' : ''
+                          i === 0 ? 'rounded-tl' : i === 7 ? 'rounded-tr w-8' : ''
                         }`}
                       >
                         {col}
@@ -604,6 +660,15 @@ export default function NuevoProductoPage() {
                             className="w-20 h-[34px] border border-gray-300 rounded px-2.5 text-[13px] text-gray-900 bg-white focus:border-primario focus:outline-none"
                             value={v.stock}
                             onChange={(e) => updateVarianteStock(v.id, Number(e.target.value))}
+                          />
+                        </td>
+                        <td className="px-3 py-3 border-b border-gray-100 align-middle">
+                          <input
+                            type="number"
+                            min={0}
+                            className="w-20 h-[34px] border border-gray-300 rounded px-2.5 text-[13px] text-gray-900 bg-white focus:border-primario focus:outline-none"
+                            value={v.stockMinimo}
+                            onChange={(e) => updateVarianteStockMinimo(v.id, Number(e.target.value))}
                           />
                         </td>
                         <td className="px-3 py-3 border-b border-gray-100 align-middle">

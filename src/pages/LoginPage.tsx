@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import MaterialIcon from '../components/MaterialIcon';
 import LogoGamarra from '../components/LogoGamarra';
 import InputTexto from '../components/InputTexto';
@@ -7,11 +8,10 @@ import BotonPrimario from '../components/BotonPrimario';
 import BotonGoogle from '../components/BotonGoogle';
 import useLogin from '../hooks/useLogin';
 import { RUTAS } from '../constants/rutas';
+import { API_BASE_URL } from '../constants';
 import { ILoginRequest } from '../types/IAuth';
 import { COLORES } from '../styles/tokens';
 import { useGoogleLogin } from '@react-oauth/google';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 
 const LoginPage = () => {
   const [form, setForm] = useState<ILoginRequest>({ email: '', contrasenha: '' });
@@ -21,16 +21,16 @@ const LoginPage = () => {
   const [showGoogleRegister, setShowGoogleRegister] = useState(false);
   const [emailGoogle, setEmailGoogle] = useState("");
   const [estadoModal, setEstadoModal] = useState<'PENDIENTE' | 'RECHAZADO' | null>(null);
+
   // GOOGLE LOGIN
   const loginGoogle = useGoogleLogin({
     flow: 'implicit',
-
     onSuccess: async (tokenResponse) => {
       try {
         console.log("GOOGLE TOKEN: ", tokenResponse);
 
         const response = await axios.post(
-          "http://localhost:8080/api/v1/auth/google",
+          `${API_BASE_URL}/auth/google`,
           { accessToken: tokenResponse.access_token }
         );
         console.log("RESPUESTA BACKEND:", response.data);
@@ -38,8 +38,8 @@ const LoginPage = () => {
         if (response.data.needsRegistration) {
           console.log("Usuario no registrado, redirigiendo a registro con email:", response.data.email);
           navigate(RUTAS.REGISTRO, {
-          state: {
-            email: response.data.email
+            state: {
+              email: response.data.email
             }
           });
           return;
@@ -56,13 +56,21 @@ const LoginPage = () => {
 
         // Acceso normal
         localStorage.setItem("token", response.data.token);
-        localStorage.setItem("nombreUsuario", response.data.nombres);
-        window.location.href = "/home";
-      }catch (error) {
+        localStorage.setItem("nombreUsuario", response.data.nombres || response.data.email);
+        
+        // Redirigir según el rol
+        const rol = response.data.rol;
+        if (rol === 'ADMIN') {
+          navigate(RUTAS.ADMIN_DASHBOARD);
+        } else if (rol === 'VENDEDOR' || rol === 'COMERCIANTE') {
+          navigate(RUTAS.COMERCIANTE_DASHBOARD);
+        } else {
+          navigate(RUTAS.INICIO);
+        }
+      } catch (error) {
         console.error("ERROR COMPLETO:", error);
       }
     },
-
     onError: () => {
       console.log('Google Login Failed');
     },

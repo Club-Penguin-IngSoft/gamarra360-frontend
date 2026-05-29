@@ -5,7 +5,7 @@
 
 import type { ITienda } from '../types/ITienda';
 import type { IFiltrosTiendas } from '../types/IFiltro';
-// import apiClient from './apiClient';
+import apiClient from './apiClient';
 
 const MOCK_TIENDAS: ITienda[] = [
   {
@@ -248,4 +248,15 @@ export async function obtenerTienda(id: string): Promise<ITienda> {
   const t = MOCK_TIENDAS.find((x) => x.id === id);
   if (!t) throw new Error(`Tienda ${id} no encontrada`);
   return Promise.resolve(t);
+}
+
+export interface IMiTiendaResumen {
+  idTienda: number;
+  nombreComercial: string;
+  ruc: string;
+}
+
+export async function obtenerMiTienda(): Promise<IMiTiendaResumen> {
+  const { data } = await apiClient.get<IMiTiendaResumen>('/tiendas/mi-tienda');
+  return data;
 }

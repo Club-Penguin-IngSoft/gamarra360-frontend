@@ -21,8 +21,11 @@ interface IProductoBackend {
   activo: boolean;
   idTienda?: number;
   nombreTienda?: string;
-  categorias: { idCategoria: number; nombre: string }[];
-  imagenes: { idImagen: number; url: string; esPrincipal: boolean }[];
+  idCategoria?: number;
+  nombreCategoria?: string;
+  idTipoProducto?: number;
+  nombreTipoProducto?: string;
+  imagenes: { idImagen: number; url: string; esPrincipal: boolean }[] | null;
   variantes: {
     idVariante: number;
     sku?: string;
@@ -31,7 +34,67 @@ interface IProductoBackend {
     disponible?: boolean;
     idTalla?: number;
     idColor?: number;
-  }[];
+  }[] | null;
+}
+
+export interface ICategoriaOpcion {
+  idCategoria: number;
+  nombre: string;
+}
+
+export interface ITipoProductoOpcion {
+  idTipoProducto: number;
+  nombre: string;
+  idCategoria: number;
+}
+
+export interface IProductoPayload {
+  nombre: string;
+  descripcion: string;
+  precioBase: number;
+  esPersonalizable: boolean;
+  idCategoria: number;
+  idTipoProducto: number;
+  imagenes: { url: string; esPrincipal: boolean }[];
+}
+
+export interface IVariantePayload {
+  sku: string;
+  stock: number;
+  minimoStock: number;
+  precioAjustado: number;
+  disponible: boolean;
+  producto: { idProducto: number };
+  color: { idColor: number };
+  talla: { idTalla: number };
+}
+
+/** Busca una talla por nombre; si no existe la crea. Devuelve el idTalla. */
+export async function resolverTalla(nombre: string): Promise<number> {
+  const { data: tallas } = await apiClient.get<{ idTalla: number; talla: string }[]>('/tallas');
+  const existe = tallas.find((t) => t.talla.toUpperCase() === nombre.toUpperCase());
+  if (existe) return existe.idTalla;
+  const { data } = await apiClient.post<{ idTalla: number }>('/tallas', { talla: nombre, activo: true });
+  return data.idTalla;
+}
+
+/** Busca un color por nombre; si no existe lo crea. Devuelve el idColor. */
+export async function resolverColor(nombre: string, hex: string): Promise<number> {
+  const { data: colores } = await apiClient.get<{ idColor: number; nombre: string }[]>('/colores');
+  const existe = colores.find((c) => c.nombre.toUpperCase() === nombre.toUpperCase());
+  if (existe) return existe.idColor;
+  const { data } = await apiClient.post<{ idColor: number }>('/colores', { nombre, codHex: hex, activo: true });
+  return data.idColor;
+}
+
+/** Crea una variante en el backend. */
+export async function crearVariante(payload: IVariantePayload): Promise<void> {
+  await apiClient.post('/variantes-producto', payload);
+}
+
+/** Actualiza una variante existente en el backend. */
+export async function actualizarVariante(idVariante: number, payload: Partial<IVariantePayload>): Promise<void> {
+  await apiClient.put(`/variantes-producto/${idVariante}`, payload);
 }
 
 /** El backend SIEMPRE devuelve esta estructura — validado en Postman */
@@ -83,12 +146,12 @@ function derivarTipoServicio(p: IProductoBackend): TipoServicio {
 function adaptarProducto(p: IProductoBackend): IProducto {
   const tipoServicio = derivarTipoServicio(p);
 
-  const urlsImagenes = [...p.imagenes]
+  const urlsImagenes = [...(p.imagenes ?? [])]
     .sort((a, b) => (b.esPrincipal ? 1 : 0) - (a.esPrincipal ? 1 : 0))
     .map((i) => i.url)
     .filter(Boolean);
 
-  const variantes: IVarianteProducto[] = p.variantes.map((v) => ({
+  const variantes: IVarianteProducto[] = (p.variantes ?? []).map((v) => ({
     id: String(v.idVariante),
     stock: v.stock ?? 0,
   }));
@@ -100,9 +163,7 @@ function adaptarProducto(p: IProductoBackend): IProducto {
     idComerciante: String(p.idTienda ?? ''),
     nombreTienda: p.nombreTienda ?? '',
     imagenes: urlsImagenes,
-    categoria: p.categorias.length > 0
-      ? mapearCategoria(p.categorias[0].nombre)
-      : 'HOMBRE',
+    categoria: p.nombreCategoria ? mapearCategoria(p.nombreCategoria) : 'HOMBRE',
     tipoServicio,
     precioBase: p.precioBase ?? undefined,
     precioFinal: p.precioBase ?? undefined,
@@ -167,4 +228,45 @@ export async function listarProductosDeTienda(
 /** Convierte TipoServicio a etiqueta visible en la UI. */
 export function etiquetaDeProducto(producto: IProducto): EtiquetaProducto {
   return ETIQUETA_POR_TIPO_SERVICIO[producto.tipoServicio];
+}
+
+/** Devuelve las categorías disponibles para los selects del formulario. */
+export async function listarCategorias(): Promise<ICategoriaOpcion[]> {
+  const { data } = await apiClient.get<{ idCategoria: number; nombreCategoria: string }[]>('/categorias');
+  return data.map((c) => ({ idCategoria: c.idCategoria, nombre: c.nombreCategoria }));
+}
+
+/** Devuelve los tipos de producto de una categoría para el select dependiente. */
+export async function listarTiposPorCategoria(idCategoria: number): Promise<ITipoProductoOpcion[]> {
+  const { data } = await apiClient.get<ITipoProductoOpcion[]>('/tipos-producto', {
+    params: { categoriaId: idCategoria },
+  });
+  return data;
+}
+
+/** Crea un producto en la tienda del comerciante autenticado (POST /productos). */
+export async function crearProducto(payload: IProductoPayload): Promise<IProducto> {
+  const { data } = await apiClient.post<IProductoBackend>('/productos', payload);
+  return adaptarProducto(data);
+}
+
+/** Actualiza un producto existente (PUT /productos/{id}). */
+export async function actualizarProducto(id: string, payload: IProductoPayload): Promise<IProducto> {
+  const { data } = await apiClient.put<IProductoBackend>(`/productos/${id}`, payload);
+  return adaptarProducto(data);
+}
+
+/** Eliminación lógica de un producto (DELETE /productos/{id}). */
+export async function eliminarProducto(id: string): Promise<void> {
+  await apiClient.delete(`/productos/${id}`);
+}
+
+/** Sube un archivo de imagen a S3 y devuelve la URL pública. */
+export async function subirImagenS3(file: File): Promise<string> {
+  const form = new FormData();
+  form.append('archivo', file);
+  const { data } = await apiClient.post<{ url: string }>('/s3/upload', form, {
+    headers: { 'Content-Type': undefined },
+  });
+  return data.url;
 }
