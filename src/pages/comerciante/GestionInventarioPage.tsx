@@ -7,7 +7,6 @@ interface IProductoFila {
   idProducto: number;
   nombre: string;
   categoria: string;
-  sku: string;
   precioBase: number;
   unidades: number;
   ganancias: number;
@@ -15,10 +14,10 @@ interface IProductoFila {
 }
 
 const MOCK_PRODUCTOS: IProductoFila[] = [
-  { idProducto: 1, nombre: 'Camisa Oxford Dominic', categoria: 'Camisas', sku: 'CAM-001', precioBase: 150, unidades: 84, ganancias: 12600, estado: 'PUBLICADO' },
-  { idProducto: 2, nombre: 'Polo Oversize Blanco', categoria: 'Polos', sku: 'POL-002', precioBase: 74, unidades: 120, ganancias: 8880, estado: 'PUBLICADO' },
-  { idProducto: 3, nombre: 'Pantalón Slim Fit Perry', categoria: 'Pantalones', sku: 'PAN-003', precioBase: 159, unidades: 3, ganancias: 477, estado: 'POCA_EXISTENCIA' },
-  { idProducto: 4, nombre: 'Macilla Cuero Buesco', categoria: 'Accesorios', sku: 'ACC-004', precioBase: 243, unidades: 0, ganancias: 0, estado: 'AGOTADO' },
+  { idProducto: 1, nombre: 'Camisa Oxford Dominic', categoria: 'Camisas', precioBase: 150, unidades: 84, ganancias: 12600, estado: 'PUBLICADO' },
+  { idProducto: 2, nombre: 'Polo Oversize Blanco', categoria: 'Polos', precioBase: 74, unidades: 120, ganancias: 8880, estado: 'PUBLICADO' },
+  { idProducto: 3, nombre: 'Pantalón Slim Fit Perry', categoria: 'Pantalones', precioBase: 159, unidades: 3, ganancias: 477, estado: 'POCA_EXISTENCIA' },
+  { idProducto: 4, nombre: 'Macilla Cuero Buesco', categoria: 'Accesorios', precioBase: 243, unidades: 0, ganancias: 0, estado: 'AGOTADO' },
 ];
 
 const estadoLabel: Record<string, string> = {
@@ -197,7 +196,7 @@ export default function GestionInventarioPage() {
                       <div className="w-11 h-11 rounded-lg bg-gray-200 flex-shrink-0" />
                       <div>
                         <span className="block text-[13px] font-semibold text-gray-900 mb-0.5">{p.nombre}</span>
-                        <span className="text-[11px] text-gray-500">{p.categoria} · {p.sku}</span>
+                        <span className="text-[11px] text-gray-500">{p.categoria}</span>
                       </div>
                     </div>
                   </td>

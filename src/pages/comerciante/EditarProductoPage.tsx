@@ -49,6 +49,7 @@ interface IVarianteEditable {
   colorHex: string;
   precioBase: number;
   stock: number;
+  stockMinimo: number;
   activo: boolean;
   imagenes: string[];
 }
@@ -60,9 +61,9 @@ interface IEspecificacion {
 }
 
 const MOCK_VARIANTES: IVarianteEditable[] = [
-  { id: 1, talla: 'M', colorNombre: 'Negro', colorHex: '#1a1a1a', precioBase: 249.90, stock: 40, activo: true, imagenes: [] },
-  { id: 2, talla: 'S', colorNombre: 'Blanco', colorHex: '#f5f5f5', precioBase: 249.90, stock: 62, activo: true, imagenes: [] },
-  { id: 3, talla: 'L', colorNombre: 'Blanco', colorHex: '#f5f5f5', precioBase: 249.90, stock: 55, activo: false, imagenes: [] },
+  { id: 1, talla: 'M', colorNombre: 'Negro', colorHex: '#1a1a1a', precioBase: 249.90, stock: 40, stockMinimo: 5, activo: true, imagenes: [] },
+  { id: 2, talla: 'S', colorNombre: 'Blanco', colorHex: '#f5f5f5', precioBase: 249.90, stock: 62, stockMinimo: 5, activo: true, imagenes: [] },
+  { id: 3, talla: 'L', colorNombre: 'Blanco', colorHex: '#f5f5f5', precioBase: 249.90, stock: 55, stockMinimo: 5, activo: false, imagenes: [] },
 ];
 
 const MAX_IMG_VISIBLES = 3;
@@ -103,11 +104,8 @@ export default function EditarProductoPage() {
   const [tipoProducto, setTipoProducto] = useState('');
   const [correlativo] = useState(1);
   const [skuInterno, setSkuInterno] = useState('GEN-PRD-001-GEN');
-  const [envioADomicilio, setEnvioADomicilio] = useState(false);
-  const [retiroEnTienda, setRetiroEnTienda] = useState(false);
 
   const [precioBase, setPrecioBase] = useState(249.90);
-  const [stockMinimo, setStockMinimo] = useState(5);
   const [publicado, setPublicado] = useState(true);
 
   const [tallas, setTallas] = useState<string[]>(['S', 'M', 'L']);
@@ -143,7 +141,6 @@ export default function EditarProductoPage() {
     categoria: !categoria ? 'Selecciona una categoría' : '',
     tipoProducto: !tipoProducto ? 'Selecciona un tipo de producto' : '',
     precioBase: precioBase <= 0 ? 'El precio debe ser mayor a 0' : '',
-    tipoEntrega: !envioADomicilio && !retiroEnTienda ? 'Selecciona al menos un tipo de entrega' : '',
     variantes: variantes.length === 0 ? 'Debe haber al menos una variante' : '',
   };
   const hayErrores = Object.values(errores).some(Boolean);
@@ -184,6 +181,9 @@ export default function EditarProductoPage() {
 
   const updateVarianteStock = (id: number, stock: number) =>
     setVariantes((p) => p.map((v) => (v.id === id ? { ...v, stock } : v)));
+
+  const updateVarianteStockMinimo = (id: number, stockMinimo: number) =>
+    setVariantes((p) => p.map((v) => (v.id === id ? { ...v, stockMinimo } : v)));
 
   const handleClickAgregarImagen = (varianteId: number) => {
     setActiveVarianteId(varianteId);
@@ -328,46 +328,7 @@ export default function EditarProductoPage() {
               </div>
             </div>
 
-            <div className="mb-4">
-              <label className={labelClass}>SKU Interno</label>
-              <input
-                type="text"
-                readOnly
-                className="w-full h-[42px] border border-gray-200 rounded-lg px-3.5 text-[13px] font-mono text-gray-500 bg-gray-50 cursor-default select-all"
-                value={skuInterno}
-              />
-              <p className="text-[11px] text-gray-400 mt-1">Autogenerado: categoría · tipo · correlativo · GEN</p>
-            </div>
 
-            <div className="mb-4">
-              <label className={labelClass}>
-                Tipo de Entrega <span className="text-red-500 normal-case font-normal">*</span>
-              </label>
-              <div className="flex gap-3">
-                {[
-                  { label: 'Envío a domicilio', val: envioADomicilio, toggle: () => setEnvioADomicilio((v) => !v) },
-                  { label: 'Retiro en tienda', val: retiroEnTienda, toggle: () => setRetiroEnTienda((v) => !v) },
-                ].map(({ label, val, toggle }) => (
-                  <button
-                    key={label}
-                    onClick={toggle}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border-[1.5px] text-[13px] font-medium transition-colors ${
-                      val ? 'border-primario bg-primario-claro text-primario' : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
-                    }`}
-                  >
-                    <span className={`w-4 h-4 rounded border-[1.5px] flex items-center justify-center flex-shrink-0 transition-colors ${val ? 'border-primario bg-primario' : 'border-gray-400 bg-white'}`}>
-                      {val && (
-                        <svg width={9} height={9} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3.5}>
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      )}
-                    </span>
-                    {label}
-                  </button>
-                ))}
-              </div>
-              {errMsg('tipoEntrega')}
-            </div>
           </div>
 
           {/* Right: seller card */}
@@ -406,23 +367,6 @@ export default function EditarProductoPage() {
               </div>
             </div>
 
-            {/* Alerta de stock */}
-            <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
-              <div>
-                <p className="text-[12px] font-semibold text-gray-900">Alerta de stock bajo</p>
-                <p className="text-[11px] text-gray-500">Notificar al llegar a</p>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="number"
-                  min={0}
-                  className="w-14 h-9 border border-gray-300 rounded-lg px-2 text-[13px] text-gray-900 text-center focus:border-primario focus:outline-none"
-                  value={stockMinimo}
-                  onChange={(e) => setStockMinimo(Number(e.target.value))}
-                />
-                <span className="text-[11px] text-gray-500">uds.</span>
-              </div>
-            </div>
 
             {/* Publicado */}
             <div className="flex items-center justify-between mb-5">
@@ -537,11 +481,11 @@ export default function EditarProductoPage() {
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  {['Variante', 'SKU', 'Precio Base', 'Stock', 'Imágenes', 'Estado'].map((col, i) => (
+                  {['Variante', 'SKU', 'Precio Base', 'Stock', 'Stock Mín.', 'Imágenes', 'Estado'].map((col, i) => (
                     <th
                       key={col}
                       className={`text-left text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] px-3 py-2 bg-gray-100 border-b border-gray-200 whitespace-nowrap ${
-                        i === 0 ? 'rounded-tl' : i === 5 ? 'rounded-tr' : ''
+                        i === 0 ? 'rounded-tl' : i === 6 ? 'rounded-tr' : ''
                       }`}
                     >
                       {col}
@@ -577,6 +521,15 @@ export default function EditarProductoPage() {
                           className="w-20 h-[34px] border border-gray-300 rounded px-2.5 text-[13px] text-gray-900 bg-white focus:border-primario focus:outline-none"
                           value={v.stock}
                           onChange={(e) => updateVarianteStock(v.id, Number(e.target.value))}
+                        />
+                      </td>
+                      <td className="px-3 py-3 border-b border-gray-100 align-middle">
+                        <input
+                          type="number"
+                          min={0}
+                          className="w-20 h-[34px] border border-gray-300 rounded px-2.5 text-[13px] text-gray-900 bg-white focus:border-primario focus:outline-none"
+                          value={v.stockMinimo}
+                          onChange={(e) => updateVarianteStockMinimo(v.id, Number(e.target.value))}
                         />
                       </td>
                       <td className="px-3 py-3 border-b border-gray-100 align-middle">

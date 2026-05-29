@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ComercianteSidebar from '../../components/ComercianteSidebar';
 import ReabastecimientoModal from '../../components/ReabastecimientoModal';
 import { RUTAS } from '../../constants/rutas';
+import { obtenerMiTienda } from '../../services/tiendaService';
 
 const MOCK_PEDIDOS = [
   { id: 'A-1021', producto: 'Camisa Oxford Slim', sku: 'S / Negro', precio: 'S/ 320.00', estado: 'ENTREGADO' },
@@ -51,7 +52,14 @@ const estadoLabel: Record<string, string> = {
 export default function DashboardPage() {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [productoModal, setProductoModal] = useState('');
+  const [nombreTienda, setNombreTienda] = useState('');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    obtenerMiTienda()
+      .then((tienda) => setNombreTienda(tienda.nombreComercial))
+      .catch(() => {});
+  }, []);
 
   const handleAbrirModal = (nombre: string) => {
     setProductoModal(nombre);
@@ -67,7 +75,7 @@ export default function DashboardPage() {
         <div className="flex items-start justify-between mb-7">
           <div>
             <h1 className="text-[22px] font-bold text-gray-900 mb-1">Panel de Control</h1>
-            <p className="text-[13px] text-gray-500">Bienvenido de vuelta, Nombre Apellido S.A.C.</p>
+            <p className="text-[13px] text-gray-500">Bienvenido de vuelta, {nombreTienda}</p>
           </div>
           <button
             className="flex items-center gap-1.5 px-[18px] py-2.5 bg-primario text-white rounded-lg text-[13px] font-semibold hover:bg-primario-hover transition-colors whitespace-nowrap"
