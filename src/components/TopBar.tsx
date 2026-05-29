@@ -98,6 +98,12 @@ export default function TopBar({
     }
   }
 
+  const cerrarSesion = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('nombreUsuario');
+    window.location.href = '/';
+  };
+
   return (
     <header className="sticky top-0 z-40 h-20 border-b border-ink-200 bg-white">
       <div className="flex h-full items-center justify-between px-4">
