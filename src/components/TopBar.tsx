@@ -248,11 +248,7 @@ export default function TopBar({
             {/* Cerrar sesión */}
             {token && (
               <button
-                onClick={() => {
-                  localStorage.removeItem('token');
-                  localStorage.removeItem('nombreUsuario');
-                  window.location.href = '/';
-                }}
+                onClick={cerrarSesion}
                 aria-label="Cerrar sesión"
                 className="inline-flex items-center justify-center transition-opacity hover:opacity-80"
               >
