@@ -10,49 +10,17 @@ import { RUTAS } from '../constants/rutas';
 import { ILoginRequest } from '../types/IAuth';
 import { COLORES } from '../styles/tokens';
 import { useGoogleLogin } from '@react-oauth/google';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 
 const LoginPage = () => {
   const [form, setForm] = useState<ILoginRequest>({ email: '', contrasenha: '' });
   const [mostrarPassword, setMostrarPassword] = useState(false);
-  const navigate = useNavigate();
-  const { iniciarSesion, cargando, error } = useLogin();
-  const [showGoogleRegister, setShowGoogleRegister] = useState(false);
-  const [emailGoogle, setEmailGoogle] = useState("");
-  // GOOGLE LOGIN
+  const { iniciarSesion, loginConGoogle, cargando, error } = useLogin();
+
   const loginGoogle = useGoogleLogin({
     flow: 'implicit',
-
     onSuccess: async (tokenResponse) => {
-      try {
-        console.log("GOOGLE TOKEN: ", tokenResponse);
-
-        const response = await axios.post(
-          "http://localhost:8080/api/v1/auth/google",
-          { accessToken: tokenResponse.access_token }
-        );
-        console.log("RESPUESTA BACKEND:", response.data);
-        //usuario no existe
-        if (response.data.needsRegistration) {
-          console.log("Usuario no registrado, redirigiendo a registro con email:", response.data.email);
-          navigate(RUTAS.REGISTRO, {
-          state: {
-            email: response.data.email
-            }
-          });
-          return;
-        }
-        //usuario existe
-        localStorage.setItem("token", response.data.token);
-        localStorage.setItem("nombreUsuario", response.data.nombres);
-        // ejemplo redirect
-        window.location.href = "/home";
-      }catch (error) {
-        console.error("ERROR COMPLETO:", error);
-      }
+      await loginConGoogle(tokenResponse.access_token);
     },
-
     onError: () => {
       console.log('Google Login Failed');
     },

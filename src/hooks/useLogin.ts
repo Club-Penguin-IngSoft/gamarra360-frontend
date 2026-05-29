@@ -107,9 +107,45 @@ navigate(rutaPorRol[rol] ?? RUTAS.INICIO); //
     }
   };
 
+  const loginConGoogle = async (accessToken: string) => {
+    try {
+      setCargando(true);
+      setError(null);
+
+      const response = await authService.loginConGoogle(accessToken);
+
+      if (response.needsRegistration) {
+        navigate(RUTAS.REGISTRO, { state: { email: response.email } });
+        return;
+      }
+
+      const rol = (response.rol === 'VENDEDOR' ? 'COMERCIANTE' : response.rol) as RolUsuario;
+
+      iniciarSesion({
+        token: response.token,
+        usuario: {
+          id: String(response.usuarioId),
+          nombre: response.nombres ?? '',
+          apellido: '',
+          correo: response.email,
+          rol,
+        },
+      });
+
+      navigate(rutaPorRol[rol] ?? RUTAS.INICIO);
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { mensaje?: string } } };
+      const mensaje =
+        axiosError?.response?.data?.mensaje ?? 'Error al iniciar sesión con Google.';
+      setError(mensaje);
+    } finally {
+      setCargando(false);
+    }
+  };
+
   const limpiarError = () => setError(null);
 
-  return { iniciarSesion: login, cargando, error, limpiarError };
+  return { iniciarSesion: login, loginConGoogle, cargando, error, limpiarError };
 };
 
 export default useLogin;

@@ -11,10 +11,10 @@ const authService = {
     return data;
   },
 
-  loginConGoogle: async (idToken: string): Promise<ILoginResponse> => {
+  loginConGoogle: async (accessToken: string): Promise<ILoginResponse> => {
     const { data } = await axios.post<ILoginResponse>(
       `${API_BASE_URL}/auth/google`,
-      { idToken }
+      { accessToken }
     );
     return data;
   },
