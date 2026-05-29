@@ -290,7 +290,7 @@ export default function NuevoProductoPage() {
         esPersonalizable: false,
         idCategoria: idCategoria as number,
         idTipoProducto: idTipoProducto as number,
-        idTienda: Number(usuario?.idComerciante || 1), // Usamos el ID del usuario logueado
+        idTienda: Number(usuario?.idTienda),
         imagenes: imagenPrincipalUrl ? [{ url: imagenPrincipalUrl, esPrincipal: true }] : [],
       });
       const idProducto = Number(producto.id);

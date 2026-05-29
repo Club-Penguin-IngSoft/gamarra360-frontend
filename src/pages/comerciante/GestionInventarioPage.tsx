@@ -5,15 +5,14 @@ import { RUTAS } from '../../constants/rutas';
 import { useAuth } from '../../hooks/useAuth';
 import apiClient from '../../services/apiClient';
 import { eliminarProducto } from '../../services/catalogoService';
-import { obtenerMiTienda } from '../../services/tiendaService';
 
 interface IProductoBackend {
   idProducto: number;
   nombre: string;
   precioBase?: number;
   activo: boolean;
-  nombreCategoria?: string;
-  nombreTipoProducto?: string;
+  categorias: { nombre: string }[];
+  tipoProducto?: { nombre: string } | null;
   imagenes: { url: string; esPrincipal: boolean }[] | null;
   variantes: { stock?: number }[] | null;
 }
@@ -39,15 +38,24 @@ function computarEstado(activo: boolean, stock: number): IProductoFila['estado']
 }
 
 function adaptarFila(p: IProductoBackend): IProductoFila {
-  const totalStock = (p.variantes ?? []).reduce((s, v) => s + (v.stock ?? 0), 0);
-  const principal = (p.imagenes ?? []).find((i) => i.esPrincipal) ?? p.imagenes?.[0];
+  const vars = p.variantes ?? [];
+  const totalStock = vars.reduce((s, v) => s + (v.stock ?? 0), 0);
+  
+  const imgs = p.imagenes ?? [];
+  const principal = imgs.find((i) => i.esPrincipal) ?? imgs[0];
+  
+  // El backend devuelve 'categorias' (lista) y 'tipoProducto' (objeto)
+  const catNombre = p.tipoProducto?.nombre ?? p.categorias?.[0]?.nombre ?? '—';
+  
+  const precio = p.precioBase ?? 0;
+  
   return {
     idProducto: p.idProducto,
     nombre: p.nombre,
-    categoria: p.nombreTipoProducto ?? p.nombreCategoria ?? '—',
-    precioBase: p.precioBase ?? 0,
+    categoria: catNombre,
+    precioBase: precio,
     unidades: totalStock,
-    ganancias: (p.precioBase ?? 0) * totalStock,
+    ganancias: precio * totalStock,
     estado: computarEstado(p.activo, totalStock),
     imagenUrl: principal?.url,
   };
@@ -81,12 +89,9 @@ export default function GestionInventarioPage() {
   const [pagina, setPagina] = useState(1);
 
   const cargarProductos = () => {
-    if (!usuario) return;
+    if (!usuario?.idTienda) return;
     setCargando(true);
-    obtenerMiTienda()
-      .then(({ idTienda }) =>
-        apiClient.get<any>(`/productos/tienda/${idTienda}`)
-      )
+    apiClient.get<any>(`/productos/tienda/${usuario.idTienda}`)
       .then(({ data }) => {
         const lista: IProductoBackend[] = Array.isArray(data) ? data : (data.contenido ?? []);
         setProductos(lista.map(adaptarFila));

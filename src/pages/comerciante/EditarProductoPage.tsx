@@ -307,7 +307,7 @@ export default function EditarProductoPage() {
         esPersonalizable: false,
         idCategoria: idCategoria as number,
         idTipoProducto: idTipoProducto as number,
-        idTienda: Number(usuario?.idComerciante || 1),
+        idTienda: Number(usuario?.idTienda),
         imagenes: imagenPrincipalUrl
           ? [{ url: imagenPrincipalUrl, esPrincipal: true }, ...imagenesExistentes.filter((i) => !i.esPrincipal)]
           : imagenesExistentes,

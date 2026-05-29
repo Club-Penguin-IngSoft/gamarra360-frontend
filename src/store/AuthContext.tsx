@@ -46,12 +46,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const iniciarSesion = useCallback((sesion: ISesion) => {
     localStorage.setItem(TOKEN_KEY, sesion.token);
     localStorage.setItem(USUARIO_KEY, JSON.stringify(sesion.usuario));
+    if (sesion.usuario.idTienda) {
+      localStorage.setItem('idTienda', String(sesion.usuario.idTienda));
+    }
     setUsuario(sesion.usuario);
   }, []);
 
   const cerrarSesion = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USUARIO_KEY);
+    localStorage.removeItem('idTienda');
     setUsuario(null);
   }, []);
 

@@ -58,7 +58,10 @@ export default function DashboardPage() {
   useEffect(() => {
     obtenerMiTienda()
       .then((tienda) => setNombreTienda(tienda.nombreComercial))
-      .catch(() => {});
+      .catch((err) => {
+        console.error("Error al obtener datos de la tienda:", err);
+        setNombreTienda("Tienda");
+      });
   }, []);
 
   const handleAbrirModal = (nombre: string) => {

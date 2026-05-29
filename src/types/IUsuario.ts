@@ -12,6 +12,7 @@ export interface IUsuario {
   rol: RolUsuario;
   /** Solo presente cuando el rol es COMERCIANTE — identifica el tenant */
   idComerciante?: string;
+  idTienda?: number;
 }
 
 /** Payload almacenado en localStorage tras login exitoso */

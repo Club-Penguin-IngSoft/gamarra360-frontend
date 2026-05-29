@@ -7,6 +7,7 @@ import InputTexto from '../components/InputTexto';
 import BotonPrimario from '../components/BotonPrimario';
 import BotonGoogle from '../components/BotonGoogle';
 import useLogin from '../hooks/useLogin';
+import { useAuth } from '../hooks/useAuth';
 import { RUTAS } from '../constants/rutas';
 import { API_BASE_URL } from '../constants';
 import { ILoginRequest } from '../types/IAuth';
@@ -17,7 +18,11 @@ const LoginPage = () => {
   const [form, setForm] = useState<ILoginRequest>({ email: '', contrasenha: '' });
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const navigate = useNavigate();
-  const { iniciarSesion, cargando, error } = useLogin();
+  
+  // Nombramos diferente para evitar colisión con el contexto
+  const { iniciarSesion: ejecutarLogin, cargando, error } = useLogin();
+  const { iniciarSesion: establecerSesion } = useAuth();
+  
   const [estadoModal, setEstadoModal] = useState<'PENDIENTE' | 'RECHAZADO' | null>(null);
 
   // GOOGLE LOGIN
@@ -32,7 +37,8 @@ const LoginPage = () => {
           { accessToken: tokenResponse.access_token }
         );
         console.log("RESPUESTA BACKEND:", response.data);
-        //usuario no existe
+        
+        // Usuario no existe
         if (response.data.needsRegistration) {
           console.log("Usuario no registrado, redirigiendo a registro con email:", response.data.email);
           navigate(RUTAS.REGISTRO, {
@@ -42,6 +48,7 @@ const LoginPage = () => {
           });
           return;
         }
+        
         // Verificar estado de solicitud para comerciantes
         if (response.data.estadoSolicitud === 'PENDIENTE') {
           setEstadoModal('PENDIENTE');
@@ -52,19 +59,21 @@ const LoginPage = () => {
           return;
         }
 
-        // Acceso normal
-        localStorage.setItem("token", response.data.token);
-        localStorage.setItem("nombreUsuario", response.data.nombres || response.data.email);
+        // Establecer sesión global (esto guarda token e idTienda)
+        establecerSesion({
+          token: response.data.token,
+          usuario: {
+            id: String(response.data.usuarioId),
+            nombre: response.data.nombres || '',
+            apellido: '',
+            correo: response.data.email,
+            rol: response.data.rol,
+            idTienda: response.data.idTienda,
+          }
+        });
         
-        // Redirigir según el rol
-        const rol = response.data.rol;
-        if (rol === 'ADMIN') {
-          navigate(RUTAS.ADMIN_DASHBOARD);
-        } else if (rol === 'VENDEDOR' || rol === 'COMERCIANTE') {
-          navigate(RUTAS.COMERCIANTE_DASHBOARD);
-        } else {
-          navigate(RUTAS.INICIO);
-        }
+        // Redirigir al inicio (revirtiendo entrada directa a dashboards)
+        navigate(RUTAS.INICIO);
       } catch (error) {
         console.error("ERROR COMPLETO:", error);
       }
@@ -85,7 +94,7 @@ const LoginPage = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (formularioValido && !cargando) {
-      iniciarSesion(form);
+      ejecutarLogin(form);
     }
   };
 

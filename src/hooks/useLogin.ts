@@ -38,6 +38,7 @@ iniciarSesion({
     apellido: '',
     correo: response.email,
     rol, 
+    idTienda: response.idTienda,
   }
 });
 
