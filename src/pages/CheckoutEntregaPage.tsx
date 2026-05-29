@@ -10,7 +10,7 @@ import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
 import { useCarrito } from '../hooks/useCarrito';
 import { formatearPrecio } from '../utils/formatearPrecio';
-import { RUTAS } from '../constants/rutas';
+import { RUTAS, COSTO_ENVIO_DELIVERY } from '../constants';
 
 const generarFechasEnvio = () => {
   const dias = [];
@@ -91,7 +91,7 @@ export default function CheckoutEntregaPage() {
     const ahorro = base > final ? base - final : 0;
     return acc + ahorro * i.cantidad;
   }, 0);
-  const costoEnvio = tipoEntrega === 'DELIVERY' ? 12.00 : 0;
+  const costoEnvio = tipoEntrega === 'DELIVERY' ? COSTO_ENVIO_DELIVERY : 0;
   const total = subtotalSinDescuento - descuentos + costoEnvio;
 
   return (

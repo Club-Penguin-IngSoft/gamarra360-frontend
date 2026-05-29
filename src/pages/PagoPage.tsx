@@ -14,7 +14,7 @@ import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
 import { useCarrito } from '../hooks/useCarrito';
 import { formatearPrecio } from '../utils/formatearPrecio';
-import { RUTAS } from '../constants/rutas';
+import { RUTAS, COSTO_ENVIO_DELIVERY } from '../constants';
 
 export default function PagoPage() {
   const { items, vaciarCarrito } = useCarrito();
@@ -49,7 +49,7 @@ export default function PagoPage() {
     const ahorro = base > final ? base - final : 0;
     return acc + ahorro * i.cantidad;
   }, 0);
-  const costoEnvio = tipoEntrega === 'RECOJO_TIENDA' ? 0 : 12.00;
+  const costoEnvio = tipoEntrega === 'RECOJO_TIENDA' ? 0 : COSTO_ENVIO_DELIVERY;
   const total = subtotalSinDescuento - descuentos + costoEnvio;
 
   const actualizar = (campo: keyof typeof campos, valor: string) => {
