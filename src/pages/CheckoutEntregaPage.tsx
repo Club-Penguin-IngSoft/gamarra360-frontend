@@ -49,6 +49,18 @@ export default function CheckoutEntregaPage() {
   const [mostrarFechas, setMostrarFechas] = useState(false);
   const [fechaSeleccionada, setFechaSeleccionada] = useState(FECHAS_ENVIO[0]);
 
+  // Dirección de entrega
+  const [calle, setCalle] = useState('');
+  const [distrito, setDistrito] = useState('');
+  const [provincia, setProvincia] = useState('Lima');
+  const [editandoDireccion, setEditandoDireccion] = useState(true);
+
+  const direccionCompleta = calle.trim() && distrito.trim();
+
+  const guardarDireccion = () => {
+    if (direccionCompleta) setEditandoDireccion(false);
+  };
+
   if (!items || items.length === 0) {
     return (
       <div className="flex min-h-screen flex-col bg-surface-muted">
@@ -117,17 +129,61 @@ export default function CheckoutEntregaPage() {
                   <MapPin className="h-4 w-4 text-brand-500" />
                   <span className="text-[14px] font-semibold text-ink-900">Dirección de entrega</span>
                 </div>
-                <button
-                  type="button"
-                  className="text-[13px] font-medium text-brand-500 hover:text-brand-700"
-                >
-                  Cambiar
-                </button>
+                {!editandoDireccion && (
+                  <button
+                    type="button"
+                    onClick={() => setEditandoDireccion(true)}
+                    className="text-[13px] font-medium text-brand-500 hover:text-brand-700"
+                  >
+                    Cambiar
+                  </button>
+                )}
               </div>
-              <div className="mt-3 rounded-lg border border-ink-100 bg-surface-muted px-4 py-3">
-                <p className="text-[14px] text-ink-800">Av. Arequipa 3421</p>
-                <p className="text-[13px] text-ink-500">San Isidro, Lima, Lima</p>
-              </div>
+
+              {/* Dirección guardada — solo lectura */}
+              {!editandoDireccion && direccionCompleta && (
+                <div className="mt-3 rounded-lg border border-ink-100 bg-surface-muted px-4 py-3">
+                  <p className="text-[14px] text-ink-800">{calle}</p>
+                  <p className="text-[13px] text-ink-500">{distrito}, {provincia}</p>
+                </div>
+              )}
+
+              {/* Formulario de ingreso / edición */}
+              {editandoDireccion && (
+                <div className="mt-3 flex flex-col gap-3">
+                  <input
+                    type="text"
+                    placeholder="Calle y número (ej. Av. Arequipa 3421)"
+                    value={calle}
+                    onChange={(e) => setCalle(e.target.value)}
+                    className="h-10 w-full rounded-md border border-ink-200 bg-white px-3 text-[14px] text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none"
+                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Distrito (ej. San Isidro)"
+                      value={distrito}
+                      onChange={(e) => setDistrito(e.target.value)}
+                      className="h-10 flex-1 rounded-md border border-ink-200 bg-white px-3 text-[14px] text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Provincia"
+                      value={provincia}
+                      onChange={(e) => setProvincia(e.target.value)}
+                      className="h-10 w-32 rounded-md border border-ink-200 bg-white px-3 text-[14px] text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={guardarDireccion}
+                    disabled={!direccionCompleta}
+                    className="self-end rounded-md bg-brand-500 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Guardar dirección
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Paquetes agrupados por tienda */}
@@ -314,7 +370,8 @@ export default function CheckoutEntregaPage() {
             <button
               type="button"
               onClick={() => navigate(RUTAS.PAGO)}
-              className="h-12 w-full rounded-lg bg-[#c83a71] text-[15px] font-semibold text-white shadow-sm transition-colors hover:bg-[#a62b5a]"
+              disabled={tipoEntrega === 'DELIVERY' && !direccionCompleta}
+              className="h-12 w-full rounded-lg bg-[#c83a71] text-[15px] font-semibold text-white shadow-sm transition-colors hover:bg-[#a62b5a] disabled:cursor-not-allowed disabled:opacity-40"
             >
               Continuar al pago
             </button>
