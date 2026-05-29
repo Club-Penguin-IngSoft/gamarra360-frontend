@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import MaterialIcon from '../components/MaterialIcon';
 import LogoGamarra from '../components/LogoGamarra';
 import InputTexto from '../components/InputTexto';
@@ -7,27 +8,27 @@ import BotonPrimario from '../components/BotonPrimario';
 import BotonGoogle from '../components/BotonGoogle';
 import useLogin from '../hooks/useLogin';
 import { RUTAS } from '../constants/rutas';
+import { API_BASE_URL } from '../constants';
 import { ILoginRequest } from '../types/IAuth';
 import { COLORES } from '../styles/tokens';
 import { useGoogleLogin } from '@react-oauth/google';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 
 const LoginPage = () => {
   const [form, setForm] = useState<ILoginRequest>({ email: '', contrasenha: '' });
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const navigate = useNavigate();
   const { iniciarSesion, cargando, error } = useLogin();
+  const [estadoModal, setEstadoModal] = useState<'PENDIENTE' | 'RECHAZADO' | null>(null);
+
   // GOOGLE LOGIN
   const loginGoogle = useGoogleLogin({
     flow: 'implicit',
-
     onSuccess: async (tokenResponse) => {
       try {
         console.log("GOOGLE TOKEN: ", tokenResponse);
 
         const response = await axios.post(
-          "http://localhost:8080/api/v1/auth/google",
+          `${API_BASE_URL}/auth/google`,
           { accessToken: tokenResponse.access_token }
         );
         console.log("RESPUESTA BACKEND:", response.data);
@@ -35,22 +36,39 @@ const LoginPage = () => {
         if (response.data.needsRegistration) {
           console.log("Usuario no registrado, redirigiendo a registro con email:", response.data.email);
           navigate(RUTAS.REGISTRO, {
-          state: {
-            email: response.data.email
+            state: {
+              email: response.data.email
             }
           });
           return;
         }
-        //usuario existe
+        // Verificar estado de solicitud para comerciantes
+        if (response.data.estadoSolicitud === 'PENDIENTE') {
+          setEstadoModal('PENDIENTE');
+          return;
+        }
+        if (response.data.estadoSolicitud === 'RECHAZADO') {
+          setEstadoModal('RECHAZADO');
+          return;
+        }
+
+        // Acceso normal
         localStorage.setItem("token", response.data.token);
-        localStorage.setItem("nombreUsuario", response.data.nombres);
-        // ejemplo redirect
-        window.location.href = "/home";
-      }catch (error) {
+        localStorage.setItem("nombreUsuario", response.data.nombres || response.data.email);
+        
+        // Redirigir según el rol
+        const rol = response.data.rol;
+        if (rol === 'ADMIN') {
+          navigate(RUTAS.ADMIN_DASHBOARD);
+        } else if (rol === 'VENDEDOR' || rol === 'COMERCIANTE') {
+          navigate(RUTAS.COMERCIANTE_DASHBOARD);
+        } else {
+          navigate(RUTAS.INICIO);
+        }
+      } catch (error) {
         console.error("ERROR COMPLETO:", error);
       }
     },
-
     onError: () => {
       console.log('Google Login Failed');
     },
@@ -73,7 +91,51 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col font-sans">
+      {/* ── Modales de estado comerciante ───────────────────────────────── */}
+      {estadoModal === 'PENDIENTE' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-lg flex flex-col items-center gap-4 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-yellow-50">
+              <MaterialIcon name="hourglass_top" style={{ fontSize: '40px', color: '#b45309' }} />
+            </div>
+            <p className="text-xl font-extrabold text-gray-900">Solicitud en revisión</p>
+            <p className="text-sm leading-relaxed text-gray-500">
+              Tu solicitud de registro como comerciante está siendo evaluada.
+              Te notificaremos por correo una vez aprobado tu acceso.
+            </p>
+            <button
+              onClick={() => setEstadoModal(null)}
+              className="text-sm font-semibold hover:underline"
+              style={{ color: COLORES.primario }}
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
 
+      {estadoModal === 'RECHAZADO' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-lg flex flex-col items-center gap-4 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
+              <MaterialIcon name="cancel" style={{ fontSize: '40px', color: '#dc2626' }} />
+            </div>
+            <p className="text-xl font-extrabold text-gray-900">Solicitud rechazada</p>
+            <p className="text-sm leading-relaxed text-gray-500">
+              Tu solicitud como comerciante fue rechazada. Si crees que es un error,
+              puedes contactarnos o volver a registrarte.
+            </p>
+            <button
+              onClick={() => setEstadoModal(null)}
+              className="text-sm font-semibold hover:underline"
+              style={{ color: COLORES.primario }}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+      
       {/* ── Barra de navegación superior ────────────────────────────────── */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-neutro-200 h-14 flex items-center px-6 justify-between">
         <LogoGamarra size="sm" />

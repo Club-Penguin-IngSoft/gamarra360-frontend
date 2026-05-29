@@ -208,24 +208,24 @@ export default function TopBar({
               )}
             </div>
             {/*aqui puede haber perfilamiento*/}
-            <Link
-              to={nombreUsuario ? RUTAS.LOGIN : RUTAS.LOGIN}
-              aria-label="Perfil"
-              className="inline-flex items-center gap-2 transition-opacity hover:opacity-80"
-            >
-              {nombreUsuario ? (
-                <>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500 text-xs font-bold text-white">
-                    {nombreUsuario.charAt(0).toUpperCase()}
-                  </div>
-                  <span className="hidden text-[14px] font-medium text-ink-800 lg:block">
-                    {nombreUsuario}
-                  </span>
-                </>
-              ) : (
+            {nombreUsuario ? (
+              <div className="inline-flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500 text-xs font-bold text-white">
+                  {nombreUsuario.charAt(0).toUpperCase()}
+                </div>
+                <span className="hidden text-[14px] font-medium text-ink-800 lg:block">
+                  {nombreUsuario}
+                </span>
+              </div>
+            ) : (
+              <Link
+                to={RUTAS.LOGIN}
+                aria-label="Perfil"
+                className="inline-flex items-center gap-2 transition-opacity hover:opacity-80"
+              >
                 <img src={accountCircleIcon} alt="" className="h-8 w-8 object-contain" />
-              )}
-            </Link>
+              </Link>
+            )}
 
             <Link
               to={RUTAS.CARRITO}
@@ -239,6 +239,16 @@ export default function TopBar({
                 </span>
               )}
             </Link>
+            {/* Cerrar sesión */}
+            {token && (
+              <button
+                onClick={cerrarSesion}
+                aria-label="Cerrar sesión"
+                className="inline-flex items-center justify-center transition-opacity hover:opacity-80"
+              >
+                <MaterialIcon name="logout" style={{ fontSize: '22px', color: '#6b7280' }} />
+              </button>
+            )}
           </div>
         )}
       </div>

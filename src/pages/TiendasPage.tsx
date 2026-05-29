@@ -15,6 +15,7 @@
 
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useOpcionesFiltro } from '../hooks/useOpcionesFiltro';
 import {
   ChevronDown,
   ListFilter,
@@ -27,8 +28,8 @@ import StoreCard from '../components/StoreCard';
 import EmptyState from '../components/EmptyState';
 import { Store as StoreIcon } from 'lucide-react';
 import { listarTiendas } from '../services/tiendaService';
-import type { ITienda, GaleriaGamarra } from '../types/ITienda';
-import { ETIQUETA_GALERIA } from '../types/ITienda';
+import type { ITienda } from '../types/ITienda';
+// GaleriaGamarra y ETIQUETA_GALERIA: pendiente cuando el backend exponga galeria
 import type { Categoria, TipoServicio } from '../types/IProducto';
 import type { IFiltrosTiendas } from '../types/IFiltro';
 import { FILTROS_TIENDAS_VACIOS } from '../types/IFiltro';
@@ -45,16 +46,7 @@ const CATEGORIAS_UI: { value: Categoria; label: string }[] = [
   { value: 'UNISEX_NINOS', label: 'Unisex Niños' },
 ];
 
-const TIPOS_PRODUCTO = [
-  'Polos',
-  'Blusas',
-  'Pantalones',
-  'Casacas',
-  'Vestidos',
-  'Pijamas',
-  'Ropa Interior',
-  'Ropa de Baño',
-];
+// TIPOS_PRODUCTO: ahora viene dinámico desde el hook useOpcionesFiltro (sin hardcodear)
 
 const TIPOS_SERVICIO_UI: { value: TipoServicio; label: string }[] = [
   { value: 'COMPRA_DIRECTA', label: 'Compra directa' },
@@ -62,9 +54,8 @@ const TIPOS_SERVICIO_UI: { value: TipoServicio; label: string }[] = [
   { value: 'COTIZACION', label: 'Cotización' },
 ];
 
-const GALERIAS_UI: { value: GaleriaGamarra; label: string }[] = (
-  Object.keys(ETIQUETA_GALERIA) as GaleriaGamarra[]
-).map((value) => ({ value, label: ETIQUETA_GALERIA[value] }));
+// GALERIAS_UI: pendiente cuando el backend exponga galeria en tiendas
+// const GALERIAS_UI = (Object.keys(ETIQUETA_GALERIA) as GaleriaGamarra[]).map(...);
 
 const TIENDAS_POR_PAGINA = 9;
 
@@ -151,33 +142,8 @@ function RadioOption({
   );
 }
 
-function GaleriaSelect({
-  value,
-  onChange,
-}: {
-  value: GaleriaGamarra | null;
-  onChange: (v: GaleriaGamarra | null) => void;
-}) {
-  return (
-    <div className="relative">
-      <select
-        value={value ?? ''}
-        onChange={(e) =>
-          onChange(e.target.value ? (e.target.value as GaleriaGamarra) : null)
-        }
-        className="h-10 w-full appearance-none rounded-md border border-ink-100 bg-white px-3 pr-8 text-[14px] text-ink-700 focus:border-brand-500 focus:outline-none"
-      >
-        <option value="">Todas</option>
-        {GALERIAS_UI.map((g) => (
-          <option key={g.value} value={g.value}>
-            {g.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-500" />
-    </div>
-  );
-}
+// GaleriaSelect: pendiente cuando el backend exponga galeria en tiendas
+// function GaleriaSelect(...) { ... }
 
 function TiendasFilterPanel({
   open,
@@ -190,6 +156,20 @@ function TiendasFilterPanel({
   onChange: (f: IFiltrosTiendas) => void;
   onClose: () => void;
 }) {
+  // Patrón borrador: igual que FilterPanel en CatalogoPage.
+  // Los cambios se acumulan localmente y solo se propagan al padre
+  // cuando el usuario presiona "Aplicar filtros".
+  // Tipos de producto dinámicos desde la BD (mismo hook que FilterPanel, con caché)
+  const opciones = useOpcionesFiltro();
+
+  const [borrador, setBorrador] = useState<IFiltrosTiendas>(filtros);
+
+  // Sincroniza el borrador cada vez que el panel se abre
+  useEffect(() => {
+    if (open) setBorrador(filtros);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   const [sections, setSections] = useState<Record<SeccionFiltro, boolean>>({
     categoria: true,
     producto: true,
@@ -201,25 +181,32 @@ function TiendasFilterPanel({
     setSections((s) => ({ ...s, [k]: !s[k] }));
 
   const toggleCategoria = (c: Categoria) => {
-    onChange({
-      ...filtros,
-      categorias: filtros.categorias.includes(c)
-        ? filtros.categorias.filter((x) => x !== c)
-        : [...filtros.categorias, c],
-    });
+    setBorrador((b) => ({
+      ...b,
+      categorias: b.categorias.includes(c)
+        ? b.categorias.filter((x) => x !== c)
+        : [...b.categorias, c],
+    }));
   };
 
   const toggleTipoProducto = (t: string) => {
-    onChange({
-      ...filtros,
-      tiposProducto: filtros.tiposProducto.includes(t)
-        ? filtros.tiposProducto.filter((x) => x !== t)
-        : [...filtros.tiposProducto, t],
-    });
+    setBorrador((b) => ({
+      ...b,
+      tiposProducto: b.tiposProducto.includes(t)
+        ? b.tiposProducto.filter((x) => x !== t)
+        : [...b.tiposProducto, t],
+    }));
   };
 
   const limpiarTodo = () => {
+    setBorrador(FILTROS_TIENDAS_VACIOS);
     onChange(FILTROS_TIENDAS_VACIOS);
+    onClose();
+  };
+
+  const aplicarFiltros = () => {
+    onChange(borrador);
+    onClose();
   };
 
   return (
@@ -268,7 +255,7 @@ function TiendasFilterPanel({
                 <PillButton
                   key={c.value}
                   label={c.label}
-                  active={filtros.categorias.includes(c.value)}
+                  active={borrador.categorias.includes(c.value)}
                   onClick={() => toggleCategoria(c.value)}
                 />
               ))}
@@ -281,11 +268,11 @@ function TiendasFilterPanel({
             onToggle={() => toggleSection('producto')}
           >
             <div className="flex flex-wrap gap-2">
-              {TIPOS_PRODUCTO.map((t) => (
+              {opciones.tiposProducto.map((t) => (
                 <PillButton
                   key={t}
                   label={t}
-                  active={filtros.tiposProducto.includes(t)}
+                  active={borrador.tiposProducto.includes(t)}
                   onClick={() => toggleTipoProducto(t)}
                 />
               ))}
@@ -302,14 +289,16 @@ function TiendasFilterPanel({
                 key={s.value}
                 name="tipoServicio"
                 label={s.label}
-                checked={filtros.tipoServicio === s.value}
+                checked={borrador.tipoServicio === s.value}
                 onChange={() =>
-                  onChange({ ...filtros, tipoServicio: s.value })
+                  setBorrador((b) => ({ ...b, tipoServicio: s.value }))
                 }
               />
             ))}
           </FilterSection>
 
+          {/* Oculto temporalmente: El atributo galeria aún no se recibe del backend para tiendas */}
+          {/* 
           <FilterSection
             title="Galería"
             open={sections.galeria}
@@ -320,12 +309,13 @@ function TiendasFilterPanel({
               onChange={(g) => onChange({ ...filtros, galeria: g })}
             />
           </FilterSection>
+          */}
         </div>
 
         {/* Footer buttons */}
         <div className="flex flex-col gap-2 border-t border-ink-100 p-6">
           <button
-            onClick={onClose}
+            onClick={aplicarFiltros}
             className="h-11 rounded-lg bg-brand-500 text-[15px] font-medium text-white transition-colors hover:bg-brand-600"
           >
             Aplicar filtros
