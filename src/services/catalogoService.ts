@@ -260,3 +260,13 @@ export async function actualizarProducto(id: string, payload: IProductoPayload):
 export async function eliminarProducto(id: string): Promise<void> {
   await apiClient.delete(`/productos/${id}`);
 }
+
+/** Sube un archivo de imagen a S3 y devuelve la URL pública. */
+export async function subirImagenS3(file: File): Promise<string> {
+  const form = new FormData();
+  form.append('archivo', file);
+  const { data } = await apiClient.post<{ url: string }>('/s3/upload', form, {
+    headers: { 'Content-Type': undefined },
+  });
+  return data.url;
+}

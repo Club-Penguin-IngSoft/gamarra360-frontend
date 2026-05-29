@@ -7,6 +7,7 @@ import {
   listarTiposPorCategoria,
   actualizarProducto,
   eliminarProducto,
+  subirImagenS3,
   type ICategoriaOpcion,
   type ITipoProductoOpcion,
 } from '../../services/catalogoService';
@@ -93,7 +94,9 @@ export default function EditarProductoPage() {
   const [correlativo] = useState(1);
   const [skuInterno, setSkuInterno] = useState('');
   const [imagenesExistentes, setImagenesExistentes] = useState<{ url: string; esPrincipal: boolean }[]>([]);
-  const [imagenUrl, setImagenUrl] = useState('');
+  const [imagenPrincipalUrl, setImagenPrincipalUrl] = useState('');
+  const [subiendoImagenPrincipal, setSubiendoImagenPrincipal] = useState(false);
+  const imagenPrincipalRef = useRef<HTMLInputElement>(null);
   const [enviando, setEnviando] = useState(false);
   const [errorApi, setErrorApi] = useState('');
 
@@ -132,7 +135,10 @@ export default function EditarProductoPage() {
       setDescripcion(data.descripcion ?? '');
       setPrecioBase(data.precioBase ?? 0);
       setPublicado(data.activo ?? true);
-      setImagenesExistentes((data.imagenes ?? []).map((i: any) => ({ url: i.url, esPrincipal: i.esPrincipal ?? false })));
+      const imagenesApi: { url: string; esPrincipal: boolean }[] = (data.imagenes ?? []).map((i: any) => ({ url: i.url, esPrincipal: i.esPrincipal ?? false }));
+      setImagenesExistentes(imagenesApi);
+      const principal = imagenesApi.find((i) => i.esPrincipal) ?? imagenesApi[0];
+      if (principal?.url) setImagenPrincipalUrl(principal.url);
       const catId = data.idCategoria ?? '';
       const tipoId = data.idTipoProducto ?? '';
       setIdCategoria(catId);
@@ -149,6 +155,13 @@ export default function EditarProductoPage() {
         imagenes: [],
       }));
       setVariantes(variantesApi);
+      const firstSku = data.variantes?.[0]?.sku as string | undefined;
+      if (firstSku) {
+        const parts = firstSku.split('-');
+        if (parts.length >= 5) {
+          setSkuInterno(`${parts[0]}-${parts[1]}-${parts[2]}-GEN`);
+        }
+      }
       if (catId !== '') {
         listarTiposPorCategoria(catId as number).then(setTipos).catch(console.error);
       }
@@ -220,17 +233,37 @@ export default function EditarProductoPage() {
   const updateVarianteStockMinimo = (id: number, stockMinimo: number) =>
     setVariantes((p) => p.map((v) => (v.id === id ? { ...v, stockMinimo } : v)));
 
+  const handleImagenPrincipalChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSubiendoImagenPrincipal(true);
+    try {
+      const url = await subirImagenS3(file);
+      setImagenPrincipalUrl(url);
+    } catch {
+      setErrorApi('No se pudo subir la imagen principal. Intenta de nuevo.');
+    } finally {
+      setSubiendoImagenPrincipal(false);
+      e.target.value = '';
+    }
+  };
+
   const handleClickAgregarImagen = (varianteId: number) => {
     setActiveVarianteId(varianteId);
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || activeVarianteId === null) return;
-    const nuevas = Array.from(e.target.files).map((f) => URL.createObjectURL(f));
-    setVariantes((p) =>
-      p.map((v) => (v.id === activeVarianteId ? { ...v, imagenes: [...v.imagenes, ...nuevas] } : v))
-    );
+    const files = Array.from(e.target.files);
+    try {
+      const urls = await Promise.all(files.map((f) => subirImagenS3(f)));
+      setVariantes((p) =>
+        p.map((v) => (v.id === activeVarianteId ? { ...v, imagenes: [...v.imagenes, ...urls] } : v))
+      );
+    } catch {
+      setErrorApi('No se pudo subir alguna imagen. Intenta de nuevo.');
+    }
     e.target.value = '';
   };
 
@@ -239,7 +272,6 @@ export default function EditarProductoPage() {
       p.map((v) => {
         if (v.id !== varianteId) return v;
         const copia = [...v.imagenes];
-        URL.revokeObjectURL(copia[index]);
         copia.splice(index, 1);
         return { ...v, imagenes: copia };
       })
@@ -273,8 +305,8 @@ export default function EditarProductoPage() {
         esPersonalizable: false,
         idCategoria: idCategoria as number,
         idTipoProducto: idTipoProducto as number,
-        imagenes: imagenUrl.trim()
-          ? [{ url: imagenUrl.trim(), esPrincipal: true }, ...imagenesExistentes.filter((i) => !i.esPrincipal)]
+        imagenes: imagenPrincipalUrl
+          ? [{ url: imagenPrincipalUrl, esPrincipal: true }, ...imagenesExistentes.filter((i) => !i.esPrincipal)]
           : imagenesExistentes,
       });
       navigate(RUTAS.COMERCIANTE_CATALOGO);
@@ -314,7 +346,13 @@ export default function EditarProductoPage() {
     <div className="flex min-h-screen">
       <ComercianteSidebar />
 
-      {/* Hidden file input */}
+      <input
+        ref={imagenPrincipalRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleImagenPrincipalChange}
+      />
       <input
         ref={fileInputRef}
         type="file"
@@ -393,17 +431,29 @@ export default function EditarProductoPage() {
             </div>
 
             <div className="mb-4">
-              <label className={labelClass}>URL de imagen principal</label>
-              <input
-                type="url"
-                className="w-full h-[42px] border border-gray-300 rounded-lg px-3.5 text-[13px] text-gray-900 bg-white focus:border-primario focus:outline-none transition-colors"
-                placeholder="https://ejemplo.com/imagen.jpg"
-                value={imagenUrl}
-                onChange={(e) => setImagenUrl(e.target.value)}
-              />
-              <p className="text-[11px] text-gray-400 mt-1">
-                Opcional. Deja vacío para conservar la imagen actual.
-              </p>
+              <label className={labelClass}>Imagen principal</label>
+              {imagenPrincipalUrl && (
+                <div className="relative w-full rounded-lg overflow-hidden border border-gray-200 mb-2" style={{ aspectRatio: '16/9' }}>
+                  <img src={imagenPrincipalUrl} className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setImagenPrincipalUrl('')}
+                    className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                  >
+                    <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  </button>
+                </div>
+              )}
+              <button
+                type="button"
+                disabled={subiendoImagenPrincipal}
+                onClick={() => imagenPrincipalRef.current?.click()}
+                className="w-full h-10 border-2 border-dashed border-gray-300 rounded-lg text-[13px] text-gray-500 hover:border-primario hover:text-primario transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                {subiendoImagenPrincipal ? 'Subiendo...' : imagenPrincipalUrl ? 'Cambiar imagen' : 'Seleccionar imagen'}
+              </button>
+              <p className="text-[11px] text-gray-400 mt-1">Se sube a S3 automáticamente.</p>
             </div>
 
           </div>
