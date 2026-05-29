@@ -3,14 +3,12 @@
  * Diseño basado en mockup: stepper + dirección + paquete con opciones de entrega inline.
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Truck, Store as StoreIcon, ShoppingBag, Package } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
 import { useCarrito } from '../hooks/useCarrito';
-import { useAuth } from '../hooks/useAuth';
-import { obtenerCliente, actualizarDireccionCliente } from '../services/clienteService';
 import { formatearPrecio } from '../utils/formatearPrecio';
 import { RUTAS } from '../constants/rutas';
 
@@ -46,49 +44,21 @@ const FECHAS_ENVIO = generarFechasEnvio();
 export default function CheckoutEntregaPage() {
   const { items } = useCarrito();
   const navigate = useNavigate();
-  const { usuario } = useAuth();
 
   const [tipoEntrega, setTipoEntrega] = useState<'DELIVERY' | 'RECOJO_TIENDA'>('DELIVERY');
   const [mostrarFechas, setMostrarFechas] = useState(false);
   const [fechaSeleccionada, setFechaSeleccionada] = useState(FECHAS_ENVIO[0]);
 
-  // Dirección de entrega
+  // Dirección de entrega — estado local, se pasa a PagoPage al continuar
   const [calle, setCalle] = useState('');
   const [distrito, setDistrito] = useState('');
   const [provincia, setProvincia] = useState('Lima');
   const [editandoDireccion, setEditandoDireccion] = useState(true);
-  const [guardandoDireccion, setGuardandoDireccion] = useState(false);
 
   const direccionCompleta = calle.trim() && distrito.trim();
 
-  // Carga la dirección guardada del cliente al montar
-  useEffect(() => {
-    if (!usuario?.id) return;
-    obtenerCliente(usuario.id).then((cliente) => {
-      if (cliente.direccion) {
-        // Parsea "Calle | Distrito | Provincia" si existe
-        const partes = cliente.direccion.split(' | ');
-        setCalle(partes[0] ?? '');
-        setDistrito(partes[1] ?? '');
-        setProvincia(partes[2] ?? 'Lima');
-        setEditandoDireccion(false);
-      }
-    }).catch(() => { /* sin dirección guardada, mantiene formulario vacío */ });
-  }, [usuario?.id]);
-
-  const guardarDireccion = async () => {
-    if (!direccionCompleta || !usuario?.id) return;
-    setGuardandoDireccion(true);
-    try {
-      const direccionFormateada = `${calle.trim()} | ${distrito.trim()} | ${provincia.trim()}`;
-      await actualizarDireccionCliente(usuario.id, direccionFormateada);
-      setEditandoDireccion(false);
-    } catch {
-      // Si falla el guardado en BD, igual permite continuar localmente
-      setEditandoDireccion(false);
-    } finally {
-      setGuardandoDireccion(false);
-    }
+  const guardarDireccion = () => {
+    if (direccionCompleta) setEditandoDireccion(false);
   };
 
   if (!items || items.length === 0) {
@@ -207,10 +177,10 @@ export default function CheckoutEntregaPage() {
                   <button
                     type="button"
                     onClick={guardarDireccion}
-                    disabled={!direccionCompleta || guardandoDireccion}
+                    disabled={!direccionCompleta}
                     className="self-end rounded-md bg-brand-500 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    {guardandoDireccion ? 'Guardando...' : 'Guardar dirección'}
+                    Guardar dirección
                   </button>
                 </div>
               )}
@@ -399,7 +369,18 @@ export default function CheckoutEntregaPage() {
 
             <button
               type="button"
-              onClick={() => navigate(RUTAS.PAGO)}
+              onClick={() =>
+                navigate(RUTAS.PAGO, {
+                  state: {
+                    tipoEntrega,
+                    direccionEntrega:
+                      tipoEntrega === 'DELIVERY'
+                        ? `${calle.trim()}, ${distrito.trim()}, ${provincia.trim()}`
+                        : null,
+                    fechaEntrega: tipoEntrega === 'DELIVERY' ? fechaSeleccionada.textoLargo : null,
+                  },
+                })
+              }
               disabled={tipoEntrega === 'DELIVERY' && !direccionCompleta}
               className="h-12 w-full rounded-lg bg-[#c83a71] text-[15px] font-semibold text-white shadow-sm transition-colors hover:bg-[#a62b5a] disabled:cursor-not-allowed disabled:opacity-40"
             >

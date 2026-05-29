@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Check,
   CheckCircle,
@@ -19,6 +19,11 @@ import { RUTAS } from '../constants/rutas';
 export default function PagoPage() {
   const { items, vaciarCarrito } = useCarrito();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Datos pasados desde CheckoutEntregaPage
+  const { tipoEntrega = 'DELIVERY', direccionEntrega = null, fechaEntrega = null } =
+    (location.state as { tipoEntrega?: string; direccionEntrega?: string | null; fechaEntrega?: string | null }) ?? {};
 
   const [metodoPago, setMetodoPago] = useState<'TARJETA' | 'YAPE'>('TARJETA');
   const [necesitaFactura, setNecesitaFactura] = useState(false);
@@ -44,7 +49,7 @@ export default function PagoPage() {
     const ahorro = base > final ? base - final : 0;
     return acc + ahorro * i.cantidad;
   }, 0);
-  const costoEnvio = 12.00;
+  const costoEnvio = tipoEntrega === 'RECOJO_TIENDA' ? 0 : 12.00;
   const total = subtotalSinDescuento - descuentos + costoEnvio;
 
   const actualizar = (campo: keyof typeof campos, valor: string) => {
@@ -259,6 +264,21 @@ export default function PagoPage() {
           {/* RESUMEN */}
           <aside className="flex h-fit flex-col gap-6 rounded-xl border border-ink-100 bg-white p-6 shadow-sm lg:sticky lg:top-24">
             <h2 className="text-[20px] font-bold text-ink-900">Resumen de Compra</h2>
+
+            {/* Dirección confirmada */}
+            {tipoEntrega === 'DELIVERY' && direccionEntrega && (
+              <div className="rounded-lg border border-ink-100 bg-surface-muted px-4 py-3 text-[13px]">
+                <p className="font-medium text-ink-700">Envío a:</p>
+                <p className="text-ink-600">{direccionEntrega}</p>
+                {fechaEntrega && <p className="mt-0.5 text-ink-500">Llega el {fechaEntrega}</p>}
+              </div>
+            )}
+            {tipoEntrega === 'RECOJO_TIENDA' && (
+              <div className="rounded-lg border border-ink-100 bg-surface-muted px-4 py-3 text-[13px]">
+                <p className="font-medium text-brand-600">Retiro en tienda — Gratis</p>
+              </div>
+            )}
+
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between text-[15px]">
                 <span className="text-ink-700">Subtotal</span>
@@ -271,8 +291,10 @@ export default function PagoPage() {
                 </div>
               )}
               <div className="flex items-center justify-between text-[15px]">
-                <span className="text-ink-700">Entrega (1)</span>
-                <span className="font-medium text-ink-900">{formatearPrecio(costoEnvio)}</span>
+                <span className="text-ink-700">Entrega</span>
+                <span className={`font-medium ${tipoEntrega === 'RECOJO_TIENDA' ? 'text-brand-600' : 'text-ink-900'}`}>
+                  {tipoEntrega === 'RECOJO_TIENDA' ? 'Gratis' : formatearPrecio(costoEnvio)}
+                </span>
               </div>
             </div>
             <div className="flex items-center justify-between border-t border-ink-100 pt-4">
