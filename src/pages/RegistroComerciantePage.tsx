@@ -18,7 +18,6 @@ const GALERIAS = [
   'Las Malvinas', 'Galería Molitalia', 'Galería Los Reyes',
 ];
 const TIPOS_DOCUMENTO = ['DNI', 'Carnet de extranjería', 'Pasaporte'];
-
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 
 function validarContrasena(pass: string) {
@@ -117,6 +116,7 @@ function SuccessModal({ onClose }: { onClose: () => void }) {
 /* ── Page ───────────────────────────────────────────────────────────────── */
 
 export default function RegistroComerciantePage() {
+  const [estadoModal, setEstadoModal] = useState<'PENDIENTE' | 'RECHAZADO' | null>(null);
   const loginGoogle = useGoogleLogin({
     flow: 'implicit',
     onSuccess: async (tokenResponse) => {
@@ -125,16 +125,27 @@ export default function RegistroComerciantePage() {
           'http://localhost:8080/api/v1/auth/google',
           { accessToken: tokenResponse.access_token }
         );
-        // Si ya tiene cuenta, redirige al home
-        if (!response.data.needsRegistration) {
-          localStorage.setItem('token', response.data.token);
-          window.location.href = '/home';
+        // Usuario no existe → se queda en el formulario de registro
+        if (response.data.needsRegistration) {
+          navigate(RUTAS.REGISTRO_COMERCIANTE, {
+            state: { email: response.data.email }
+          });
           return;
         }
-        // Si no tiene cuenta, pre-rellena el email
-        navigate(RUTAS.REGISTRO_COMERCIANTE, {
-          state: { email: response.data.email }
-        });
+        // Comerciante pendiente de revisión
+        if (response.data.estadoSolicitud === 'PENDIENTE') {
+          setEstadoModal('PENDIENTE');
+          return;
+        }
+        // Comerciante rechazado
+        if (response.data.estadoSolicitud === 'RECHAZADO') {
+          setEstadoModal('RECHAZADO');
+          return;
+        }
+        // Aprobado → accede al home
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('nombreUsuario', response.data.nombres);
+        window.location.href = '/home';
       } catch (error) {
         console.error('Error Google login:', error);
         setErrorForm('Error al autenticar con Google');
@@ -243,7 +254,50 @@ export default function RegistroComerciantePage() {
       <TopBar active="Vender" />
 
       {enviado && <SuccessModal onClose={() => navigate(RUTAS.INICIO)} />}
-
+      {/* Modal solicitud en revisión */}
+      {estadoModal === 'PENDIENTE' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-lg flex flex-col items-center gap-4 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-yellow-50">
+              <MaterialIcon name="hourglass_top" style={{ fontSize: '40px', color: '#b45309' }} />
+            </div>
+            <p className="text-xl font-extrabold text-gray-900">Solicitud en revisión</p>
+            <p className="text-sm leading-relaxed text-gray-500">
+              Tu solicitud de registro como comerciante está siendo evaluada.
+              Te notificaremos por correo una vez aprobado tu acceso.
+            </p>
+            <button
+              onClick={() => setEstadoModal(null)}
+              className="text-sm font-semibold hover:underline"
+              style={{ color: COLORES.primario }}
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Modal solicitud rechazada */}
+      {estadoModal === 'RECHAZADO' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-lg flex flex-col items-center gap-4 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
+              <MaterialIcon name="cancel" style={{ fontSize: '40px', color: '#dc2626' }} />
+            </div>
+            <p className="text-xl font-extrabold text-gray-900">Solicitud rechazada</p>
+            <p className="text-sm leading-relaxed text-gray-500">
+              Tu solicitud como comerciante fue rechazada. Si crees que es un error,
+              puedes contactarnos o volver a registrarte.
+            </p>
+            <button
+              onClick={() => setEstadoModal(null)}
+              className="text-sm font-semibold hover:underline"
+              style={{ color: COLORES.primario }}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
       {/* ── Hero header ─────────────────────────────────────────────── */}
       <div className="px-8 pt-12 pb-8 max-w-[960px] mx-auto w-full">
         <span

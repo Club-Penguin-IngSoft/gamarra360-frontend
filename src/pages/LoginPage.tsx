@@ -20,6 +20,7 @@ const LoginPage = () => {
   const { iniciarSesion, cargando, error } = useLogin();
   const [showGoogleRegister, setShowGoogleRegister] = useState(false);
   const [emailGoogle, setEmailGoogle] = useState("");
+  const [estadoModal, setEstadoModal] = useState<'PENDIENTE' | 'RECHAZADO' | null>(null);
   // GOOGLE LOGIN
   const loginGoogle = useGoogleLogin({
     flow: 'implicit',
@@ -43,10 +44,19 @@ const LoginPage = () => {
           });
           return;
         }
-        //usuario existe
+        // Verificar estado de solicitud para comerciantes
+        if (response.data.estadoSolicitud === 'PENDIENTE') {
+          setEstadoModal('PENDIENTE');
+          return;
+        }
+        if (response.data.estadoSolicitud === 'RECHAZADO') {
+          setEstadoModal('RECHAZADO');
+          return;
+        }
+
+        // Acceso normal
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("nombreUsuario", response.data.nombres);
-        // ejemplo redirect
         window.location.href = "/home";
       }catch (error) {
         console.error("ERROR COMPLETO:", error);
@@ -75,7 +85,51 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col font-sans">
+      {/* ── Modales de estado comerciante ───────────────────────────────── */}
+      {estadoModal === 'PENDIENTE' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-lg flex flex-col items-center gap-4 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-yellow-50">
+              <MaterialIcon name="hourglass_top" style={{ fontSize: '40px', color: '#b45309' }} />
+            </div>
+            <p className="text-xl font-extrabold text-gray-900">Solicitud en revisión</p>
+            <p className="text-sm leading-relaxed text-gray-500">
+              Tu solicitud de registro como comerciante está siendo evaluada.
+              Te notificaremos por correo una vez aprobado tu acceso.
+            </p>
+            <button
+              onClick={() => setEstadoModal(null)}
+              className="text-sm font-semibold hover:underline"
+              style={{ color: COLORES.primario }}
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
 
+      {estadoModal === 'RECHAZADO' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-lg flex flex-col items-center gap-4 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
+              <MaterialIcon name="cancel" style={{ fontSize: '40px', color: '#dc2626' }} />
+            </div>
+            <p className="text-xl font-extrabold text-gray-900">Solicitud rechazada</p>
+            <p className="text-sm leading-relaxed text-gray-500">
+              Tu solicitud como comerciante fue rechazada. Si crees que es un error,
+              puedes contactarnos o volver a registrarte.
+            </p>
+            <button
+              onClick={() => setEstadoModal(null)}
+              className="text-sm font-semibold hover:underline"
+              style={{ color: COLORES.primario }}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+      
       {/* ── Barra de navegación superior ────────────────────────────────── */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-neutro-200 h-14 flex items-center px-6 justify-between">
         <LogoGamarra size="sm" />
