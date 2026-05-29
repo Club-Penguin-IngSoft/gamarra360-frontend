@@ -18,8 +18,6 @@ const LoginPage = () => {
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const navigate = useNavigate();
   const { iniciarSesion, cargando, error } = useLogin();
-  const [showGoogleRegister, setShowGoogleRegister] = useState(false);
-  const [emailGoogle, setEmailGoogle] = useState("");
   const [estadoModal, setEstadoModal] = useState<'PENDIENTE' | 'RECHAZADO' | null>(null);
 
   // GOOGLE LOGIN
