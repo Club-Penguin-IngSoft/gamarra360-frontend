@@ -13,16 +13,16 @@ import type { ReactNode } from 'react';
 import {
   ChevronDown,
   SlidersHorizontal,
-  Store as StoreIcon,
-  Truck,
   X,
 } from 'lucide-react';
 import type { Categoria, TipoServicio } from '../types/IProducto';
 import type { IFiltrosCatalogo } from '../types/IFiltro';
 import { FILTROS_VACIOS } from '../types/IFiltro';
+import { useOpcionesFiltro } from '../hooks/useOpcionesFiltro';
 
 /* ---------------------------- Constantes UI ---------------------------- */
 
+// Las categorías y tipos de servicio son enums cerrados → siguen hardcodeados
 const CATEGORIAS_UI: { value: Categoria; label: string }[] = [
   { value: 'HOMBRE', label: 'Hombre' },
   { value: 'MUJER', label: 'Mujer' },
@@ -31,23 +31,14 @@ const CATEGORIAS_UI: { value: Categoria; label: string }[] = [
   { value: 'UNISEX_NINOS', label: 'Unisex Niños' },
 ];
 
-const TIPOS_PRODUCTO = [
-  'Polos',
-  'Blusas',
-  'Pantalones',
-  'Casacas',
-  'Vestidos',
-];
-
 const TIPOS_SERVICIO_UI: { value: TipoServicio; label: string }[] = [
   { value: 'COMPRA_DIRECTA', label: 'Compra directa' },
   { value: 'PERSONALIZABLE', label: 'Personalizable' },
+  { value: 'COTIZACION', label: 'Bajo cotización' },
 ];
-
-const TALLAS = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+// Colores, Materiales, Tallas y TiposProducto vienen del hook (dinámico desde BD)
 
 type SectionKey =
-  | 'entrega'
   | 'categoria'
   | 'producto'
   | 'servicio'
@@ -180,6 +171,9 @@ interface Props {
 }
 
 export default function FilterPanel({ open, filtros, onChange, onClose, isTienda = false }: Props) {
+  // Opciones dinámicas desde la BD (colores, materiales, tallas, tiposProducto)
+  const opciones = useOpcionesFiltro();
+
   // Estado borrador: se edita internamente y solo se aplica al padre con "Aplicar filtros"
   const [borrador, setBorrador] = useState<IFiltrosCatalogo>(filtros);
 
@@ -190,7 +184,6 @@ export default function FilterPanel({ open, filtros, onChange, onClose, isTienda
   }, [open]);
 
   const [sections, setSections] = useState<Record<SectionKey, boolean>>({
-    entrega: true,
     categoria: true,
     producto: true,
     servicio: true,
@@ -276,7 +269,7 @@ export default function FilterPanel({ open, filtros, onChange, onClose, isTienda
 
         {/* Secciones scrollables */}
         <div className="flex-1 overflow-y-auto px-6">
-          {/* Solo mostrar si NO es modo tiendas */}
+          {/* PENDIENTE — Tipo de Entrega (requiere columna ofrece_envio en tiendas)
           {!isTienda && (
             <Section
               title="Tipo de Entrega"
@@ -286,7 +279,7 @@ export default function FilterPanel({ open, filtros, onChange, onClose, isTienda
               <Radio
                 name="entrega"
                 label="Envío a domicilio"
-                icon={<Truck className="h-4 w-4 text-ink-500" />}
+                icon={<StoreIcon className="h-4 w-4 text-ink-500" />}
                 checked={borrador.entrega === 'DOMICILIO'}
                 onChange={() => setBorrador((b) => ({ ...b, entrega: 'DOMICILIO' }))}
               />
@@ -298,7 +291,7 @@ export default function FilterPanel({ open, filtros, onChange, onClose, isTienda
                 onChange={() => setBorrador((b) => ({ ...b, entrega: 'TIENDA' }))}
               />
             </Section>
-          )}
+          )} */}
 
           <Section
             title="Categoría"
@@ -325,7 +318,7 @@ export default function FilterPanel({ open, filtros, onChange, onClose, isTienda
               onToggle={() => toggleSection('producto')}
             >
               <div className="flex flex-wrap gap-2">
-                {TIPOS_PRODUCTO.map((t) => (
+                {opciones.tiposProducto.map((t) => (
                   <Pill
                     key={t}
                     label={t}
@@ -369,7 +362,7 @@ export default function FilterPanel({ open, filtros, onChange, onClose, isTienda
                   onChange={(v) =>
                     setBorrador((b) => ({ ...b, color: v ? v : null }))
                   }
-                  options={['Negro', 'Blanco', 'Azul', 'Rojo', 'Verde']}
+                  options={opciones.colores}
                 />
               </Section>
 
@@ -384,7 +377,7 @@ export default function FilterPanel({ open, filtros, onChange, onClose, isTienda
                   onChange={(v) =>
                     setBorrador((b) => ({ ...b, material: v ? v : null }))
                   }
-                  options={['Algodón', 'Denim', 'Cuero', 'Poliéster', 'Lana']}
+                  options={opciones.materiales}
                 />
               </Section>
 
@@ -394,7 +387,7 @@ export default function FilterPanel({ open, filtros, onChange, onClose, isTienda
                 onToggle={() => toggleSection('talla')}
               >
                 <div className="flex flex-wrap gap-2">
-                  {TALLAS.map((t) => (
+                  {opciones.tallas.map((t) => (
                     <Pill
                       key={t}
                       label={t}
@@ -469,21 +462,36 @@ export default function FilterPanel({ open, filtros, onChange, onClose, isTienda
  * Útil cuando ya tienes la data cargada y no quieres re-fetchear al backend
  * (ej. en DetalleTiendaPage donde solo filtras dentro del catálogo de UNA tienda).
  *
- * Nota: campos como `entrega`, `color`, `material`, `tallas`, `tiposProducto`
- * no se aplican porque los productos mock no tienen esa info. Cuando el backend
- * exista, estos llegarán como query params al endpoint.
+ * Aplica: categoría, tipoServicio, tiposProducto, material, color, tallas, precioMin/Max.
+ * No aplica: entrega (pendiente columna ofrece_envio en tiendas).
  */
 export function aplicarFiltrosCliente(
   productos: import('../types/IProducto').IProducto[],
   filtros: IFiltrosCatalogo,
 ): import('../types/IProducto').IProducto[] {
   return productos.filter((p) => {
+    if (filtros.categorias.length > 0 && !filtros.categorias.includes(p.categoria))
+      return false;
     if (
-      filtros.categorias.length > 0 &&
-      !filtros.categorias.includes(p.categoria)
+      filtros.tiposProducto.length > 0 &&
+      (p.tipoProducto == null || !filtros.tiposProducto.includes(p.tipoProducto))
     )
       return false;
     if (filtros.tipoServicio && p.tipoServicio !== filtros.tipoServicio)
+      return false;
+    if (
+      filtros.material != null &&
+      !p.especificaciones?.some(
+        (e) => e.etiqueta === 'Material' && e.valor === filtros.material,
+      )
+    )
+      return false;
+    if (filtros.color != null && !p.variantes?.some((v) => v.color === filtros.color))
+      return false;
+    if (
+      filtros.tallas.length > 0 &&
+      !p.variantes?.some((v) => v.talla != null && filtros.tallas.includes(v.talla))
+    )
       return false;
     if (filtros.precioMin != null && (p.precioFinal ?? Infinity) < filtros.precioMin)
       return false;
