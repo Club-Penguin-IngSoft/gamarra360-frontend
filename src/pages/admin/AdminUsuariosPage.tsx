@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { AdminSidebar } from "../../components/admin/AdminSidebar";
 import { Search, Download, UserPlus, MoreVertical } from "lucide-react";
 import axios from 'axios';
+import { API_BASE_URL } from '../../constants';
 
-const BASE = 'http://localhost:8080/api/v1/admin/usuarios';
+const BASE = `${API_BASE_URL}/admin/usuarios`;
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 
 const ROL_STYLES: Record<string, string> = {

@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Dockerfile y docker-compose DEBEN subirse al repo para el deploy en VM
+!Dockerfile
+!docker-compose.yml
+!nginx.conf
+
+# .env.production se sube para que la VM apunte al servidor correcto
+!.env.production

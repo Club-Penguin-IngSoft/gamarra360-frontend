@@ -8,6 +8,7 @@ import Footer from '../components/Footer';
 import MaterialIcon from '../components/MaterialIcon';
 import Input from '../components/Input';
 import { RUTAS } from '../constants/rutas';
+import { API_BASE_URL } from '../constants';
 import { COLORES } from '../styles/tokens';
 import { useGoogleLogin } from '@react-oauth/google';
 import axios from 'axios';
@@ -122,7 +123,7 @@ export default function RegistroComerciantePage() {
     onSuccess: async (tokenResponse) => {
       try {
         const response = await axios.post(
-          'http://localhost:8080/api/v1/auth/google',
+          `${API_BASE_URL}/auth/google`,
           { accessToken: tokenResponse.access_token }
         );
         // Usuario no existe → se queda en el formulario de registro
@@ -235,7 +236,7 @@ export default function RegistroComerciantePage() {
       };
 
       await axios.post(
-        "http://localhost:8080/api/v1/auth/google/register-comerciante",
+        `${API_BASE_URL}/auth/google/register-comerciante`,
       payload
       );
 
