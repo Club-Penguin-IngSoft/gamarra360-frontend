@@ -33,9 +33,10 @@ const apiClient: AxiosInstance = axios.create({
 
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Intentar con TOKEN_KEY (gamarra_token) y con el fallback 'token'
     const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('token');
-    if (token && config.headers) {
+    // Los tokens mock (prefijo "mock.") no se envían al backend para evitar
+    // que un 401 del servidor fuerce el cierre de sesión durante demos.
+    if (token && !token.startsWith('mock.') && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;

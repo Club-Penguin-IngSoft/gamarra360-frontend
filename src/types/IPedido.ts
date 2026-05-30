@@ -6,10 +6,15 @@
 export type EstadoPedido =
   | 'PENDIENTE'
   | 'CONFIRMADO'
+  | 'PENDIENTE_PAGO'
+  | 'PAGADO'
   | 'EN_PROCESO'
+  | 'LISTO_ENTREGA'
   | 'ENVIADO'
+  | 'RECIBIDO'
   | 'ENTREGADO'
-  | 'CANCELADO';
+  | 'CANCELADO'
+  | 'RECHAZADO';
 
 export type EstadoCotizacion =
   | 'SOLICITADA'
@@ -26,16 +31,22 @@ export interface IDetallePedido {
   idVariante?: string;
   cantidad: number;
   precioUnitario: number;
+  imagenUrl?: string;
 }
+
+export type TipoEntregaPedido = 'ENVIO_DOMICILIO' | 'RECOJO_TIENDA';
 
 export interface IPedido {
   id: string;
+  numeroPedido?: string;
   idCliente: string;
   idComerciante: string;
+  nombreComercio?: string;
   estado: EstadoPedido;
   detalles: IDetallePedido[];
   total: number;
   fechaCreacion: string;
+  tipoEntrega?: TipoEntregaPedido;
 }
 
 export interface ICotizacion {

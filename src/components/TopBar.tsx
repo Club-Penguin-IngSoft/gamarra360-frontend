@@ -215,14 +215,17 @@ export default function TopBar({
             </div>
             {/*aqui puede haber perfilamiento*/}
             {nombreUsuario ? (
-              <div className="inline-flex items-center gap-2">
+              <Link
+                to={RUTAS.CUENTA}
+                className="inline-flex items-center gap-2 transition-opacity hover:opacity-80"
+              >
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500 text-xs font-bold text-white">
                   {nombreUsuario.charAt(0).toUpperCase()}
                 </div>
                 <span className="hidden text-[14px] font-medium text-ink-800 lg:block">
-                  {nombreUsuario}
+                  Hola, {nombreUsuario}
                 </span>
-              </div>
+              </Link>
             ) : (
               <Link
                 to={RUTAS.LOGIN}
