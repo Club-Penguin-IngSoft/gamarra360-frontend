@@ -31,6 +31,8 @@ import ComingSoonInternalPage from '../pages/ComingSoonInternalPage';
 import ComercianteSidebar from '../components/ComercianteSidebar';
 import CheckoutEntregaPage from '../pages/CheckoutEntregaPage';
 import PagoPage from '../pages/PagoPage';
+import MiCuentaPage from '../pages/MiCuentaPage';
+import MisPedidosPage from '../pages/MisPedidosPage';
 
 /**
  * Definición de rutas. NO incluye BrowserRouter — ese se monta en `main.tsx`
@@ -53,16 +55,8 @@ export default function AppRouter() {
       />
       <Route path={RUTAS.VENDER} element={<VenderPage />} />
       <Route path={RUTAS.REGISTRO_COMERCIANTE} element={<RegistroComerciantePage />} />
-      <Route
-        path={RUTAS.CUENTA}
-        element={
-          <ComingSoonPage
-            active="Inicio"
-            title="Mi cuenta"
-            description="Inicia sesión o crea tu cuenta. Muy pronto disponible."
-          />
-        }
-      />
+      <Route path={RUTAS.CUENTA} element={<MiCuentaPage />} />
+      <Route path={RUTAS.MIS_PEDIDOS} element={<MisPedidosPage />} />
       
 
       <Route path={RUTAS.CARRITO} element={<CarritoPage />} />

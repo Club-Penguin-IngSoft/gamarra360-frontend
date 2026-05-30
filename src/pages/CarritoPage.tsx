@@ -9,6 +9,7 @@
  * del contador.
  */
 
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ShoppingBag,
@@ -21,6 +22,7 @@ import Footer from '../components/Footer';
 import QuantityStepper from '../components/QuantityStepper';
 import EmptyState from '../components/EmptyState';
 import { useCarrito } from '../hooks/useCarrito';
+import { useAuth } from '../hooks/useAuth';
 import { formatearPrecio } from '../utils/formatearPrecio';
 import { RUTAS } from '../constants/rutas';
 import type { IItemCarrito } from '../types/ICarrito';
@@ -122,7 +124,9 @@ function CartItemCard({ item }: { item: IItemCarrito }) {
 
 function ResumenCompra() {
   const { items } = useCarrito();
+  const { usuario } = useAuth();
   const navigate = useNavigate();
+  const [mensajeAcceso, setMensajeAcceso] = useState<string | null>(null);
 
   // Subtotal: precios base × cantidades (lo que pagarías sin descuentos)
   const subtotalSinDescuento = items.reduce((acc, i) => {
@@ -168,8 +172,25 @@ function ResumenCompra() {
         </span>
       </div>
 
+      {mensajeAcceso && (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-[13px] text-red-600">
+          {mensajeAcceso}
+        </p>
+      )}
       <button
-        onClick={() => navigate(RUTAS.CHECKOUT)}
+        onClick={() => {
+          setMensajeAcceso(null);
+          if (!usuario) {
+            // No autenticado → redirigir al login
+            navigate(RUTAS.LOGIN);
+            return;
+          }
+          if (usuario.rol !== 'CLIENTE') {
+            setMensajeAcceso('Solo las cuentas de tipo Cliente pueden realizar compras.');
+            return;
+          }
+          navigate(RUTAS.CHECKOUT);
+        }}
         className="h-14 rounded-lg bg-brand-500 text-[16px] font-medium text-white transition-colors hover:bg-brand-600"
       >
         Continuar compra

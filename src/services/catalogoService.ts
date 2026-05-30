@@ -21,6 +21,8 @@ interface IProductoBackend {
   esPersonalizable: boolean;
   activo: boolean;
   idTienda?: number;
+  /** usuario_id del comerciante dueño — usado como vendedorId en el checkout */
+  idComerciante?: number;
   nombreTienda?: string;
   categorias: { idCategoria: number; nombre: string }[];
   tipoProducto?: { idTipoProducto: number; nombre: string } | null;
@@ -166,6 +168,7 @@ function adaptarProducto(p: IProductoBackend): IProducto {
     titulo: p.nombre,
     descripcion: p.descripcion,
     idComerciante: String(p.idTienda ?? ''),
+    idVendedor: p.idComerciante != null ? String(p.idComerciante) : undefined,
     nombreTienda: p.nombreTienda ?? '',
     imagenes: urlsImagenes,
     categoria: p.categorias.length > 0

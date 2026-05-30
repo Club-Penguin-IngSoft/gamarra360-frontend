@@ -25,8 +25,13 @@ export interface IProducto {
   id: string;
   titulo: string;
   descripcion?: string;
-  /** ID del comerciante dueño (multi-tenant) */
+  /** ID de la tienda dueña (multi-tenant). Se usa para navegar al perfil de la tienda. */
   idComerciante: string;
+  /**
+   * usuario_id del comerciante (vendedor) dueño de la tienda.
+   * Se usa como `vendedorId` al registrar el Pedido en el checkout.
+   */
+  idVendedor?: string;
   nombreTienda: string;
   imagenes: string[];
   categoria: Categoria;

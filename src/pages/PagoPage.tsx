@@ -8,26 +8,39 @@ import {
   ChevronDown,
   ChevronUp,
   EyeOff,
-  Info
+  Info,
+  Loader2
 } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
 import { useCarrito } from '../hooks/useCarrito';
+import { useAuth } from '../hooks/useAuth';
+import { crearPedido } from '../services/checkoutService';
 import { formatearPrecio } from '../utils/formatearPrecio';
 import { RUTAS, COSTO_ENVIO_DELIVERY } from '../constants';
 
 export default function PagoPage() {
   const { items, vaciarCarrito } = useCarrito();
+  const { usuario } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Datos pasados desde CheckoutEntregaPage
-  const { tipoEntrega = 'DELIVERY', direccionEntrega = null, fechaEntrega = null } =
-    (location.state as { tipoEntrega?: string; direccionEntrega?: string | null; fechaEntrega?: string | null }) ?? {};
+  // Datos pasados desde CheckoutEntregaPage (opción de entrega por tienda)
+  const {
+    tipoEntregaPorTienda = {},
+    direccionEntrega = null,
+    costoEnvio: costoEnvioState = null,
+  } = (location.state as {
+    tipoEntregaPorTienda?: Record<string, 'DELIVERY' | 'RECOJO_TIENDA'>;
+    direccionEntrega?: string | null;
+    costoEnvio?: number | null;
+  }) ?? {};
 
   const [metodoPago, setMetodoPago] = useState<'TARJETA' | 'YAPE'>('TARJETA');
   const [necesitaFactura, setNecesitaFactura] = useState(false);
   const [pagoExitoso, setPagoExitoso] = useState(false);
+  const [procesando, setProcesando] = useState(false);
+  const [errorPago, setErrorPago] = useState<string | null>(null);
 
   const [campos, setCampos] = useState({
     numeroTarjeta: '',
@@ -49,33 +62,134 @@ export default function PagoPage() {
     const ahorro = base > final ? base - final : 0;
     return acc + ahorro * i.cantidad;
   }, 0);
-  const costoEnvio = tipoEntrega === 'RECOJO_TIENDA' ? 0 : COSTO_ENVIO_DELIVERY;
+
+  // Entrega por tienda: cada paquete con DELIVERY suma un costo de envío
+  const tiendas = [...new Set(items.map((i) => i.producto?.nombreTienda ?? 'Tienda'))];
+  const getTipoEntrega = (tienda: string) => tipoEntregaPorTienda[tienda] ?? 'DELIVERY';
+  const paquetesDelivery = tiendas.filter((t) => getTipoEntrega(t) === 'DELIVERY').length;
+  const hayDelivery = paquetesDelivery > 0;
+  const costoEnvio = costoEnvioState ?? paquetesDelivery * COSTO_ENVIO_DELIVERY;
   const total = subtotalSinDescuento - descuentos + costoEnvio;
 
   const actualizar = (campo: keyof typeof campos, valor: string) => {
-    setCampos(p => ({ ...p, [campo]: valor }));
-    // Limpiar error del campo al escribir
+    let nuevoValor = valor;
+
+    // 1. Campos que SOLO aceptan dígitos
+    if (['numeroTarjeta', 'ccv', 'celular', 'codigoYape'].includes(campo)) {
+      nuevoValor = valor.replace(/\D/g, '');
+    }
+
+    // 2. Límites de longitud máxima
+    if (campo === 'numeroTarjeta') nuevoValor = nuevoValor.slice(0, 16);
+    if (campo === 'ccv')           nuevoValor = nuevoValor.slice(0, 4);   // Visa/MC = 3, Amex = 4
+    if (campo === 'celular')       nuevoValor = nuevoValor.slice(0, 9);   // Perú: 9 dígitos
+    if (campo === 'codigoYape')    nuevoValor = nuevoValor.slice(0, 6);   // Código Yape = 6
+
+    // 3. Formato automático MM/AA para vencimiento
+    if (campo === 'vencimiento') {
+      const soloNum = valor.replace(/\D/g, '');
+      nuevoValor = soloNum.length > 2
+        ? `${soloNum.slice(0, 2)}/${soloNum.slice(2, 4)}`
+        : soloNum;
+    }
+
+    // 4. Titular: solo letras y espacios
+    if (campo === 'titular') {
+      nuevoValor = valor.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '');
+    }
+
+    setCampos(p => ({ ...p, [campo]: nuevoValor }));
     if (errores[campo]) setErrores(p => ({ ...p, [campo]: '' }));
   };
 
-  const handlePagar = () => {
+  const handlePagar = async () => {
     const nuevosErrores: Record<string, string> = {};
 
     if (metodoPago === 'TARJETA') {
-      if (!campos.numeroTarjeta.trim()) nuevosErrores.numeroTarjeta = 'Ingresa el número de tarjeta';
-      if (!campos.vencimiento.trim()) nuevosErrores.vencimiento = 'Ingresa la fecha de vencimiento';
-      if (!campos.ccv.trim()) nuevosErrores.ccv = 'Ingresa el CCV';
-      if (!campos.titular.trim()) nuevosErrores.titular = 'Ingresa el nombre del titular';
+      if (campos.numeroTarjeta.length < 16)
+        nuevosErrores.numeroTarjeta = 'La tarjeta debe tener 16 dígitos';
+      if (campos.vencimiento.length < 5)
+        nuevosErrores.vencimiento = 'Formato incompleto (MM/AA)';
+      if (campos.ccv.length < 3)
+        nuevosErrores.ccv = 'El CCV debe tener 3 o 4 dígitos';
+      if (!campos.titular.trim() || campos.titular.length < 3)
+        nuevosErrores.titular = 'Ingresa el nombre completo del titular';
     } else {
-      if (!campos.celular.trim()) nuevosErrores.celular = 'Ingresa tu número de celular';
-      if (!campos.codigoYape.trim()) nuevosErrores.codigoYape = 'Ingresa el código de aprobación';
+      if (campos.celular.length !== 9)
+        nuevosErrores.celular = 'El número debe tener exactamente 9 dígitos';
+      if (campos.codigoYape.length !== 6)
+        nuevosErrores.codigoYape = 'El código de aprobación tiene 6 dígitos';
     }
 
     setErrores(nuevosErrores);
     if (Object.keys(nuevosErrores).length > 0) return;
 
-    setPagoExitoso(true);
-    vaciarCarrito();
+    if (items.length === 0) {
+      setErrorPago('Tu carrito está vacío.');
+      return;
+    }
+
+    if (hayDelivery && !direccionEntrega) {
+      setErrorPago('Falta la dirección de entrega. Vuelve al paso anterior.');
+      return;
+    }
+
+    // Requiere sesión con cuenta CLIENTE
+    if (!usuario) {
+      setErrorPago('Debes iniciar sesión para completar tu compra.');
+      return;
+    }
+    if (usuario.rol !== 'CLIENTE') {
+      setErrorPago('Solo las cuentas de tipo Cliente pueden realizar compras.');
+      return;
+    }
+
+    setErrorPago(null);
+    setProcesando(true);
+    try {
+      // Agrupar items por tienda → un llamado a /checkout por vendedor (transaccional)
+      const porTienda = items.reduce<Record<string, typeof items>>((acc, item) => {
+        const key = item.producto?.nombreTienda ?? 'Tienda';
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(item);
+        return acc;
+      }, {});
+
+      for (const [tienda, itemsTienda] of Object.entries(porTienda)) {
+        const tipo = (tipoEntregaPorTienda[tienda] ?? 'DELIVERY') as 'DELIVERY' | 'RECOJO_TIENDA';
+        const subtotal = itemsTienda.reduce(
+          (acc, it) => acc + (it.precioUnitario ?? it.producto?.precioFinal ?? 0) * it.cantidad, 0
+        );
+        const envio = tipo === 'DELIVERY' ? COSTO_ENVIO_DELIVERY : 0;
+        const totalPedido = subtotal + envio;
+
+        // vendedorId: usuario_id del comerciante — viene en IProducto.idVendedor
+        const vendedorId = Number(itemsTienda[0]?.producto?.idVendedor ?? 0);
+
+        await crearPedido({
+          vendedorId,
+          tipoEntrega: tipo,
+          direccionEntrega: tipo === 'DELIVERY' ? direccionEntrega : null,
+          total: totalPedido,
+          items: itemsTienda.map((it) => ({
+            idVarianteProducto: it.idVariante ? Number(it.idVariante) : 0,
+            cantidad: it.cantidad,
+            precio: it.precioUnitario ?? it.producto?.precioFinal ?? 0,
+          })),
+        });
+      }
+
+      setPagoExitoso(true);
+      vaciarCarrito();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { mensaje?: string } } };
+      const mensaje =
+        e?.response?.data?.mensaje ?? 'No se pudo procesar el pago. Inténtalo nuevamente.';
+      setErrorPago(mensaje);
+      console.error('Error en pago:', err);
+    } finally {
+      setProcesando(false);
+    }
   };
 
   const inputClass = (campo: string) =>
@@ -265,17 +379,20 @@ export default function PagoPage() {
           <aside className="flex h-fit flex-col gap-6 rounded-xl border border-ink-100 bg-white p-6 shadow-sm lg:sticky lg:top-24">
             <h2 className="text-[20px] font-bold text-ink-900">Resumen de Compra</h2>
 
-            {/* Dirección confirmada */}
-            {tipoEntrega === 'DELIVERY' && direccionEntrega && (
+            {/* Resumen de entrega por tienda */}
+            {hayDelivery && direccionEntrega && (
               <div className="rounded-lg border border-ink-100 bg-surface-muted px-4 py-3 text-[13px]">
-                <p className="font-medium text-ink-700">Envío a:</p>
+                <p className="font-medium text-ink-700">
+                  Envío a domicilio{paquetesDelivery > 1 ? ` (${paquetesDelivery} paquetes)` : ''}:
+                </p>
                 <p className="text-ink-600">{direccionEntrega}</p>
-                {fechaEntrega && <p className="mt-0.5 text-ink-500">Llega el {fechaEntrega}</p>}
               </div>
             )}
-            {tipoEntrega === 'RECOJO_TIENDA' && (
+            {paquetesDelivery < tiendas.length && (
               <div className="rounded-lg border border-ink-100 bg-surface-muted px-4 py-3 text-[13px]">
-                <p className="font-medium text-brand-600">Retiro en tienda — Gratis</p>
+                <p className="font-medium text-brand-600">
+                  Retiro en tienda{hayDelivery ? ' (algunos paquetes)' : ''} — Gratis
+                </p>
               </div>
             )}
 
@@ -291,9 +408,11 @@ export default function PagoPage() {
                 </div>
               )}
               <div className="flex items-center justify-between text-[15px]">
-                <span className="text-ink-700">Entrega</span>
-                <span className={`font-medium ${tipoEntrega === 'RECOJO_TIENDA' ? 'text-brand-600' : 'text-ink-900'}`}>
-                  {tipoEntrega === 'RECOJO_TIENDA' ? 'Gratis' : formatearPrecio(costoEnvio)}
+                <span className="text-ink-700">
+                  Entrega{paquetesDelivery > 0 ? ` (${paquetesDelivery} paquete${paquetesDelivery > 1 ? 's' : ''})` : ''}
+                </span>
+                <span className={`font-medium ${costoEnvio === 0 ? 'text-brand-600' : 'text-ink-900'}`}>
+                  {costoEnvio === 0 ? 'Gratis' : formatearPrecio(costoEnvio)}
                 </span>
               </div>
             </div>
@@ -301,11 +420,24 @@ export default function PagoPage() {
               <span className="text-[18px] font-bold text-ink-900">Total</span>
               <span className="text-[24px] font-bold text-brand-600">{formatearPrecio(total)}</span>
             </div>
+            {errorPago && (
+              <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-[13px] text-red-600">
+                {errorPago}
+              </p>
+            )}
             <button
               onClick={handlePagar}
-              className="mt-2 h-14 w-full rounded-lg bg-[#c83a71] text-[16px] font-medium text-white transition-colors hover:bg-[#a62b5a] shadow-md"
+              disabled={procesando}
+              className="mt-2 flex h-14 w-full items-center justify-center gap-2 rounded-lg bg-[#c83a71] text-[16px] font-medium text-white shadow-md transition-colors hover:bg-[#a62b5a] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Pagar
+              {procesando ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Procesando…
+                </>
+              ) : (
+                'Pagar'
+              )}
             </button>
           </aside>
         </div>

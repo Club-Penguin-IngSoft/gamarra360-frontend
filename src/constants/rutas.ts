@@ -35,6 +35,8 @@ export const RUTAS = {
   /** Mis personalizaciones (seguimiento del cliente — HU-29) */
   PERSONALIZACIONES: '/personalizaciones',
   /** Panel de Administración */
+  /** Lista de pedidos / compras del cliente autenticado */
+  MIS_PEDIDOS: '/mi-cuenta/pedidos',
   ADMIN_DASHBOARD: '/admin',
   ADMIN_USUARIOS: '/admin/usuarios',
   ADMIN_APROBACIONES: '/admin/aprobaciones',
