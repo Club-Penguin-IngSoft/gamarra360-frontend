@@ -448,8 +448,8 @@ function PersonalizableInfo({ producto }: { producto: IProducto }) {
         Añadir al carrito
       </button>
 
-      {/* En PERSONALIZABLE el Figma solo muestra Envío a domicilio */}
-      <EntregaInfo mostrarRetiroEnTienda={false} />
+      {/* Entrega: ambas opciones como placeholder hasta que BD soporte tipo_entrega */}
+      <EntregaInfo />
     </div>
   );
 }

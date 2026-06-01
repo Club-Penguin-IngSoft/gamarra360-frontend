@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import customBadgeIcon from '../assets/images/verified-logo.svg';
@@ -7,7 +7,7 @@ import Footer from '../components/Footer';
 import ProductCard from '../components/ProductCard';
 import StoreCard from '../components/StoreCard';
 import { RUTAS } from '../constants/rutas';
-import { listarProductosPaginados } from '../services/catalogoService';
+import { listarProductosDestacados } from '../services/catalogoService';
 import { listarTiendasDestacadas } from '../services/tiendaService';
 import type { ITienda } from '../types/ITienda';
 import type { IProducto, Categoria } from '../types/IProducto';
@@ -107,13 +107,16 @@ function SectionHeader({ eyebrow, title }: { eyebrow: string; title: string }) {
 function CategoryTags({
   active,
   onChange,
+  categorias,
 }: {
   active: CategoriaUI;
   onChange: (c: CategoriaUI) => void;
+  /** Solo las categorías que tienen al menos un producto */
+  categorias: CategoriaUI[];
 }) {
   return (
     <div className="flex flex-wrap gap-4">
-      {CATEGORIAS_UI.map((c) => {
+      {categorias.map((c) => {
         const isActive = c === active;
         return (
           <button
@@ -140,15 +143,34 @@ function CatalogoGlobal() {
   const [productos, setProductos] = useState<IProducto[]>([]);
   const [cargando, setCargando] = useState(true);
 
-  // Carga solo 20 productos al inicio — suficiente para mezclar y mostrar 4
+  // Trae 8 productos por categoría desde el backend (una sola query eficiente).
+  // Esto garantiza que cada categoría con datos reales tenga productos disponibles
+  // y el frontend puede rotar cuáles 4 mostrar cada día con shuffleDiario.
   useEffect(() => {
     setCargando(true);
-    listarProductosPaginados(0, 20)
-      .then(({ contenido }) => setProductos(contenido))
+    listarProductosDestacados(8)
+      .then(setProductos)
       .finally(() => setCargando(false));
   }, []);
 
-  // Filtra por categoría, rota diariamente y muestra 4
+  // Calcula qué tabs mostrar: solo los que tienen al menos 1 producto en la BD.
+  // Durante la carga muestra todos para evitar saltos de layout.
+  const categoriasDisponibles = useMemo<CategoriaUI[]>(() => {
+    if (cargando || productos.length === 0) return CATEGORIAS_UI;
+    const conProductos = new Set(productos.map((p) => p.categoria));
+    return CATEGORIAS_UI.filter(
+      (c) => c === 'TODO' || conProductos.has(CAT_MAP[c] as Categoria),
+    );
+  }, [productos, cargando]);
+
+  // Si la categoría activa queda fuera de las disponibles, vuelve a TODO.
+  useEffect(() => {
+    if (!cargando && !categoriasDisponibles.includes(categoria)) {
+      setCategoria('TODO');
+    }
+  }, [categoriasDisponibles, cargando, categoria]);
+
+  // Filtra por categoría, rota diariamente y muestra hasta 4
   const categoriaMapeada = CAT_MAP[categoria];
   const filtrados = categoriaMapeada
     ? productos.filter((p) => p.categoria === categoriaMapeada)
@@ -162,7 +184,11 @@ function CatalogoGlobal() {
           eyebrow="Catálogo"
           title="Descubre Productos de Todo Gamarra"
         />
-        <CategoryTags active={categoria} onChange={setCategoria} />
+        <CategoryTags
+          active={categoria}
+          onChange={setCategoria}
+          categorias={categoriasDisponibles}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
