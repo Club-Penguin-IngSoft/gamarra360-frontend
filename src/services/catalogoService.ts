@@ -23,7 +23,10 @@ interface IProductoBackend {
   idTienda?: number;
   nombreTienda?: string;
   nombreCategoria?: string;
-  categorias: { idCategoria: number; nombre: string }[];
+  // Campo plano que envía ProductoResponse (formato actual del backend)
+  nombreTipoProducto?: string;
+  // Campos en formato anidado (para compatibilidad con respuestas futuras)
+  categorias?: { idCategoria: number; nombre: string }[];
   tipoProducto?: { idTipoProducto: number; nombre: string } | null;
   especificaciones?: { nombre: string; descripcion: string }[];
   imagenes: { idImagen: number; url: string; esPrincipal: boolean }[];
@@ -109,7 +112,7 @@ interface IPageBackend {
 
 /* ── Mapeo categoría ───────────────────────────────────────────────────── */
 
-function mapearCategoria(nombre: string): Categoria {
+export function mapearCategoria(nombre: string): Categoria {
   const n = nombre
     .toUpperCase()
     .normalize('NFD')
@@ -170,7 +173,7 @@ function adaptarProducto(p: IProductoBackend): IProducto {
     imagenes: urlsImagenes,
     categoria: p.nombreCategoria ? mapearCategoria(p.nombreCategoria) : 'HOMBRE',
     tipoServicio,
-    tipoProducto: p.tipoProducto?.nombre ?? undefined,
+    tipoProducto: p.nombreTipoProducto ?? p.tipoProducto?.nombre ?? undefined,
     especificaciones: p.especificaciones?.map((e) => ({
       etiqueta: e.nombre,
       valor: e.descripcion,
@@ -179,57 +182,6 @@ function adaptarProducto(p: IProductoBackend): IProducto {
     precioFinal: p.precioFinal ?? p.precioBase ?? undefined,
     variantes: variantes.length > 0 ? variantes : undefined,
   };
-}
-
-/* ── Helpers internos ──────────────────────────────────────────────────── */
-
-function aplicarFiltrosClienteSide(
-  productos: IProducto[],
-  filtros: Partial<IFiltrosCatalogo>,
-): IProducto[] {
-  let resultado = productos;
-  if (filtros.categorias && filtros.categorias.length > 0) {
-    resultado = resultado.filter((p) => filtros.categorias!.includes(p.categoria));
-  }
-  if (filtros.tiposProducto && filtros.tiposProducto.length > 0) {
-    resultado = resultado.filter(
-      (p) => p.tipoProducto != null && filtros.tiposProducto!.includes(p.tipoProducto),
-    );
-  }
-  if (filtros.tipoServicio) {
-    resultado = resultado.filter((p) => p.tipoServicio === filtros.tipoServicio);
-  }
-  // Filtra por material: busca en especificaciones la que tiene nombre='Material'
-  if (filtros.material != null) {
-    resultado = resultado.filter((p) =>
-      p.especificaciones?.some(
-        (e) => e.etiqueta === 'Material' && e.valor === filtros.material,
-      ),
-    );
-  }
-  // Filtra por color: el producto debe tener al menos una variante con ese color
-  if (filtros.color != null) {
-    resultado = resultado.filter(
-      (p) => p.variantes?.some((v) => v.color === filtros.color),
-    );
-  }
-  // Filtra por tallas: el producto debe tener al menos una variante con alguna de las tallas
-  if (filtros.tallas && filtros.tallas.length > 0) {
-    resultado = resultado.filter(
-      (p) => p.variantes?.some((v) => v.talla != null && filtros.tallas!.includes(v.talla)),
-    );
-  }
-  if (filtros.precioMin != null) {
-    resultado = resultado.filter(
-      (p) => (p.precioFinal ?? Infinity) >= filtros.precioMin!,
-    );
-  }
-  if (filtros.precioMax != null) {
-    resultado = resultado.filter(
-      (p) => (p.precioFinal ?? 0) <= filtros.precioMax!,
-    );
-  }
-  return resultado;
 }
 
 /* ── API pública ───────────────────────────────────────────────────────── */

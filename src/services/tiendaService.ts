@@ -4,8 +4,8 @@
  */
 
 import type { ITienda } from '../types/ITienda';
-import type { Categoria } from '../types/IProducto';
 import type { IFiltrosTiendas } from '../types/IFiltro';
+import { mapearCategoria } from './catalogoService';
 import apiClient from './apiClient';
 
 /* ── Tipo que devuelve el backend ──────────────────────────────────────── */
@@ -21,35 +21,6 @@ interface ITiendaBackend {
   tiposProducto?: string[];  // Tipos de producto (Polos, Blusas, etc.)
 }
 
-/* ── Normaliza nombre de categoría DB → enum frontend ─────────────────── */
-// Mismo algoritmo que mapearCategoria en catalogoService.ts
-
-function normalizarCategoria(nombre: string): Categoria {
-  const n = nombre
-    .toUpperCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .trim()
-    .replace(/\s+/g, '_');
-
-  const tabla: Record<string, Categoria> = {
-    HOMBRE:          'HOMBRE',
-    MUJER:           'MUJER',
-    NINOS:           'NINOS',
-    NINO:            'NINOS',
-    NINAS:           'NINOS',
-    NINA:            'NINOS',
-    INFANTIL:        'NINOS',
-    UNISEX_ADULTOS:  'UNISEX_ADULTOS',
-    UNISEX_ADULTO:   'UNISEX_ADULTOS',
-    UNISEX:          'UNISEX_ADULTOS',
-    UNISEX_NINOS:    'UNISEX_NINOS',
-    UNISEX_NINO:     'UNISEX_NINOS',
-  };
-
-  return tabla[n] ?? 'HOMBRE';
-}
-
 /* ── Adaptador backend → ITienda ──────────────────────────────────────── */
 
 function adaptarTienda(t: ITiendaBackend): ITienda {
@@ -60,7 +31,7 @@ function adaptarTienda(t: ITiendaBackend): ITienda {
     logo: t.foto,
     verificada: t.verificada,
     // Normaliza "Hombre" → 'HOMBRE', "Mujer" → 'MUJER', etc.
-    categorias: t.categorias?.map(normalizarCategoria) ?? [],
+    categorias: t.categorias?.map(mapearCategoria) ?? [],
     tiposServicio: (t.tiposServicio as any) ?? ['COMPRA_DIRECTA'],
     tiposProducto: t.tiposProducto ?? [],
   };
@@ -122,23 +93,33 @@ export async function listarTiendas(
  */
 export async function listarTiendasDestacadas(): Promise<ITienda[]> {
   const tiendas = await listarTiendas();
-  return shuffleDiario(tiendas).slice(0, 4);
+  return shuffleDiario(tiendas, semillaDelDia()).slice(0, 3);
 }
 
-/** Fisher-Yates determinista con semilla del día (YYYYMMDD). */
-function shuffleDiario<T>(arr: T[]): T[] {
-  const hoy = new Date();
-  let seed =
-    hoy.getFullYear() * 10000 +
-    (hoy.getMonth() + 1) * 100 +
-    hoy.getDate();
+/**
+ * Fisher-Yates determinista con semilla explícita.
+ * Exportada para reutilizarse en InicioPage y otros módulos.
+ * Usar `semillaDelDia()` como seed para rotación diaria consistente.
+ */
+export function shuffleDiario<T>(arr: T[], seed: number): T[] {
   const copia = [...arr];
+  let s = seed;
   for (let i = copia.length - 1; i > 0; i--) {
-    seed = Math.imul(seed, 1664525) + 1013904223;
-    const j = Math.abs(seed) % (i + 1);
+    s = Math.imul(s, 1664525) + 1013904223;
+    const j = Math.abs(s) % (i + 1);
     [copia[i], copia[j]] = [copia[j], copia[i]];
   }
   return copia;
+}
+
+/** Semilla del día: número YYYYMMDD, cambia cada medianoche. */
+export function semillaDelDia(): number {
+  const hoy = new Date();
+  return (
+    hoy.getFullYear() * 10000 +
+    (hoy.getMonth() + 1) * 100 +
+    hoy.getDate()
+  );
 }
 
 /**

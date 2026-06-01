@@ -8,7 +8,7 @@ import ProductCard from '../components/ProductCard';
 import StoreCard from '../components/StoreCard';
 import { RUTAS } from '../constants/rutas';
 import { listarProductosDestacados } from '../services/catalogoService';
-import { listarTiendasDestacadas } from '../services/tiendaService';
+import { listarTiendasDestacadas, shuffleDiario, semillaDelDia } from '../services/tiendaService';
 import type { ITienda } from '../types/ITienda';
 import type { IProducto, Categoria } from '../types/IProducto';
 
@@ -36,33 +36,6 @@ const CAT_MAP: Record<CategoriaUI, Categoria | null> = {
   NIÑOS: 'NINOS',
   'UNISEX ADULTOS': 'UNISEX_ADULTOS',
 };
-
-/* ── Rotación diaria ─────────────────────────────────────────────────────── */
-
-/** Genera un número entero a partir de la fecha actual (YYYYMMDD). */
-function semillaDelDia(): number {
-  const hoy = new Date();
-  return (
-    hoy.getFullYear() * 10000 +
-    (hoy.getMonth() + 1) * 100 +
-    hoy.getDate()
-  );
-}
-
-/**
- * Fisher-Yates determinista con LCG. Dado el mismo `seed` siempre
- * produce el mismo orden, pero cambia cada día.
- */
-function shuffleDiario<T>(arr: T[], seed: number): T[] {
-  const copia = [...arr];
-  let s = seed;
-  for (let i = copia.length - 1; i > 0; i--) {
-    s = Math.imul(s, 1664525) + 1013904223;
-    const j = Math.abs(s) % (i + 1);
-    [copia[i], copia[j]] = [copia[j], copia[i]];
-  }
-  return copia;
-}
 
 /* --------------------------------- Hero ---------------------------------- */
 
