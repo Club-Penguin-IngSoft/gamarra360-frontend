@@ -23,7 +23,11 @@ interface Props {
 }
 
 export default function ProductCard({ producto, variant = 'default' }: Props) {
-  const esCotizacion = producto.tipoServicio === 'COTIZACION';
+  // Sin precio definido: tanto COTIZACION como PERSONALIZABLE sin precio
+  // deben mostrar "Bajo Pedido" con el estilo correcto (gris italic).
+  const esCotizacion =
+    producto.tipoServicio === 'COTIZACION' ||
+    (producto.tipoServicio === 'PERSONALIZABLE' && !producto.precioFinal);
 
   const styles = {
     default: {
