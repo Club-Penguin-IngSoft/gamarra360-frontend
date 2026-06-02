@@ -7,6 +7,7 @@ import Logo from './Logo';
 import MaterialIcon from './MaterialIcon';
 import { RUTAS } from '../constants/rutas';
 import { useCarrito } from '../hooks/useCarrito';
+import { useAuth } from '../hooks/useAuth';
 import { listarProductos } from '../services/catalogoService';
 import type { IProducto } from '../types/IProducto';
 
@@ -23,11 +24,11 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { label: 'Inicio', to: RUTAS.INICIO },
-  { label: 'Productos', to: RUTAS.CATALOGO },
-  { label: 'Tiendas', to: RUTAS.TIENDAS },
+  { label: 'Inicio',       to: RUTAS.INICIO },
+  { label: 'Productos',    to: RUTAS.CATALOGO },
+  { label: 'Tiendas',      to: RUTAS.TIENDAS },
   { label: 'Cotizaciones', to: RUTAS.COTIZACIONES },
-  { label: 'Vender', to: RUTAS.VENDER },
+  { label: 'Vender',       to: RUTAS.VENDER },
 ];
 
 export default function TopBar({
@@ -37,27 +38,17 @@ export default function TopBar({
   active?: NavKey;
   minimal?: boolean;
 }) {
-  const { cantidadTotal } = useCarrito();
-  const token = localStorage.getItem('token');
-  const nombreUsuario = (() => {
-    if (!token) return null;
-    const guardado = localStorage.getItem("nombreUsuario");
-    if (guardado) return guardado;
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      return payload.nombre || payload.nombres || payload.sub || null;
-    } catch {
-      return null;
-    }
-  })();
+  const { cantidadTotal, vaciarCarrito } = useCarrito();
+  const { usuario, cerrarSesion } = useAuth();
   const navigate = useNavigate();
+
+  const nombreUsuario = usuario?.nombre || null;
 
   const [query, setQuery] = useState('');
   const [resultados, setResultados] = useState<IProducto[]>([]);
   const [abierto, setAbierto] = useState(false);
   const contenedorRef = useRef<HTMLDivElement>(null);
 
-  // Busca cuando hay ≥ 2 caracteres
   useEffect(() => {
     if (query.trim().length < 2) {
       setResultados([]);
@@ -66,18 +57,20 @@ export default function TopBar({
     }
     listarProductos().then((todos) => {
       const lower = query.toLowerCase();
-      const filtrados = todos.filter((p) =>
-        p.titulo.toLowerCase().includes(lower),
-      ).slice(0, 6);
+      const filtrados = todos
+        .filter((p) => p.titulo.toLowerCase().includes(lower))
+        .slice(0, 6);
       setResultados(filtrados);
       setAbierto(true);
     });
   }, [query]);
 
-  // Cierra el dropdown al hacer clic fuera
   useEffect(() => {
     function handleClickFuera(e: MouseEvent) {
-      if (contenedorRef.current && !contenedorRef.current.contains(e.target as Node)) {
+      if (
+        contenedorRef.current &&
+        !contenedorRef.current.contains(e.target as Node)
+      ) {
         setAbierto(false);
       }
     }
@@ -98,10 +91,17 @@ export default function TopBar({
     }
   }
 
+  function handleCerrarSesion() {
+    vaciarCarrito();
+    cerrarSesion();
+    navigate(RUTAS.INICIO);
+  }
+
   return (
     <header className="sticky top-0 z-40 h-20 border-b border-ink-200 bg-white">
       <div className="flex h-full items-center justify-between px-4">
-        {/* left: brand + nav */}
+
+        {/* ── Izquierda: logo + nav ─────────────────────────────────── */}
         <div className="flex items-center gap-8 self-stretch">
           <Link to={RUTAS.INICIO} aria-label="Ir al inicio">
             <Logo size="md" />
@@ -111,7 +111,6 @@ export default function TopBar({
             <nav className="hidden items-center gap-4 md:flex">
               {navItems.map((item) => {
                 const isActive = item.label === active;
-
                 return (
                   <Link
                     key={item.label}
@@ -137,7 +136,7 @@ export default function TopBar({
           )}
         </div>
 
-        {/* right: search + icon buttons (full) / back link (minimal) */}
+        {/* ── Derecha ───────────────────────────────────────────────── */}
         {minimal ? (
           <Link
             to={RUTAS.INICIO}
@@ -148,7 +147,12 @@ export default function TopBar({
           </Link>
         ) : (
           <div className="flex items-center gap-5">
-            <div ref={contenedorRef} className="relative hidden w-[460px] lg:w-[560px] md:block">
+
+            {/* Buscador */}
+            <div
+              ref={contenedorRef}
+              className="relative hidden w-[460px] lg:w-[560px] md:block"
+            >
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-500" />
               <input
                 type="text"
@@ -161,7 +165,6 @@ export default function TopBar({
                 autoComplete="off"
               />
 
-              {/* Dropdown de resultados */}
               {abierto && resultados.length > 0 && (
                 <ul className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-lg">
                   {resultados.map((p) => (
@@ -178,8 +181,12 @@ export default function TopBar({
                           />
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-[14px] font-medium text-ink-900">{p.titulo}</p>
-                          <p className="text-[12px] text-ink-500">{p.nombreTienda}</p>
+                          <p className="truncate text-[14px] font-medium text-ink-900">
+                            {p.titulo}
+                          </p>
+                          <p className="text-[12px] text-ink-500">
+                            {p.nombreTienda}
+                          </p>
                         </div>
                       </button>
                     </li>
@@ -200,33 +207,41 @@ export default function TopBar({
                 </ul>
               )}
 
-              {/* Sin resultados */}
               {abierto && query.trim().length >= 2 && resultados.length === 0 && (
                 <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 rounded-2xl border border-ink-100 bg-white px-4 py-3 shadow-lg">
-                  <p className="text-[14px] text-ink-500">No se encontraron productos para "{query}"</p>
+                  <p className="text-[14px] text-ink-500">
+                    No se encontraron productos para "{query}"
+                  </p>
                 </div>
               )}
             </div>
-            {/*aqui puede haber perfilamiento*/}
-            <Link
-              to={nombreUsuario ? RUTAS.LOGIN : RUTAS.LOGIN}
-              aria-label="Perfil"
-              className="inline-flex items-center gap-2 transition-opacity hover:opacity-80"
-            >
-              {nombreUsuario ? (
-                <>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500 text-xs font-bold text-white">
-                    {nombreUsuario.charAt(0).toUpperCase()}
-                  </div>
-                  <span className="hidden text-[14px] font-medium text-ink-800 lg:block">
-                    {nombreUsuario}
-                  </span>
-                </>
-              ) : (
-                <img src={accountCircleIcon} alt="" className="h-8 w-8 object-contain" />
-              )}
-            </Link>
 
+            {/* Perfil — avatar con nombre si hay sesión, icono si no */}
+            {/* Perfil */}
+            {nombreUsuario ? (
+              <div className="inline-flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500 text-xs font-bold text-white">
+                  {nombreUsuario.charAt(0).toUpperCase()}
+                </div>
+                <span className="hidden text-[14px] font-medium text-ink-800 lg:block">
+                  {nombreUsuario}
+                </span>
+              </div>
+            ) : (
+              <Link
+                to={RUTAS.LOGIN}
+                aria-label="Iniciar sesión"
+                className="inline-flex items-center gap-2 transition-opacity hover:opacity-80"
+              >
+                <img
+                  src={accountCircleIcon}
+                  alt="Iniciar sesión"
+                  className="h-8 w-8 object-contain"
+                />
+              </Link>
+            )}
+
+            {/* Carrito */}
             <Link
               to={RUTAS.CARRITO}
               aria-label={`Carrito (${cantidadTotal} ${cantidadTotal === 1 ? 'artículo' : 'artículos'})`}
@@ -239,6 +254,22 @@ export default function TopBar({
                 </span>
               )}
             </Link>
+
+            {/* Cerrar sesión — solo visible si hay sesión activa */}
+            {nombreUsuario && (
+              <button
+                onClick={handleCerrarSesion}
+                aria-label="Cerrar sesión"
+                title="Cerrar sesión"
+                className="inline-flex items-center justify-center transition-opacity hover:opacity-80"
+              >
+                <MaterialIcon
+                  name="logout"
+                  style={{ fontSize: '22px', color: '#6b7280' }}
+                />
+              </button>
+            )}
+
           </div>
         )}
       </div>

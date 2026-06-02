@@ -24,7 +24,7 @@ import { useCarrito } from '../hooks/useCarrito';
 import { formatearPrecio } from '../utils/formatearPrecio';
 import { RUTAS } from '../constants/rutas';
 import type { IItemCarrito } from '../types/ICarrito';
-
+import { useAuth } from '../hooks/useAuth';
 /* ----------------------------- Item Card ------------------------------- */
 
 function CartItemCard({ item }: { item: IItemCarrito }) {
@@ -122,6 +122,7 @@ function CartItemCard({ item }: { item: IItemCarrito }) {
 
 function ResumenCompra() {
   const { items } = useCarrito();
+  const { usuario } = useAuth();
   const navigate = useNavigate();
 
   // Subtotal: precios base × cantidades (lo que pagarías sin descuentos)
@@ -139,7 +140,14 @@ function ResumenCompra() {
   }, 0);
 
   const total = subtotalSinDescuento - descuentos;
-
+  
+  function handleContinuar() {
+    if (!usuario) {
+      navigate(RUTAS.LOGIN);            // no logueado → login
+      return;
+    }
+    navigate(RUTAS.CHECKOUT);           // logueado → checkout
+  }
   return (
     <aside className="flex h-fit flex-col gap-6 rounded-xl bg-white p-6 lg:sticky lg:top-24">
       <h2 className="text-[20px] font-semibold text-ink-900">
@@ -169,7 +177,7 @@ function ResumenCompra() {
       </div>
 
       <button
-        onClick={() => navigate(RUTAS.CHECKOUT)}
+        onClick={handleContinuar}
         className="h-14 rounded-lg bg-brand-500 text-[16px] font-medium text-white transition-colors hover:bg-brand-600"
       >
         Continuar compra
