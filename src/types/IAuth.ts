@@ -14,4 +14,5 @@ export interface ILoginResponse {
   rol: RolUsuario | 'VENDEDOR';
   needsRegistration: boolean;
   tenantId?: number;
+  estadoSolicitud?: 'PENDIENTE' | 'RECHAZADO' | null;
 }

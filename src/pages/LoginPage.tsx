@@ -10,20 +10,30 @@ import { RUTAS } from '../constants/rutas';
 import { ILoginRequest } from '../types/IAuth';
 import { COLORES } from '../styles/tokens';
 import { useGoogleLogin } from '@react-oauth/google';
+import ModalEstadoSolicitud from '../components/ModalEstadoSolicitud';
 
 const LoginPage = () => {
   const [form, setForm] = useState<ILoginRequest>({ email: '', contrasenha: '' });
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const { iniciarSesion, loginConGoogle, cargando, error } = useLogin();
+  const [estadoModal, setEstadoModal] = useState<'pendiente' | 'rechazado' | null>(null);
 
   const loginGoogle = useGoogleLogin({
     flow: 'implicit',
     onSuccess: async (tokenResponse) => {
-      await loginConGoogle(tokenResponse.access_token);
+      const data = await loginConGoogle(tokenResponse.access_token);
+      // loginConGoogle debe retornar el AuthResponse completo (ver hook abajo)
+
+      if (data?.estadoSolicitud === 'PENDIENTE') {
+        setEstadoModal('pendiente');
+        return;
+      }
+      if (data?.estadoSolicitud === 'RECHAZADO') {
+        setEstadoModal('rechazado');
+        return;
+      }
     },
-    onError: () => {
-      console.log('Google Login Failed');
-    },
+    onError: () => console.log('Google Login Failed'),
   });
 
   const formularioValido =
@@ -43,7 +53,9 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col font-sans">
-
+      {estadoModal && (
+        <ModalEstadoSolicitud tipo={estadoModal} onClose={() => setEstadoModal(null)} />
+      )}
       {/* ── Barra de navegación superior ────────────────────────────────── */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-neutro-200 h-14 flex items-center px-6 justify-between">
         <LogoGamarra size="sm" />

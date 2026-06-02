@@ -75,7 +75,10 @@ export default function DashboardPage() {
         <div className="flex items-start justify-between mb-7">
           <div>
             <h1 className="text-[22px] font-bold text-gray-900 mb-1">Panel de Control</h1>
-            <p className="text-[13px] text-gray-500">Bienvenido de vuelta, {nombreTienda}</p>
+            <p className="text-[13px] text-gray-500">
+              Bienvenido de vuelta,{' '}
+              <span className="text-[17px] font-bold text-primario">{nombreTienda}</span>
+            </p>
           </div>
           <button
             className="flex items-center gap-1.5 px-[18px] py-2.5 bg-primario text-white rounded-lg text-[13px] font-semibold hover:bg-primario-hover transition-colors whitespace-nowrap"

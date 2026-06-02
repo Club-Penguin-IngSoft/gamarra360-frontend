@@ -36,7 +36,7 @@ export default function AdminUsuariosPage() {
   const cargar = async (p = 0) => {
     setLoading(true);
     try {
-      const params: any = { page: p, size: 20 };
+      const params: any = { page: p, size: 10 };
       if (q.trim())          params.q      = q.trim();
       if (rolFiltro)         params.rol    = rolFiltro;
       if (activoFiltro !== null) params.activo = activoFiltro;
@@ -264,6 +264,13 @@ export default function AdminUsuariosPage() {
                     </td>
                   </tr>
                 ))}
+                {!loading && users.length < 10 &&
+                  Array.from({ length: 10 - users.length }).map((_, i) => (
+                    <tr key={`empty-${i}`}>
+                      <td colSpan={5} className="py-[18px]" />
+                    </tr>
+                  ))
+                }
               </tbody>
             </table>
           </div>
@@ -271,7 +278,7 @@ export default function AdminUsuariosPage() {
           {/* Footer paginación */}
           <div className="px-6 py-4 flex items-center justify-between bg-neutro-50/30">
             <p className="text-xs font-bold text-neutro-400 uppercase tracking-wider">
-              Mostrando {users.length} de {total} usuarios
+              Mostrando {page * 10 + 1}–{Math.min((page + 1) * 10, total)} de {total} usuarios
             </p>
             <div className="flex items-center gap-1">
               <button
@@ -286,7 +293,7 @@ export default function AdminUsuariosPage() {
               </span>
               <button
                 onClick={() => cargar(page + 1)}
-                disabled={(page + 1) * 20 >= total}
+                disabled={(page + 1) * 10 >= total}
                 className="px-3 py-1.5 rounded-lg border border-neutro-200 text-xs font-bold text-neutro-600 hover:bg-neutro-100 disabled:opacity-30 transition-all"
               >
                 Siguiente

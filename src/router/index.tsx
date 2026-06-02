@@ -31,25 +31,33 @@ import ComingSoonInternalPage from '../pages/ComingSoonInternalPage';
 import ComercianteSidebar from '../components/ComercianteSidebar';
 import CheckoutEntregaPage from '../pages/CheckoutEntregaPage';
 import PagoPage from '../pages/PagoPage';
-
+import { useAuth } from '../hooks/useAuth';
 /**
  * Definición de rutas. NO incluye BrowserRouter — ese se monta en `main.tsx`
  * para que componentes globales como `CartDrawer` (que viven en StoreProvider)
  * puedan usar <Link> y useNavigate.
  */
+function SoloClientes({ children }: { children: React.ReactNode }) {
+  const { usuario } = useAuth();
+  if (usuario?.rol === 'COMERCIANTE') {          // logueado como comerciante → su dashboard
+    return <Navigate to={RUTAS.COMERCIANTE_DASHBOARD} replace />;
+  }
+  if (usuario?.rol === 'ADMIN') {                // logueado como admin → su dashboard
+    return <Navigate to={RUTAS.ADMIN_DASHBOARD} replace />;
+  }
+  return <>{children}</>;                        // no logueado o CLIENTE → pasa normal
+}
+
 export default function AppRouter() {
   return (
     <Routes>
-      <Route path={RUTAS.INICIO} element={<InicioPage />} />
-      <Route path={RUTAS.CATALOGO} element={<CatalogoPage />} />
-      <Route
-        path={RUTAS.DETALLE_PRODUCTO()}
-        element={<DetalleProductoPage />}
-      />
-      <Route path={RUTAS.TIENDAS} element={<TiendasPage />} />
+      <Route path={RUTAS.INICIO} element={<SoloClientes><InicioPage /></SoloClientes>} />
+      <Route path={RUTAS.CATALOGO} element={<SoloClientes><CatalogoPage /></SoloClientes>} />
+      <Route path={RUTAS.DETALLE_PRODUCTO()} element={<SoloClientes><DetalleProductoPage /></SoloClientes>} />
+      <Route path={RUTAS.TIENDAS} element={<SoloClientes><TiendasPage /></SoloClientes>} />
       <Route
         path={RUTAS.DETALLE_TIENDA()}
-        element={<DetalleTiendaPage />}
+        element={<SoloClientes><DetalleTiendaPage /></SoloClientes>}
       />
       <Route path={RUTAS.VENDER} element={<VenderPage />} />
       <Route path={RUTAS.REGISTRO_COMERCIANTE} element={<RegistroComerciantePage />} />
@@ -65,13 +73,13 @@ export default function AppRouter() {
       />
       
 
-      <Route path={RUTAS.CARRITO} element={<CarritoPage />} />
+      <Route path={RUTAS.CARRITO} element={<SoloClientes><CarritoPage /></SoloClientes>} />
       
 
-      <Route path={RUTAS.CHECKOUT} element={<CheckoutEntregaPage />} />
+      <Route path={RUTAS.CHECKOUT} element={<SoloClientes><CheckoutEntregaPage /></SoloClientes>} />
       
 
-      <Route path={RUTAS.PAGO} element={<PagoPage />} />
+      <Route path={RUTAS.PAGO} element={<SoloClientes><PagoPage /></SoloClientes>} />
 
       <Route path={RUTAS.LOGIN} element={<LoginPage />} />
       <Route path={RUTAS.REGISTRO} element={<RegistroPage />} />

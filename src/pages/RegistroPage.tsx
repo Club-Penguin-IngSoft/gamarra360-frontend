@@ -240,17 +240,6 @@ export default function RegistroPage() {
               </Button>
             </form>
 
-            {/* Divider */}
-            <div className="flex items-center gap-3 my-5">
-              <div className="flex-1 h-px bg-gray-200" />
-              <span className="text-xs text-gray-400 uppercase tracking-widest font-medium whitespace-nowrap">
-                O continúa con
-              </span>
-              <div className="flex-1 h-px bg-gray-200" />
-            </div>
-
-            <GoogleButton />
-
             <p className="text-center text-sm text-gray-500 mt-5">
               ¿Ya tienes una cuenta?{' '}
               <Link

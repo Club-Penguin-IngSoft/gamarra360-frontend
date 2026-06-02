@@ -124,7 +124,7 @@ export default function AdminAprobacionesPage() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutro-50">
+              <tbody className="divide-y divide-neutro-50 min-h-[520px] block">
                 {loading ? (
                   <tr>
                     <td colSpan={5} className="text-center py-12 text-neutro-400 font-medium">
@@ -186,6 +186,13 @@ export default function AdminAprobacionesPage() {
                     </td>
                   </tr>
                 ))}
+                {!loading && vendors.length < 10 &&
+                  Array.from({ length: 10 - vendors.length }).map((_, i) => (
+                    <tr key={`empty-${i}`}>
+                      <td colSpan={5} className="py-[18px]" />
+                    </tr>
+                  ))
+                }
               </tbody>
             </table>
           </div>
