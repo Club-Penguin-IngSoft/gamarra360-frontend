@@ -21,6 +21,7 @@ interface IProductoBackend {
   esPersonalizable: boolean;
   activo: boolean;
   idTienda?: number;
+  idComerciante?: number;
   nombreTienda?: string;
   nombreCategoria?: string;
   // Campo plano que envía ProductoResponse (formato actual del backend)
@@ -168,7 +169,7 @@ function adaptarProducto(p: IProductoBackend): IProducto {
     id: String(p.idProducto),
     titulo: p.nombre,
     descripcion: p.descripcion,
-    idComerciante: String(p.idTienda ?? ''),
+    idComerciante: String(p.idComerciante ?? p.idTienda ?? ''),
     nombreTienda: p.nombreTienda ?? '',
     imagenes: urlsImagenes,
     categoria: p.nombreCategoria ? mapearCategoria(p.nombreCategoria) : 'HOMBRE',

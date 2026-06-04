@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Check,
   CheckCircle,
@@ -8,21 +8,42 @@ import {
   ChevronDown,
   ChevronUp,
   EyeOff,
-  Info
+  Info,
+  Loader2,
 } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
 import { useCarrito } from '../hooks/useCarrito';
+import { useAuth } from '../hooks/useAuth';
 import { formatearPrecio } from '../utils/formatearPrecio';
 import { RUTAS } from '../constants/rutas';
+import { pedidoService } from '../services/pedidoService';
+import type { MetodoPago, TipoEntrega } from '../types/IPedido';
+
+interface EntregaTiendaState {
+  tipoEntrega: TipoEntrega;
+  fechaEntrega?: string;
+}
+
+interface CheckoutState {
+  entregasPorTienda?: Record<string, EntregaTiendaState>;
+}
+
+const COSTO_DELIVERY = 12;
 
 export default function PagoPage() {
   const { items, vaciarCarrito } = useCarrito();
+  const { usuario } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { entregasPorTienda = {} } = (location.state as CheckoutState) ?? {};
 
-  const [metodoPago, setMetodoPago] = useState<'TARJETA' | 'YAPE'>('TARJETA');
+  const [metodoPago, setMetodoPago] = useState<MetodoPago>('TARJETA');
   const [necesitaFactura, setNecesitaFactura] = useState(false);
+  const [cargando, setCargando] = useState(false);
   const [pagoExitoso, setPagoExitoso] = useState(false);
+  const [ordenId, setOrdenId] = useState<number | null>(null);
+  const [errorPago, setErrorPago] = useState<string | null>(null);
 
   const [campos, setCampos] = useState({
     numeroTarjeta: '',
@@ -44,16 +65,19 @@ export default function PagoPage() {
     const ahorro = base > final ? base - final : 0;
     return acc + ahorro * i.cantidad;
   }, 0);
-  const costoEnvio = 12.00;
+  // Suma el costo de envío de cada tienda según su elección individual
+  const entregasArr = Object.values(entregasPorTienda);
+  const costoEnvio = entregasArr.length > 0
+    ? entregasArr.reduce((acc, e) => acc + (e.tipoEntrega === 'DELIVERY' ? COSTO_DELIVERY : 0), 0)
+    : COSTO_DELIVERY; // fallback solo si no hay state (acceso directo a /pago)
   const total = subtotalSinDescuento - descuentos + costoEnvio;
 
   const actualizar = (campo: keyof typeof campos, valor: string) => {
     setCampos(p => ({ ...p, [campo]: valor }));
-    // Limpiar error del campo al escribir
     if (errores[campo]) setErrores(p => ({ ...p, [campo]: '' }));
   };
 
-  const handlePagar = () => {
+  const handlePagar = async () => {
     const nuevosErrores: Record<string, string> = {};
 
     if (metodoPago === 'TARJETA') {
@@ -69,8 +93,56 @@ export default function PagoPage() {
     setErrores(nuevosErrores);
     if (Object.keys(nuevosErrores).length > 0) return;
 
-    setPagoExitoso(true);
-    vaciarCarrito();
+    // Construir grupos por comerciante para crearOrdenCompleta
+    const porComerciante = items.reduce<Record<string, typeof items>>((acc, item) => {
+      const id = item.producto.idComerciante || 'sin-tienda';
+      if (!acc[id]) acc[id] = [];
+      acc[id].push(item);
+      return acc;
+    }, {});
+
+    const clienteId = Number(usuario?.id ?? 0);
+
+    const grupos = Object.entries(porComerciante).map(([idComerciante, itemsGrupo]) => {
+      const entregaTienda = entregasPorTienda[idComerciante];
+      const tipoEntrega = entregaTienda?.tipoEntrega ?? 'DELIVERY';
+      const costoEntrega = tipoEntrega === 'DELIVERY' ? COSTO_DELIVERY : 0;
+      const subtotalGrupo = itemsGrupo.reduce((acc, i) => {
+        const precio = i.producto.precioFinal ?? i.producto.precioBase ?? 0;
+        return acc + precio * i.cantidad;
+      }, 0);
+      return {
+        vendedorId: Number(idComerciante) || 0,
+        tipoEntrega,
+        direccionEntrega: tipoEntrega === 'DELIVERY' ? 'Av. Arequipa 3421, San Isidro' : undefined,
+        total: subtotalGrupo + costoEntrega,
+        items: itemsGrupo.map((i) => {
+          const rawVariante = i.idVariante ?? i.producto.variantes?.[0]?.id;
+          return {
+            idVarianteProducto: rawVariante ? Number(rawVariante) : null,
+            cantidad: i.cantidad,
+            precio: i.precioUnitario,
+          };
+        }),
+      };
+    });
+
+    setCargando(true);
+    setErrorPago(null);
+
+    try {
+      const idOrden = await pedidoService.crearOrdenCompleta(clienteId, total, grupos);
+      setOrdenId(idOrden);
+      vaciarCarrito();
+      setPagoExitoso(true);
+    } catch (err: unknown) {
+      console.error('[PagoPage] Error al crear orden:', err);
+      const axiosErr = err as { response?: { data?: { mensaje?: string } } };
+      const mensajeBackend = axiosErr?.response?.data?.mensaje;
+      setErrorPago(mensajeBackend ?? 'No se pudo registrar el pedido. Inténtalo de nuevo.');
+    } finally {
+      setCargando(false);
+    }
   };
 
   const inputClass = (campo: string) =>
@@ -271,19 +343,36 @@ export default function PagoPage() {
                 </div>
               )}
               <div className="flex items-center justify-between text-[15px]">
-                <span className="text-ink-700">Entrega (1)</span>
-                <span className="font-medium text-ink-900">{formatearPrecio(costoEnvio)}</span>
+                <span className="text-ink-700">Entrega</span>
+                <span className={costoEnvio === 0 ? 'font-medium text-brand-500' : 'font-medium text-ink-900'}>
+                  {costoEnvio === 0 ? 'Gratis' : formatearPrecio(costoEnvio)}
+                </span>
               </div>
             </div>
             <div className="flex items-center justify-between border-t border-ink-100 pt-4">
               <span className="text-[18px] font-bold text-ink-900">Total</span>
               <span className="text-[24px] font-bold text-brand-600">{formatearPrecio(total)}</span>
             </div>
+
+            {errorPago && (
+              <p className="rounded-lg bg-red-50 px-4 py-3 text-[13px] text-red-600 border border-red-200">
+                {errorPago}
+              </p>
+            )}
+
             <button
               onClick={handlePagar}
-              className="mt-2 h-14 w-full rounded-lg bg-[#c83a71] text-[16px] font-medium text-white transition-colors hover:bg-[#a62b5a] shadow-md"
+              disabled={cargando}
+              className="mt-2 flex h-14 w-full items-center justify-center gap-2 rounded-lg bg-[#c83a71] text-[16px] font-medium text-white transition-colors hover:bg-[#a62b5a] shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Pagar
+              {cargando ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Procesando...
+                </>
+              ) : (
+                'Pagar'
+              )}
             </button>
           </aside>
         </div>
@@ -300,15 +389,29 @@ export default function PagoPage() {
             </div>
             <div className="flex flex-col gap-1">
               <h2 className="text-[22px] font-bold text-ink-900">¡Pago exitoso!</h2>
-              <p className="text-[14px] text-ink-500">Tu pedido está siendo procesado.</p>
+              <p className="text-[14px] text-ink-500">Tu compra está siendo procesada.</p>
+              {ordenId && (
+                <p className="mt-1 text-[12px] text-ink-400">
+                  Orden <span className="font-mono font-medium text-ink-700">#{ordenId}</span>
+                </p>
+              )}
             </div>
-            <button
-              type="button"
-              onClick={() => navigate(RUTAS.INICIO)}
-              className="h-11 w-full rounded-lg bg-[#c83a71] text-[15px] font-semibold text-white hover:bg-[#a62b5a] transition-colors"
-            >
-              Ir al inicio
-            </button>
+            <div className="flex w-full flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => navigate(ordenId ? RUTAS.DETALLE_PEDIDO(ordenId) : RUTAS.MIS_PEDIDOS)}
+                className="h-11 w-full rounded-lg bg-[#c83a71] text-[15px] font-semibold text-white hover:bg-[#a62b5a] transition-colors"
+              >
+                Ver detalle de mi compra
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate(RUTAS.INICIO)}
+                className="h-11 w-full rounded-lg border border-ink-200 text-[15px] font-medium text-ink-700 hover:bg-ink-50 transition-colors"
+              >
+                Ir al inicio
+              </button>
+            </div>
           </div>
         </div>
       )}

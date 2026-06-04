@@ -31,6 +31,8 @@ import ComingSoonInternalPage from '../pages/ComingSoonInternalPage';
 import ComercianteSidebar from '../components/ComercianteSidebar';
 import CheckoutEntregaPage from '../pages/CheckoutEntregaPage';
 import PagoPage from '../pages/PagoPage';
+import MisPedidosPage from '../pages/MisPedidosPage';
+import DetallePedidoPage from '../pages/DetallePedidoPage';
 import { useAuth } from '../hooks/useAuth';
 /**
  * Definición de rutas. NO incluye BrowserRouter — ese se monta en `main.tsx`
@@ -80,6 +82,8 @@ export default function AppRouter() {
       
 
       <Route path={RUTAS.PAGO} element={<SoloClientes><PagoPage /></SoloClientes>} />
+      <Route path={RUTAS.MIS_PEDIDOS} element={<SoloClientes><MisPedidosPage /></SoloClientes>} />
+      <Route path={RUTAS.DETALLE_PEDIDO()} element={<SoloClientes><DetallePedidoPage /></SoloClientes>} />
 
       <Route path={RUTAS.LOGIN} element={<LoginPage />} />
       <Route path={RUTAS.REGISTRO} element={<RegistroPage />} />
