@@ -38,7 +38,13 @@ interface EntregaTienda {
 export default function CheckoutEntregaPage() {
   const { items } = useCarrito();
   const navigate = useNavigate();
-
+  const [direccion, setDireccion] = useState({
+    calle: '',
+    distrito: '',
+    ciudad: 'Lima',
+    referencia: '',
+  });
+  const [errorDireccion, setErrorDireccion] = useState('');
   // Agrupar items por idComerciante (mismo criterio que PagoPage)
   const porComerciante = items.reduce<Record<string, { nombreTienda: string; items: typeof items }>>((acc, item) => {
     const id = item.producto.idComerciante || 'default';
@@ -98,15 +104,29 @@ export default function CheckoutEntregaPage() {
     (acc, e) => acc + (e.tipoEntrega === 'DELIVERY' ? COSTO_DELIVERY : 0), 0
   );
   const total = subtotalSinDescuento - descuentos + costoEnvioTotal;
-
+  const todasRecojoTienda = Object.values(entregasPorTienda).every((e) => e.tipoEntrega === 'RECOJO_TIENDA');
   const handleContinuar = () => {
+    if (!todasRecojoTienda && (!direccion.calle.trim() || !direccion.distrito.trim())) {
+      setErrorDireccion('Ingresa la calle y el distrito para continuar.');
+      return;
+    }
+    setErrorDireccion('');
+
+    const direccionCompleta = `${direccion.calle}, ${direccion.distrito}, ${direccion.ciudad}${direccion.referencia ? ` (Ref: ${direccion.referencia})` : ''}`;
+
     const entregasParaPago = Object.fromEntries(
       Object.entries(entregasPorTienda).map(([id, e]) => [
         id,
         { tipoEntrega: e.tipoEntrega, fechaEntrega: e.fechaSeleccionada.textoLargo },
       ])
     );
-    navigate(RUTAS.PAGO, { state: { entregasPorTienda: entregasParaPago } });
+
+    navigate(RUTAS.PAGO, { 
+      state: { 
+        entregasPorTienda: entregasParaPago,
+        direccionEntrega: direccionCompleta,   // ← nueva
+      } 
+    });
   };
 
   return (
@@ -131,20 +151,58 @@ export default function CheckoutEntregaPage() {
           <section className="flex flex-col gap-4">
             <h1 className="text-[28px] font-bold text-ink-900">Entrega</h1>
 
-            {/* Dirección global */}
-            <div className="rounded-xl border border-ink-100 bg-white px-5 py-4 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-brand-500" />
-                  <span className="text-[14px] font-semibold text-ink-900">Dirección de entrega</span>
-                </div>
-                <button type="button" className="text-[13px] font-medium text-brand-500 hover:text-brand-700">Cambiar</button>
-              </div>
-              <div className="mt-3 rounded-lg border border-ink-100 bg-surface-muted px-4 py-3">
-                <p className="text-[14px] text-ink-800">Av. Arequipa 3421</p>
-                <p className="text-[13px] text-ink-500">San Isidro, Lima, Lima</p>
-              </div>
+          {/* Dirección de entrega — ingresada por el cliente */}
+          <div className="rounded-xl border border-ink-100 bg-white px-5 py-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <MapPin className="h-4 w-4 text-brand-500" />
+              <span className="text-[14px] font-semibold text-ink-900">Dirección de entrega</span>
             </div>
+
+            <div className="flex flex-col gap-3">
+              <div>
+                <input
+                  type="text"
+                  placeholder="Calle y número (ej. Av. Arequipa 3421)"
+                  value={direccion.calle}
+                  onChange={(e) => setDireccion(p => ({ ...p, calle: e.target.value }))}
+                  disabled={todasRecojoTienda}
+                    className="w-full rounded-lg border border-ink-200 px-4 py-3 text-[14px] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  placeholder="Distrito"
+                  value={direccion.distrito}
+                  onChange={(e) => setDireccion(p => ({ ...p, distrito: e.target.value }))}
+                  disabled={todasRecojoTienda}
+                  className="w-full rounded-lg border border-ink-200 px-4 py-3 text-[14px] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                />
+                <input
+                  type="text"
+                  placeholder="Ciudad"
+                  value={direccion.ciudad}
+                  onChange={(e) => setDireccion(p => ({ ...p, ciudad: e.target.value }))}
+                  disabled={todasRecojoTienda}
+                  className="w-full rounded-lg border border-ink-200 px-4 py-3 text-[14px] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                />
+              </div>
+
+              <input
+                type="text"
+                placeholder="Referencia (opcional, ej. frente al parque)"
+                value={direccion.referencia}
+                onChange={(e) => setDireccion(p => ({ ...p, referencia: e.target.value }))}
+                disabled={todasRecojoTienda}
+                className="w-full rounded-lg border border-ink-200 px-4 py-3 text-[14px] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+              />
+
+              {errorDireccion && (
+                <p className="text-[13px] text-red-500">{errorDireccion}</p>
+              )}
+            </div>
+          </div>
 
             {/* Paquete por tienda — cada uno con su propia selección de entrega */}
             {tiendas.map(([idComerciante, { nombreTienda, items: itemsTienda }], idx) => {

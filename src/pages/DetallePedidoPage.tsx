@@ -7,6 +7,7 @@ import { pedidoService } from '../services/pedidoService';
 import { formatearPrecio } from '../utils/formatearPrecio';
 import { RUTAS } from '../constants/rutas';
 import type { IDetalleOrden, EstadoPedido, EstadoPago } from '../types/IPedido';
+import apiClient from '../services/apiClient';
 
 const ETIQUETA_ESTADO_ORDEN: Record<EstadoPago, string> = {
   PENDIENTE: 'Pendiente de pago',
@@ -44,11 +45,25 @@ export default function DetallePedidoPage() {
 
   useEffect(() => {
     if (!id) return;
-    pedidoService
-      .obtenerDetalleOrden(Number(id))
-      .then(setOrden)
-      .catch(() => setError('No se pudo cargar el detalle del pedido.'))
-      .finally(() => setCargando(false));
+
+    const params = new URLSearchParams(window.location.search);
+    const redirectStatus = params.get('redirect_status');
+
+    const cargarDetalle = async () => {
+      try {
+        if (redirectStatus === 'succeeded') {
+          await apiClient.patch(`/ordenes-pago/${id}/marcar-pagado`);
+        }
+        const data = await pedidoService.obtenerDetalleOrden(Number(id));
+        setOrden(data);
+      } catch {
+        setError('No se pudo cargar el detalle del pedido.');
+      } finally {
+        setCargando(false);
+      }
+    };
+
+    cargarDetalle();
   }, [id]);
 
   return (
@@ -96,7 +111,13 @@ export default function DetallePedidoPage() {
                     <span className="text-[12px] text-ink-400">{formatearFecha(orden.fecha)}</span>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <span className="text-[12px] text-ink-500">{ETIQUETA_ESTADO_ORDEN[orden.estado]}</span>
+                    <span className={`text-[12px] font-semibold ${
+                      orden.estado === 'PAGADO' ? 'text-green-600' :
+                      orden.estado === 'FALLIDO' ? 'text-red-600' :
+                      'text-yellow-600'
+                    }`}>
+                      {ETIQUETA_ESTADO_ORDEN[orden.estado]}
+                    </span>
                     <span className="text-[20px] font-bold text-brand-600">{formatearPrecio(orden.total)}</span>
                   </div>
                 </div>
