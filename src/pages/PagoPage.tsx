@@ -311,7 +311,7 @@ export default function PagoPage() {
                   options={{
                     clientSecret,
                     appearance: {
-                      theme: 'stripe',
+                      theme: 'flat',
                       variables: {
                         colorPrimary: '#c83a71',
                         borderRadius: '8px',

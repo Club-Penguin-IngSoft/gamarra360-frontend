@@ -33,6 +33,8 @@ import CheckoutEntregaPage from '../pages/CheckoutEntregaPage';
 import PagoPage from '../pages/PagoPage';
 import MisPedidosPage from '../pages/MisPedidosPage';
 import DetallePedidoPage from '../pages/DetallePedidoPage';
+import StripeCompletado from '../pages/comerciante/StripeCompletado';
+import StripeRefresh from '../pages/comerciante/StripeRefresh';
 import { useAuth } from '../hooks/useAuth';
 /**
  * Definición de rutas. NO incluye BrowserRouter — ese se monta en `main.tsx`
@@ -164,6 +166,9 @@ export default function AppRouter() {
           }
         />
       </Route>
+      {/* Stripe retorno — fuera de RutaProtegida */}
+      <Route path="/comerciante/stripe/completado" element={<StripeCompletado />} />
+      <Route path="/comerciante/stripe/refresh/:id" element={<StripeRefresh />} />
       <Route path="*" element={<Navigate to={RUTAS.INICIO} replace />} />
     </Routes>
   );

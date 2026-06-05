@@ -1,9 +1,14 @@
 import { useState, useEffect } from 'react';
+import { useStripeStatus } from '../../hooks/useStripeStatus';
+import StripeBanner from '../../components/comerciante/StripeBanner';
 import { useNavigate } from 'react-router-dom';
 import ComercianteSidebar from '../../components/ComercianteSidebar';
 import ReabastecimientoModal from '../../components/ReabastecimientoModal';
 import { RUTAS } from '../../constants/rutas';
 import { obtenerMiTienda } from '../../services/tiendaService';
+import { useStripeBalance } from '../../hooks/useStripeBalance';
+import { useAuth } from '../../hooks';
+import { apiClient } from '../../services';
 
 const MOCK_PEDIDOS = [
   { id: 'A-1021', producto: 'Camisa Oxford Slim', sku: 'S / Negro', precio: 'S/ 320.00', estado: 'ENTREGADO' },
@@ -50,11 +55,13 @@ const estadoLabel: Record<string, string> = {
 
 /* Pantalla: Panel de Control — resumen de actividad del comerciante */
 export default function DashboardPage() {
+  const { stripeCompletado } = useStripeStatus();
   const [modalAbierto, setModalAbierto] = useState(false);
   const [productoModal, setProductoModal] = useState('');
   const [nombreTienda, setNombreTienda] = useState('');
   const navigate = useNavigate();
-
+  const balance = useStripeBalance();
+  
   useEffect(() => {
     obtenerMiTienda()
       .then((tienda) => setNombreTienda(tienda.nombreComercial))
@@ -65,7 +72,17 @@ export default function DashboardPage() {
     setProductoModal(nombre);
     setModalAbierto(true);
   };
-
+  const { usuario } = useAuth();
+  const handleIrAStripe = async () => {
+    try {
+      const { data } = await apiClient.get(
+        `/comerciantes/${usuario?.id}/stripe/dashboard`
+      );
+      window.open(data.url, '_blank');
+    } catch (err) {
+      console.error('Error abriendo dashboard Stripe:', err);
+    }
+  };
   return (
     <div className="flex min-h-screen">
       <ComercianteSidebar />
@@ -80,26 +97,44 @@ export default function DashboardPage() {
               <span className="text-[17px] font-bold text-primario">{nombreTienda}</span>
             </p>
           </div>
-          <button
-            className="flex items-center gap-1.5 px-[18px] py-2.5 bg-primario text-white rounded-lg text-[13px] font-semibold hover:bg-primario-hover transition-colors whitespace-nowrap"
-            onClick={() => navigate(RUTAS.COMERCIANTE_NUEVO_PRODUCTO)}
-          >
-            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            Publicar Productos
-          </button>
-        </div>
+          
+          <div className="flex gap-2">  {/*envuelve los dos botones */}
+            <button
+              onClick={handleIrAStripe}
+              className="flex items-center gap-1.5 px-[18px] py-2.5 border border-primario text-primario rounded-lg text-[13px] font-semibold hover:bg-primario hover:text-white transition-colors whitespace-nowrap"
+            >
+              Gestionar pagos
+            </button>
 
+            <button
+              className="flex items-center gap-1.5 px-[18px] py-2.5 bg-primario text-white rounded-lg text-[13px] font-semibold hover:bg-primario-hover transition-colors whitespace-nowrap"
+              onClick={() => navigate(RUTAS.COMERCIANTE_NUEVO_PRODUCTO)}
+            >
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Publicar Productos
+            </button>
+
+          </div>
+        </div>
+        <StripeBanner yaCompletado={stripeCompletado} />
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="bg-white rounded-xl px-[22px] py-5 shadow-sm flex items-center justify-between">
             <div>
               <label className="block text-[11px] font-semibold uppercase tracking-[0.5px] text-gray-500 mb-2">
-                Ventas Totales
+                Balance Disponible
               </label>
-              <span className="text-[28px] font-bold text-gray-900">S/ 12,450</span>
+              <span className="text-[28px] font-bold text-gray-900">
+                {balance
+                  ? `${balance.moneda.toUpperCase()} ${(balance.disponible / 100).toFixed(2)}`
+                  : 'S/ 0.00'}
+              </span>
+              <span className="block text-[11px] text-gray-400 mt-1">
+                Pendiente: {balance ? `${(balance.pendiente / 100).toFixed(2)}` : '0.00'}
+              </span>
             </div>
             <div className="w-11 h-11 rounded-lg bg-primario-claro text-primario flex items-center justify-center">
               <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>

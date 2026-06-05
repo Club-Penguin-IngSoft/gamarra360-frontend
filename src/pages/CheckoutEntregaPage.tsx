@@ -104,9 +104,9 @@ export default function CheckoutEntregaPage() {
     (acc, e) => acc + (e.tipoEntrega === 'DELIVERY' ? COSTO_DELIVERY : 0), 0
   );
   const total = subtotalSinDescuento - descuentos + costoEnvioTotal;
-
+  const todasRecojoTienda = Object.values(entregasPorTienda).every((e) => e.tipoEntrega === 'RECOJO_TIENDA');
   const handleContinuar = () => {
-    if (!direccion.calle.trim() || !direccion.distrito.trim()) {
+    if (!todasRecojoTienda && (!direccion.calle.trim() || !direccion.distrito.trim())) {
       setErrorDireccion('Ingresa la calle y el distrito para continuar.');
       return;
     }
@@ -165,7 +165,8 @@ export default function CheckoutEntregaPage() {
                   placeholder="Calle y número (ej. Av. Arequipa 3421)"
                   value={direccion.calle}
                   onChange={(e) => setDireccion(p => ({ ...p, calle: e.target.value }))}
-                  className="w-full rounded-lg border border-ink-200 px-4 py-3 text-[14px] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                  disabled={todasRecojoTienda}
+                    className="w-full rounded-lg border border-ink-200 px-4 py-3 text-[14px] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                 />
               </div>
 
@@ -175,14 +176,16 @@ export default function CheckoutEntregaPage() {
                   placeholder="Distrito"
                   value={direccion.distrito}
                   onChange={(e) => setDireccion(p => ({ ...p, distrito: e.target.value }))}
-                  className="w-full rounded-lg border border-ink-200 px-4 py-3 text-[14px] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                  disabled={todasRecojoTienda}
+                  className="w-full rounded-lg border border-ink-200 px-4 py-3 text-[14px] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                 />
                 <input
                   type="text"
                   placeholder="Ciudad"
                   value={direccion.ciudad}
                   onChange={(e) => setDireccion(p => ({ ...p, ciudad: e.target.value }))}
-                  className="w-full rounded-lg border border-ink-200 px-4 py-3 text-[14px] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                  disabled={todasRecojoTienda}
+                  className="w-full rounded-lg border border-ink-200 px-4 py-3 text-[14px] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                 />
               </div>
 
@@ -191,7 +194,8 @@ export default function CheckoutEntregaPage() {
                 placeholder="Referencia (opcional, ej. frente al parque)"
                 value={direccion.referencia}
                 onChange={(e) => setDireccion(p => ({ ...p, referencia: e.target.value }))}
-                className="w-full rounded-lg border border-ink-200 px-4 py-3 text-[14px] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                disabled={todasRecojoTienda}
+                className="w-full rounded-lg border border-ink-200 px-4 py-3 text-[14px] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
               />
 
               {errorDireccion && (
