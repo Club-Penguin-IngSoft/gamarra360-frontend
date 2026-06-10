@@ -66,28 +66,36 @@ export function CarritoProvider({ children }: { children: ReactNode }) {
   const agregarAlCarrito = useCallback(
     (producto: IProducto, cantidad: number, idVariante?: string) => {
       setItems((actuales) => {
+        const variante = producto.variantes?.find((v) => v.id === idVariante);
+        const stockDisponible = variante?.stock ?? Infinity;
+
         const indice = actuales.findIndex(
           (i) => i.producto.id === producto.id && i.idVariante === idVariante,
         );
+
         if (indice >= 0) {
+          const cantidadActual = actuales[indice].cantidad;
+          const nuevaCantidad = Math.min(cantidadActual + cantidad, stockDisponible);
+          // Si ya tiene el máximo, no cambia nada
+          if (nuevaCantidad === cantidadActual) return actuales;
           const copia = [...actuales];
-          copia[indice] = {
-            ...copia[indice],
-            cantidad: copia[indice].cantidad + cantidad,
-          };
+          copia[indice] = { ...copia[indice], cantidad: nuevaCantidad };
           return copia;
         }
+
+        const cantidadFinal = Math.min(cantidad, stockDisponible);
+        if (cantidadFinal <= 0) return actuales;
+
         const nuevo: IItemCarrito = {
           id: `${producto.id}-${idVariante ?? 'default'}-${Date.now()}`,
           producto,
           idVariante,
-          cantidad,
+          cantidad: cantidadFinal,
           precioUnitario: producto.precioFinal ?? producto.precioBase ?? 0,
         };
         return [...actuales, nuevo];
       });
 
-      // Capturar info de la variante para el alert verde
       const variante = producto.variantes?.find((v) => v.id === idVariante);
       setJustAdded({
         titulo: producto.titulo,
@@ -109,7 +117,12 @@ export function CarritoProvider({ children }: { children: ReactNode }) {
       return;
     }
     setItems((actuales) =>
-      actuales.map((i) => (i.id === idItem ? { ...i, cantidad } : i)),
+      actuales.map((i) => {
+        if (i.id !== idItem) return i;
+        const variante = i.producto.variantes?.find((v) => v.id === i.idVariante);
+        const stockDisponible = variante?.stock ?? Infinity;
+        return { ...i, cantidad: Math.min(cantidad, stockDisponible) };
+      }),
     );
   }, []);
 
