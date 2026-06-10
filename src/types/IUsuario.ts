@@ -1,7 +1,3 @@
-/**
- * Modelo de Usuario y enums asociados (módulo `usuario` y `autenticacion`).
- */
-
 export type RolUsuario = 'CLIENTE' | 'COMERCIANTE' | 'ADMIN';
 
 export interface IUsuario {
@@ -10,12 +6,18 @@ export interface IUsuario {
   apellido: string;
   correo: string;
   rol: RolUsuario;
-  /** Solo presente cuando el rol es COMERCIANTE — identifica el tenant */
+  telefono?: string;
+  direccion?: string;
   idComerciante?: string;
 }
 
-/** Payload almacenado en localStorage tras login exitoso */
 export interface ISesion {
   token: string;
   usuario: IUsuario;
+}
+
+export interface IActualizarUsuarioRequest {
+  nombre: string;
+  apellido: string;
+  telefono?: string;
 }

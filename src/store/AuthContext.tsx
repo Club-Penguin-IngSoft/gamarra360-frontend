@@ -22,6 +22,7 @@ interface IAuthContextValue {
   estaAutenticado: boolean;
   iniciarSesion: (sesion: ISesion) => void;
   cerrarSesion: () => void;
+  actualizarUsuario: (usuarioActualizado: Partial<IUsuario>) => void;
 }
 
 export const AuthContext = createContext<IAuthContextValue | undefined>(
@@ -43,16 +44,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Login
   const iniciarSesion = useCallback((sesion: ISesion) => {
     localStorage.setItem(TOKEN_KEY, sesion.token);
     localStorage.setItem(USUARIO_KEY, JSON.stringify(sesion.usuario));
     setUsuario(sesion.usuario);
   }, []);
 
+  // Logout
   const cerrarSesion = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USUARIO_KEY);
     setUsuario(null);
+  }, []);
+
+  // Actualizar solo campos del usuario (frontend + localStorage)
+  const actualizarUsuario = useCallback((usuarioActualizado: Partial<IUsuario>) => {
+    setUsuario((prev) => {
+      if (!prev) return null;
+      const updated = { ...prev, ...usuarioActualizado };
+      localStorage.setItem(USUARIO_KEY, JSON.stringify(updated));
+      return updated;
+    });
   }, []);
 
   const value = useMemo<IAuthContextValue>(
@@ -61,8 +74,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       estaAutenticado: usuario !== null,
       iniciarSesion,
       cerrarSesion,
+      actualizarUsuario,
     }),
-    [usuario, iniciarSesion, cerrarSesion],
+    [usuario, iniciarSesion, cerrarSesion, actualizarUsuario],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

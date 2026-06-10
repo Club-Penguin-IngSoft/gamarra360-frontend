@@ -36,6 +36,7 @@ import DetallePedidoPage from '../pages/DetallePedidoPage';
 import StripeCompletado from '../pages/comerciante/StripeCompletado';
 import StripeRefresh from '../pages/comerciante/StripeRefresh';
 import { useAuth } from '../hooks/useAuth';
+import PerfilClientePage from '../pages/PerfilClientePage';
 /**
  * Definición de rutas. NO incluye BrowserRouter — ese se monta en `main.tsx`
  * para que componentes globales como `CartDrawer` (que viven en StoreProvider)
@@ -75,7 +76,10 @@ export default function AppRouter() {
           />
         }
       />
-      
+      <Route 
+          path={RUTAS.PERFIL} 
+          element={<SoloClientes><PerfilClientePage /></SoloClientes>}  
+      />
 
       <Route path={RUTAS.CARRITO} element={<SoloClientes><CarritoPage /></SoloClientes>} />
       

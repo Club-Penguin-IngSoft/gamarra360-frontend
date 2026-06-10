@@ -30,6 +30,7 @@ export const RUTAS = {
   COMERCIANTE_PERSONALIZACIONES: '/comerciante/personalizaciones',
   COMERCIANTE_COTIZACIONES: '/comerciante/cotizaciones',
   COMERCIANTE_NOTIFICACIONES: '/comerciante/notificaciones',
+  PERFIL: '/Perfilcliente',
   /** Helper: construye la ruta del formulario de personalización */
   PERSONALIZAR: (id: string | number = ':id') => `/personalizar/${id}`,
   /** Mis personalizaciones (seguimiento del cliente — HU-29) */
