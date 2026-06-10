@@ -102,6 +102,7 @@ export default function EditarProductoPage() {
 
   const [precioBase, setPrecioBase] = useState(0);
   const [publicado, setPublicado] = useState(true);
+  const [esPersonalizable, setEsPersonalizable] = useState(false);
 
   const [tallas, setTallas] = useState<string[]>([]);
   const [tallaInput, setTallaInput] = useState('');
@@ -135,6 +136,7 @@ export default function EditarProductoPage() {
       setDescripcion(data.descripcion ?? '');
       setPrecioBase(data.precioBase ?? 0);
       setPublicado(data.activo ?? true);
+      setEsPersonalizable(data.esPersonalizable ?? false);
       const imagenesApi: { url: string; esPrincipal: boolean }[] = (data.imagenes ?? []).map((i: any) => ({ url: i.url, esPrincipal: i.esPrincipal ?? false }));
       setImagenesExistentes(imagenesApi);
       const principal = imagenesApi.find((i) => i.esPrincipal) ?? imagenesApi[0];
@@ -302,7 +304,7 @@ export default function EditarProductoPage() {
         nombre: nombreProducto,
         descripcion,
         precioBase,
-        esPersonalizable: false,
+        esPersonalizable,
         idCategoria: idCategoria as number,
         idTipoProducto: idTipoProducto as number,
         imagenes: imagenPrincipalUrl
@@ -496,12 +498,21 @@ export default function EditarProductoPage() {
 
 
             {/* Publicado */}
-            <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center justify-between mb-4">
               <div>
                 <p className="text-[13px] font-semibold text-gray-900">Publicado</p>
                 <p className="text-[11px] text-gray-500">Visible en la tienda</p>
               </div>
               <Toggle on={publicado} onClick={() => setPublicado((v) => !v)} />
+            </div>
+
+            {/* Personalizable */}
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <p className="text-[13px] font-semibold text-gray-900">Personalizable</p>
+                <p className="text-[11px] text-gray-500">Permite solicitudes de diseño</p>
+              </div>
+              <Toggle on={esPersonalizable} onClick={() => setEsPersonalizable((v) => !v)} />
             </div>
 
             {errorApi && (
