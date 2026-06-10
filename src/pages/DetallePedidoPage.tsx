@@ -43,28 +43,58 @@ export default function DetallePedidoPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!id) return;
+  const MAX_INTENTOS = 10;
+const INTERVALO_MS = 2000;
 
-    const params = new URLSearchParams(window.location.search);
-    const redirectStatus = params.get('redirect_status');
+useEffect(() => {
+  if (!id) return;
 
-    const cargarDetalle = async () => {
+  const params = new URLSearchParams(window.location.search);
+  const redirectStatus = params.get('redirect_status');
+
+  const cargarDetalle = async () => {
+    try {
+      const data = await pedidoService.obtenerDetalleOrden(Number(id));
+      setOrden(data);
+    } catch {
+      setError('No se pudo cargar el detalle del pedido.');
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  const esperarPagoConfirmado = async () => {
+    for (let intento = 0; intento < MAX_INTENTOS; intento++) {
       try {
-        if (redirectStatus === 'succeeded') {
-          await apiClient.patch(`/ordenes-pago/${id}/marcar-pagado`);
-        }
         const data = await pedidoService.obtenerDetalleOrden(Number(id));
-        setOrden(data);
-      } catch {
-        setError('No se pudo cargar el detalle del pedido.');
-      } finally {
-        setCargando(false);
-      }
-    };
 
+        if (data.estado === 'PAGADO') {
+          setOrden(data);
+          setCargando(false);
+          return;
+        }
+
+        if (data.estado === 'FALLIDO') {
+          setError('Tu pago fue reembolsado porque el stock ya no estaba disponible. El monto será devuelto en 5-10 días hábiles.');
+          setCargando(false);
+          return;
+        }
+
+      } catch {
+        // sigue intentando
+      }
+      await new Promise(res => setTimeout(res, INTERVALO_MS));
+    }
+    // Si agotó los intentos sin PAGADO ni FALLIDO
+    await cargarDetalle();
+  };
+
+  if (redirectStatus === 'succeeded') {
+    esperarPagoConfirmado();
+  } else {
     cargarDetalle();
-  }, [id]);
+  }
+}, [id]);
 
   return (
     <div className="min-h-screen bg-surface-muted flex flex-col">
@@ -87,13 +117,25 @@ export default function DetallePedidoPage() {
           {cargando && (
             <div className="flex flex-col items-center gap-4 py-20 text-ink-400">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-ink-200 border-t-brand-500" />
-              <p className="text-[14px]">Cargando detalle...</p>
+              <p className="text-[14px]">
+                {new URLSearchParams(window.location.search).get('redirect_status') === 'succeeded'
+                  ? 'Confirmando tu pago...'
+                  : 'Cargando detalle...'}
+              </p>
             </div>
           )}
 
           {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-4 text-[14px] text-red-700">
-              {error}
+            <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-5 flex flex-col gap-3">
+              <p className="text-[14px] font-semibold text-red-700">Problema con tu pedido</p>
+              <p className="text-[13px] text-red-600">{error}</p>
+              <button
+                type="button"
+                onClick={() => navigate(RUTAS.INICIO)}
+                className="self-start rounded-lg bg-red-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-red-700 transition-colors"
+              >
+                Volver al inicio
+              </button>
             </div>
           )}
 

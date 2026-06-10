@@ -224,6 +224,7 @@ function CantidadStepper({
         <QuantityStepper
           cantidad={cantidad}
           onChange={onChange}
+          max={stockRestante}
           ariaLabel="Selector de cantidad de producto"
         />
         {stockBajo && (
@@ -311,6 +312,15 @@ function CompraDirectaInfo({ producto }: { producto: IProducto }) {
   const { agregarAlCarrito } = useCarrito();
   const s = useSeleccionVariante(producto);
 
+  const handleColorChange = (i: number) => {
+    s.setColorActivo(i);
+    s.setCantidad(1);
+  };
+  const handleTallaChange = (t: string) => {
+    s.setTallaActiva(t);
+    s.setCantidad(1);
+  };
+
   return (
     <div className="flex flex-col gap-8">
       <Heading producto={producto} />
@@ -321,12 +331,12 @@ function CompraDirectaInfo({ producto }: { producto: IProducto }) {
         <ColorSelector
           colores={s.colores}
           activo={s.colorActivo}
-          onChange={s.setColorActivo}
+          onChange={handleColorChange}
         />
         <TallaSelector
           tallas={s.tallas}
           activa={s.tallaActiva}
-          onChange={s.setTallaActiva}
+          onChange={handleTallaChange}
         />
         <CantidadStepper
           cantidad={s.cantidad}
@@ -411,6 +421,15 @@ function PersonalizationPromoCard({ producto }: { producto: IProducto }) {
 function PersonalizableInfo({ producto }: { producto: IProducto }) {
   const { agregarAlCarrito } = useCarrito();
   const s = useSeleccionVariante(producto);
+  
+  const handleColorChange = (i: number) => {
+    s.setColorActivo(i);
+    s.setCantidad(1);
+  };
+  const handleTallaChange = (t: string) => {
+    s.setTallaActiva(t);
+    s.setCantidad(1);
+  };
 
   return (
     <div className="flex flex-col gap-8">
@@ -422,12 +441,12 @@ function PersonalizableInfo({ producto }: { producto: IProducto }) {
         <ColorSelector
           colores={s.colores}
           activo={s.colorActivo}
-          onChange={s.setColorActivo}
+          onChange={handleColorChange}
         />
         <TallaSelector
           tallas={s.tallas}
           activa={s.tallaActiva}
-          onChange={s.setTallaActiva}
+          onChange={handleTallaChange}
         />
         <CantidadStepper
           cantidad={s.cantidad}
