@@ -5,8 +5,9 @@
  * el botón "Solicitar personalización" del DetalleProductoPage que verifica
  * `estaAutenticado` y redirige a /login si es necesario.
  *
- * El flujo termina al enviar la solicitud — pendiente de cablear al endpoint
- * POST /api/v1/personalizacion del backend Spring Boot.
+ * Flujo: el cliente elige tipo de trabajo, sube su diseño (S3) o escribe un
+ * texto, completa los detalles y envía la solicitud al backend.
+ * POST /api/v1/personalizaciones — el clienteId lo extrae el backend del JWT.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -27,11 +28,17 @@ import QuantityStepper from '../components/QuantityStepper';
 import { RUTAS } from '../constants/rutas';
 import { useProducto } from '../hooks/useProducto';
 import { formatearPrecio } from '../utils/formatearPrecio';
-import type { IProducto } from '../types/IProducto';
+import { subirImagenS3 } from '../services/catalogoService';
+import {
+  crearSolicitudPersonalizacion,
+  TIPO_TRABAJO_BACKEND,
+} from '../services/personalizacionService';
+import type { IProducto, IVarianteProducto } from '../types/IProducto';
 
 /* ------------------- Tipos locales de la personalización ------------------ */
 
 type TipoTrabajo = 'estampado' | 'bordado' | 'impresion';
+type DesignTab = 'subir' | 'texto';
 
 interface ITipoTrabajoOption {
   id: TipoTrabajo;
@@ -41,17 +48,20 @@ interface ITipoTrabajoOption {
 }
 
 const TIPOS_TRABAJO: ITipoTrabajoOption[] = [
-  { id: 'estampado', label: 'Estampado', precioDesde: 20.9, icon: Stamp },
-  { id: 'bordado', label: 'Bordado industrial', precioDesde: 15.0, icon: Sparkles },
-  { id: 'impresion', label: 'Impresión textil', precioDesde: 25.0, icon: Brush },
+  { id: 'estampado', label: 'Estampado',          precioDesde: 20.9, icon: Stamp },
+  { id: 'bordado',   label: 'Bordado industrial', precioDesde: 15.0, icon: Sparkles },
+  { id: 'impresion', label: 'Impresión textil',   precioDesde: 25.0, icon: Brush },
 ];
-
-type DesignTab = 'subir' | 'texto';
 
 /* ============================ Subcomponentes ============================ */
 
-function ProductSummaryCard({ producto }: { producto: IProducto }) {
-  // Variantes derivadas (mismo enfoque que DetalleProductoPage)
+function ProductSummaryCard({
+  producto,
+  onVarianteChange,
+}: {
+  producto: IProducto;
+  onVarianteChange: (idVariante: string | undefined) => void;
+}) {
   const colores = useMemo(() => {
     const seen = new Map<string, { name: string; hex: string }>();
     producto.variantes?.forEach((v) => {
@@ -72,40 +82,35 @@ function ProductSummaryCard({ producto }: { producto: IProducto }) {
   const [tallaActiva, setTallaActiva] = useState(tallas[1] ?? tallas[0] ?? '');
   const [cantidad, setCantidad] = useState(1);
 
+  // Notifica al padre cuándo cambia la selección de variante
+  useEffect(() => {
+    const colorNombre = colores[colorActivo]?.name;
+    const variante = producto.variantes?.find(
+      (v: IVarianteProducto) => v.color === colorNombre && v.talla === tallaActiva,
+    );
+    onVarianteChange(variante?.id);
+  }, [colorActivo, tallaActiva, colores, producto.variantes, onVarianteChange]);
+
   return (
     <div className="flex flex-col gap-6 rounded-xl bg-white p-6 sm:flex-row sm:items-start">
-      {/* Imagen — columna izquierda, grande */}
       <div className="h-44 w-44 shrink-0 overflow-hidden rounded-md border border-ink-100 bg-surface-muted sm:h-52 sm:w-52">
-        <img
-          src={producto.imagenes[0]}
-          alt={producto.titulo}
-          className="h-full w-full object-cover"
-        />
+        <img src={producto.imagenes[0]} alt={producto.titulo} className="h-full w-full object-cover" />
       </div>
 
-      {/* Columna derecha — toda la info apilada verticalmente */}
       <div className="flex flex-1 flex-col gap-4 min-w-0">
-        {/* Título + tienda */}
         <div className="flex flex-col gap-1">
-          <h3 className="text-[20px] font-semibold leading-tight text-ink-900">
-            {producto.titulo}
-          </h3>
+          <h3 className="text-[20px] font-semibold leading-tight text-ink-900">{producto.titulo}</h3>
           <div className="flex items-center gap-1 text-[14px] text-ink-500">
             <StoreIcon className="h-4 w-4" />
             <span>{producto.nombreTienda}</span>
           </div>
         </div>
 
-        {/* Color */}
         {colores.length > 0 && (
           <div className="flex flex-col gap-1.5">
             <div className="flex flex-col gap-0.5">
-              <span className="text-[12px] font-semibold tracking-wider text-ink-900">
-                COLOR
-              </span>
-              <span className="text-[13px] uppercase text-ink-700">
-                {colores[colorActivo].name}
-              </span>
+              <span className="text-[12px] font-semibold tracking-wider text-ink-900">COLOR</span>
+              <span className="text-[13px] uppercase text-ink-700">{colores[colorActivo].name}</span>
             </div>
             <div className="flex gap-2">
               {colores.map((c, i) => (
@@ -126,12 +131,9 @@ function ProductSummaryCard({ producto }: { producto: IProducto }) {
           </div>
         )}
 
-        {/* Talla */}
         {tallas.length > 0 && (
           <div className="flex flex-col gap-1.5">
-            <span className="text-[12px] font-semibold tracking-wider text-ink-900">
-              TALLA
-            </span>
+            <span className="text-[12px] font-semibold tracking-wider text-ink-900">TALLA</span>
             <div className="flex flex-wrap gap-2">
               {tallas.map((t) => {
                 const isActive = t === tallaActiva;
@@ -153,11 +155,8 @@ function ProductSummaryCard({ producto }: { producto: IProducto }) {
           </div>
         )}
 
-        {/* Cantidad */}
         <div className="flex flex-col gap-1.5">
-          <span className="text-[12px] font-semibold tracking-wider text-ink-900">
-            CANTIDAD
-          </span>
+          <span className="text-[12px] font-semibold tracking-wider text-ink-900">CANTIDAD</span>
           <QuantityStepper
             cantidad={cantidad}
             onChange={setCantidad}
@@ -191,19 +190,11 @@ function TipoTrabajoRadioCard({
       }`}
       aria-pressed={selected}
     >
-      {/* Fila superior: icono + label a la izquierda, radio a la derecha */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <Icon
-            className={`h-4 w-4 shrink-0 ${
-              selected ? 'text-brand-500' : 'text-ink-500'
-            }`}
-          />
-          <span className="truncate text-[14px] font-medium text-ink-900">
-            {option.label}
-          </span>
+          <Icon className={`h-4 w-4 shrink-0 ${selected ? 'text-brand-500' : 'text-ink-500'}`} />
+          <span className="truncate text-[14px] font-medium text-ink-900">{option.label}</span>
         </div>
-        {/* Radio circle */}
         <span
           className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
             selected ? 'border-brand-500' : 'border-ink-200'
@@ -212,52 +203,44 @@ function TipoTrabajoRadioCard({
           {selected && <span className="h-2 w-2 rounded-full bg-brand-500" />}
         </span>
       </div>
-      {/* "Desde S/ X.XX" debajo */}
-      <span className="text-[12px] text-ink-500">
-        Desde {formatearPrecio(option.precioDesde)}
-      </span>
+      <span className="text-[12px] text-ink-500">Desde {formatearPrecio(option.precioDesde)}</span>
     </button>
   );
 }
 
-/**
- * Patrón hexagonal sutil para el fondo del dropzone — coincide con el Figma.
- * SVG inline codificado como data URI para evitar dependencias externas.
- */
 const PATRON_HEXAGONAL =
   "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='64' viewBox='0 0 56 64'><g fill='none' stroke='%23DEE2E6' stroke-width='1'><path d='M28 1L52 15v32L28 61L4 47V15z'/><path d='M28 17L40 24v14L28 45L16 38V24z'/></g></svg>\")";
 
-function UploadDropzone() {
-  const [filename, setFilename] = useState<string | null>(null);
-
+function UploadDropzone({
+  onFileChange,
+  fileName,
+}: {
+  onFileChange: (file: File | null) => void;
+  fileName: string | null;
+}) {
   return (
     <label
       className="relative flex cursor-pointer flex-col items-center justify-center gap-3 overflow-hidden rounded-lg border border-dashed border-ink-200 bg-surface-muted px-6 py-12 text-center transition-colors hover:border-brand-500 hover:bg-brand-50/30"
       htmlFor="diseno-upload"
-      style={{
-        backgroundImage: PATRON_HEXAGONAL,
-        backgroundRepeat: 'repeat',
-        backgroundSize: '56px 64px',
-      }}
+      style={{ backgroundImage: PATRON_HEXAGONAL, backgroundRepeat: 'repeat', backgroundSize: '56px 64px' }}
     >
       <input
         id="diseno-upload"
         type="file"
         accept="image/png,image/jpeg,image/svg+xml"
         className="sr-only"
-        onChange={(e) => setFilename(e.target.files?.[0]?.name ?? null)}
+        onChange={(e) => {
+          const file = e.target.files?.[0] ?? null;
+          onFileChange(file);
+        }}
       />
-
-      {/* Círculo brand con icono — destaca sobre el patrón */}
       <span className="relative flex h-12 w-12 items-center justify-center rounded-full bg-brand-500 shadow-sm">
         <CloudUpload className="h-6 w-6 text-white" strokeWidth={2} />
       </span>
       <span className="relative text-[15px] font-medium text-ink-900">
-        {filename ?? 'Arrastra tu diseño aquí o haz clic para subir'}
+        {fileName ?? 'Arrastra tu diseño aquí o haz clic para subir'}
       </span>
-      <span className="relative text-[12px] text-ink-500">
-        PNG, JPG o SVG (Max 10MB)
-      </span>
+      <span className="relative text-[12px] text-ink-500">PNG, JPG o SVG (Max 10MB)</span>
     </label>
   );
 }
@@ -265,28 +248,45 @@ function UploadDropzone() {
 function DetallesPersonalizacionCard({
   tipoSeleccionado,
   setTipoSeleccionado,
+  tab,
+  setTab,
+  archivo,
+  onArchivoChange,
+  texto,
+  setTexto,
+  posicion,
+  setPosicion,
+  alto,
+  setAlto,
+  ancho,
+  setAncho,
+  instrucciones,
+  setInstrucciones,
 }: {
   tipoSeleccionado: TipoTrabajo;
   setTipoSeleccionado: (t: TipoTrabajo) => void;
+  tab: DesignTab;
+  setTab: (t: DesignTab) => void;
+  archivo: File | null;
+  onArchivoChange: (f: File | null) => void;
+  texto: string;
+  setTexto: (s: string) => void;
+  posicion: string;
+  setPosicion: (s: string) => void;
+  alto: string;
+  setAlto: (s: string) => void;
+  ancho: string;
+  setAncho: (s: string) => void;
+  instrucciones: string;
+  setInstrucciones: (s: string) => void;
 }) {
-  const [tab, setTab] = useState<DesignTab>('subir');
-  const [posicion, setPosicion] = useState('');
-  const [alto, setAlto] = useState('');
-  const [ancho, setAncho] = useState('');
-  const [instrucciones, setInstrucciones] = useState('');
-  const [texto, setTexto] = useState('');
-
   return (
     <div className="flex flex-col gap-6 rounded-xl bg-white p-6">
-      <h3 className="text-[20px] font-semibold text-ink-900">
-        Detalles de Personalización
-      </h3>
+      <h3 className="text-[20px] font-semibold text-ink-900">Detalles de Personalización</h3>
 
-      {/* TIPO DE TRABAJO — grid horizontal de 3 columnas */}
+      {/* TIPO DE TRABAJO */}
       <div className="flex flex-col gap-3">
-        <span className="text-[13px] font-semibold tracking-wider text-ink-700">
-          TIPO DE TRABAJO
-        </span>
+        <span className="text-[13px] font-semibold tracking-wider text-ink-700">TIPO DE TRABAJO</span>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {TIPOS_TRABAJO.map((opt) => (
             <TipoTrabajoRadioCard
@@ -301,11 +301,9 @@ function DetallesPersonalizacionCard({
 
       {/* INFORMACIÓN GENERAL */}
       <div className="flex flex-col gap-4">
-        <span className="text-[13px] font-semibold tracking-wider text-ink-700">
-          INFORMACIÓN GENERAL
-        </span>
+        <span className="text-[13px] font-semibold tracking-wider text-ink-700">INFORMACIÓN GENERAL</span>
 
-        {/* Tabs: Subir Diseño / Solo Texto */}
+        {/* Tabs */}
         <div className="flex border-b border-ink-100">
           {(['subir', 'texto'] as DesignTab[]).map((t) => {
             const isActive = tab === t;
@@ -326,15 +324,14 @@ function DetallesPersonalizacionCard({
           })}
         </div>
 
-        {/* Tab content */}
         {tab === 'subir' ? (
-          <UploadDropzone />
+          <UploadDropzone
+            onFileChange={onArchivoChange}
+            fileName={archivo?.name ?? null}
+          />
         ) : (
           <div className="flex flex-col gap-2">
-            <label
-              htmlFor="texto-personalizado"
-              className="text-[13px] font-medium text-ink-700"
-            >
+            <label htmlFor="texto-personalizado" className="text-[13px] font-medium text-ink-700">
               Texto a personalizar
             </label>
             <input
@@ -348,12 +345,8 @@ function DetallesPersonalizacionCard({
           </div>
         )}
 
-        {/* Posición + medidas */}
         <div className="flex flex-col gap-2">
-          <label
-            htmlFor="posicion"
-            className="text-[13px] font-medium text-ink-700"
-          >
+          <label htmlFor="posicion" className="text-[13px] font-medium text-ink-700">
             Posición del diseño
           </label>
           <input
@@ -368,9 +361,7 @@ function DetallesPersonalizacionCard({
 
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-2">
-            <label htmlFor="alto" className="text-[13px] font-medium text-ink-700">
-              Alto (cm)
-            </label>
+            <label htmlFor="alto" className="text-[13px] font-medium text-ink-700">Alto (cm)</label>
             <input
               id="alto"
               type="number"
@@ -381,9 +372,7 @@ function DetallesPersonalizacionCard({
             />
           </div>
           <div className="flex flex-col gap-2">
-            <label htmlFor="ancho" className="text-[13px] font-medium text-ink-700">
-              Ancho (cm)
-            </label>
+            <label htmlFor="ancho" className="text-[13px] font-medium text-ink-700">Ancho (cm)</label>
             <input
               id="ancho"
               type="number"
@@ -395,27 +384,19 @@ function DetallesPersonalizacionCard({
           </div>
         </div>
 
-        {/* Textarea instrucciones */}
         <div className="flex flex-col gap-2">
-          <label
-            htmlFor="instrucciones"
-            className="text-[13px] font-medium text-ink-700"
-          >
+          <label htmlFor="instrucciones" className="text-[13px] font-medium text-ink-700">
             Instrucciones adicionales
           </label>
           <textarea
             id="instrucciones"
             value={instrucciones}
-            onChange={(e) =>
-              setInstrucciones(e.target.value.slice(0, 2000))
-            }
+            onChange={(e) => setInstrucciones(e.target.value.slice(0, 2000))}
             placeholder="Detalles sobre colores, técnica, referencias visuales, plazos..."
             rows={4}
             className="resize-y rounded border border-ink-100 bg-white px-3 py-3 text-[15px] text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none"
           />
-          <div className="text-right text-[12px] text-ink-500">
-            {instrucciones.length}/2000
-          </div>
+          <div className="text-right text-[12px] text-ink-500">{instrucciones.length}/2000</div>
         </div>
       </div>
     </div>
@@ -425,26 +406,27 @@ function DetallesPersonalizacionCard({
 function ResumenCostos({
   producto,
   tipoSeleccionado,
+  enviando,
+  errorEnvio,
   onEnviar,
   onCancelar,
 }: {
   producto: IProducto;
   tipoSeleccionado: TipoTrabajo;
+  enviando: boolean;
+  errorEnvio: string;
   onEnviar: () => void;
   onCancelar: () => void;
 }) {
-  const precioBase = producto.precioBase ?? producto.precioFinal ?? 0;
+  const precioBase  = producto.precioBase  ?? producto.precioFinal ?? 0;
   const precioFinal = producto.precioFinal ?? precioBase;
-  const descuentos = precioBase > precioFinal ? precioBase - precioFinal : 0;
-  const tipoActual = TIPOS_TRABAJO.find((t) => t.id === tipoSeleccionado)!;
-  const costoPersonalizacion = tipoActual.precioDesde;
-  const totalDesde = precioFinal + costoPersonalizacion;
+  const descuentos  = precioBase > precioFinal ? precioBase - precioFinal : 0;
+  const tipoActual  = TIPOS_TRABAJO.find((t) => t.id === tipoSeleccionado)!;
+  const totalDesde  = precioFinal + tipoActual.precioDesde;
 
   return (
     <aside className="flex h-fit flex-col gap-6 rounded-xl bg-white p-6 lg:sticky lg:top-24">
-      <h2 className="text-[20px] font-semibold text-ink-900">
-        Resumen de Costos
-      </h2>
+      <h2 className="text-[20px] font-semibold text-ink-900">Resumen de Costos</h2>
 
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between text-[15px]">
@@ -459,20 +441,15 @@ function ResumenCostos({
         )}
         <div className="flex items-center justify-between text-[15px]">
           <span className="text-ink-700">Costo de personalización</span>
-          <span className="text-ink-900">
-            Desde {formatearPrecio(costoPersonalizacion)}
-          </span>
+          <span className="text-ink-900">Desde {formatearPrecio(tipoActual.precioDesde)}</span>
         </div>
       </div>
 
       <div className="flex items-center justify-between border-t border-ink-100 pt-4">
         <span className="text-[18px] font-semibold text-ink-900">Total</span>
-        <span className="text-[22px] font-bold text-brand-600">
-          Desde {formatearPrecio(totalDesde)}
-        </span>
+        <span className="text-[22px] font-bold text-brand-600">Desde {formatearPrecio(totalDesde)}</span>
       </div>
 
-      {/* Alert info */}
       <div className="flex items-start gap-2 rounded-lg border-2 border-brand-100 bg-brand-50/40 p-4">
         <Info className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
         <p className="text-[13px] leading-relaxed text-ink-700">
@@ -481,16 +458,22 @@ function ResumenCostos({
         </p>
       </div>
 
+      {errorEnvio && (
+        <p className="rounded-lg bg-red-50 px-4 py-3 text-[13px] text-red-600">{errorEnvio}</p>
+      )}
+
       <div className="flex flex-col gap-2">
         <button
           onClick={onEnviar}
-          className="h-12 rounded-lg bg-brand-500 text-[15px] font-medium text-white transition-colors hover:bg-brand-600"
+          disabled={enviando}
+          className="h-12 rounded-lg bg-brand-500 text-[15px] font-medium text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Enviar solicitud
+          {enviando ? 'Enviando solicitud…' : 'Enviar solicitud'}
         </button>
         <button
           onClick={onCancelar}
-          className="h-12 rounded-lg border border-brand-500 bg-white text-[15px] font-medium text-brand-600 transition-colors hover:bg-brand-50"
+          disabled={enviando}
+          className="h-12 rounded-lg border border-brand-500 bg-white text-[15px] font-medium text-brand-600 transition-colors hover:bg-brand-50 disabled:opacity-50"
         >
           Cancelar
         </button>
@@ -501,11 +484,6 @@ function ResumenCostos({
 
 /* ------------------- Modal de confirmación de envío -------------------- */
 
-/**
- * Modal centrado con backdrop blur que aparece cuando el usuario envía
- * exitosamente la solicitud de personalización.
- * Diseño basado en Figma node 2428-13590.
- */
 function SolicitudEnviadaModal({
   nombreTienda,
   onClose,
@@ -515,56 +493,37 @@ function SolicitudEnviadaModal({
 }) {
   const navigate = useNavigate();
 
-  // Cerrar con ESC
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  // Bloquear scroll del body mientras el modal está abierto
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
+    return () => { document.body.style.overflow = prev; };
   }, []);
 
   return (
     <>
-      {/* Backdrop semitransparente con blur */}
       <div
         className="fixed inset-0 z-[60] bg-black/25"
         style={{ backdropFilter: 'blur(4px)' }}
         onClick={onClose}
         aria-hidden="true"
       />
-
-      {/* Modal centrado */}
       <div
         className="fixed left-1/2 top-1/2 z-[70] flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-5 rounded-2xl border border-ink-100 bg-white p-6 shadow-2xl"
         role="dialog"
         aria-labelledby="modal-personalizacion-titulo"
         aria-modal="true"
       >
-        {/* Icono de éxito — círculo verde claro con check */}
-        <span
-          className="flex h-20 w-20 items-center justify-center rounded-full"
-          style={{ backgroundColor: '#EFFFF5' }}
-        >
-          <CheckCircle2
-            className="h-12 w-12 text-emerald-600"
-            strokeWidth={2}
-          />
+        <span className="flex h-20 w-20 items-center justify-center rounded-full" style={{ backgroundColor: '#EFFFF5' }}>
+          <CheckCircle2 className="h-12 w-12 text-emerald-600" strokeWidth={2} />
         </span>
 
-        <h2
-          id="modal-personalizacion-titulo"
-          className="text-center text-[20px] font-bold leading-tight text-ink-900"
-        >
+        <h2 id="modal-personalizacion-titulo" className="text-center text-[20px] font-bold leading-tight text-ink-900">
           ¡Solicitud enviada a {nombreTienda}!
         </h2>
 
@@ -596,13 +555,47 @@ function SolicitudEnviadaModal({
 
 /* ================================== Page ================================ */
 
+/** Construye la descripción combinada que va al backend */
+function construirDescripcion(
+  tab: DesignTab,
+  texto: string,
+  posicion: string,
+  alto: string,
+  ancho: string,
+  instrucciones: string,
+): string {
+  const partes: string[] = [];
+  if (tab === 'texto' && texto.trim()) partes.push(`Texto: ${texto.trim()}`);
+  if (posicion.trim())                 partes.push(`Posición: ${posicion.trim()}`);
+  if (alto || ancho)                   partes.push(`Medidas: ${alto || '?'} cm alto × ${ancho || '?'} cm ancho`);
+  if (instrucciones.trim())            partes.push(`Instrucciones: ${instrucciones.trim()}`);
+  return partes.join('\n');
+}
+
 export default function PersonalizacionPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { producto, cargando, error } = useProducto(id);
+
+  /* ── Estado del formulario (levantado desde los subcomponentes) ── */
   const [tipoSeleccionado, setTipoSeleccionado] = useState<TipoTrabajo>('estampado');
+  const [tab,              setTab]              = useState<DesignTab>('subir');
+  const [archivo,          setArchivo]          = useState<File | null>(null);
+  const [texto,            setTexto]            = useState('');
+  const [posicion,         setPosicion]         = useState('');
+  const [alto,             setAlto]             = useState('');
+  const [ancho,            setAncho]            = useState('');
+  const [instrucciones,    setInstrucciones]    = useState('');
+
+  /* ── Variante seleccionada en ProductSummaryCard ── */
+  const [varianteId, setVarianteId] = useState<string | undefined>(undefined);
+
+  /* ── Estado de envío ── */
+  const [enviando,        setEnviando]        = useState(false);
+  const [errorEnvio,      setErrorEnvio]      = useState('');
   const [solicitudEnviada, setSolicitudEnviada] = useState(false);
 
+  /* ── Screens de carga / error ── */
   if (cargando) {
     return (
       <div className="min-h-screen bg-surface-muted">
@@ -620,13 +613,8 @@ export default function PersonalizacionPage() {
       <div className="min-h-screen bg-surface-muted">
         <TopBar active="Productos" />
         <main className="flex flex-col items-center justify-center gap-4 px-12 py-24 text-center">
-          <h1 className="text-3xl font-bold text-ink-900">
-            Producto no encontrado
-          </h1>
-          <Link
-            to={RUTAS.CATALOGO}
-            className="rounded-lg bg-brand-500 px-6 py-3 text-[15px] font-medium text-white hover:bg-brand-600"
-          >
+          <h1 className="text-3xl font-bold text-ink-900">Producto no encontrado</h1>
+          <Link to={RUTAS.CATALOGO} className="rounded-lg bg-brand-500 px-6 py-3 text-[15px] font-medium text-white hover:bg-brand-600">
             Volver al catálogo
           </Link>
         </main>
@@ -641,13 +629,8 @@ export default function PersonalizacionPage() {
       <div className="min-h-screen bg-surface-muted">
         <TopBar active="Productos" />
         <main className="flex flex-col items-center justify-center gap-4 px-12 py-24 text-center">
-          <h1 className="text-3xl font-bold text-ink-900">
-            Este producto no es personalizable
-          </h1>
-          <Link
-            to={RUTAS.DETALLE_PRODUCTO(producto.id)}
-            className="rounded-lg bg-brand-500 px-6 py-3 text-[15px] font-medium text-white hover:bg-brand-600"
-          >
+          <h1 className="text-3xl font-bold text-ink-900">Este producto no es personalizable</h1>
+          <Link to={RUTAS.DETALLE_PRODUCTO(producto.id)} className="rounded-lg bg-brand-500 px-6 py-3 text-[15px] font-medium text-white hover:bg-brand-600">
             Volver al producto
           </Link>
         </main>
@@ -656,16 +639,47 @@ export default function PersonalizacionPage() {
     );
   }
 
-  const handleEnviar = () => {
-    // TODO: POST /api/v1/personalizacion — al confirmar, abrir modal de éxito
-    setSolicitudEnviada(true);
+  const handleEnviar = async () => {
+    setErrorEnvio('');
+
+    if (!varianteId) {
+      setErrorEnvio('Selecciona una talla y color antes de enviar.');
+      return;
+    }
+
+    setEnviando(true);
+    try {
+      // 1. Si eligió "Subir Diseño" y seleccionó un archivo, subirlo a S3 primero
+      let urlLogo: string | undefined;
+      if (tab === 'subir' && archivo) {
+        urlLogo = await subirImagenS3(archivo);
+      }
+
+      // 2. Construir descripción combinada
+      const descripcion = construirDescripcion(tab, texto, posicion, alto, ancho, instrucciones);
+
+      // 3. POST al backend
+      await crearSolicitudPersonalizacion({
+        detalleProductoId: Number(varianteId),
+        vendedorId:        Number(producto.idComerciante),
+        tipoPersonalizacion: TIPO_TRABAJO_BACKEND[tipoSeleccionado],
+        urlLogo,
+        descripcion,
+      });
+
+      setSolicitudEnviada(true);
+    } catch (err: any) {
+      const msg = err?.response?.data?.mensaje
+        ?? err?.response?.data?.message
+        ?? 'No se pudo enviar la solicitud. Intenta de nuevo.';
+      setErrorEnvio(msg);
+    } finally {
+      setEnviando(false);
+    }
   };
 
-  const handleCancelar = () => {
-    navigate(RUTAS.DETALLE_PRODUCTO(producto.id));
-  };
+  const handleCancelar = () => navigate(RUTAS.DETALLE_PRODUCTO(producto.id));
 
-  /** Al cerrar el modal (ESC o click en backdrop) → volver al detalle del producto */
   const handleCerrarModal = () => {
     setSolicitudEnviada(false);
     navigate(RUTAS.DETALLE_PRODUCTO(producto.id));
@@ -675,7 +689,6 @@ export default function PersonalizacionPage() {
     <div className="min-h-screen bg-surface-muted">
       <TopBar active="Productos" />
       <main className="flex flex-col gap-8 px-12 py-12">
-        {/* Volver */}
         <Link
           to={RUTAS.DETALLE_PRODUCTO(producto.id)}
           className="inline-flex w-fit items-center gap-2 rounded-lg px-3 py-2 text-[15px] font-medium text-brand-600 transition-colors hover:bg-brand-50"
@@ -684,26 +697,38 @@ export default function PersonalizacionPage() {
           Volver al producto
         </Link>
 
-        {/* Título */}
-        <h1 className="text-[36px] font-bold text-ink-900 md:text-[40px]">
-          Solicitar Personalización
-        </h1>
+        <h1 className="text-[36px] font-bold text-ink-900 md:text-[40px]">Solicitar Personalización</h1>
 
-        {/* 2 columnas */}
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_400px]">
-          {/* Left: Form */}
+          {/* Columna izquierda: formulario */}
           <div className="flex flex-col gap-6">
-            <ProductSummaryCard producto={producto} />
+            <ProductSummaryCard producto={producto} onVarianteChange={setVarianteId} />
             <DetallesPersonalizacionCard
               tipoSeleccionado={tipoSeleccionado}
               setTipoSeleccionado={setTipoSeleccionado}
+              tab={tab}
+              setTab={setTab}
+              archivo={archivo}
+              onArchivoChange={setArchivo}
+              texto={texto}
+              setTexto={setTexto}
+              posicion={posicion}
+              setPosicion={setPosicion}
+              alto={alto}
+              setAlto={setAlto}
+              ancho={ancho}
+              setAncho={setAncho}
+              instrucciones={instrucciones}
+              setInstrucciones={setInstrucciones}
             />
           </div>
 
-          {/* Right: Summary */}
+          {/* Columna derecha: resumen */}
           <ResumenCostos
             producto={producto}
             tipoSeleccionado={tipoSeleccionado}
+            enviando={enviando}
+            errorEnvio={errorEnvio}
             onEnviar={handleEnviar}
             onCancelar={handleCancelar}
           />
@@ -711,12 +736,8 @@ export default function PersonalizacionPage() {
       </main>
       <Footer />
 
-      {/* Modal de confirmación tras enviar la solicitud */}
       {solicitudEnviada && (
-        <SolicitudEnviadaModal
-          nombreTienda={producto.nombreTienda}
-          onClose={handleCerrarModal}
-        />
+        <SolicitudEnviadaModal nombreTienda={producto.nombreTienda} onClose={handleCerrarModal} />
       )}
     </div>
   );

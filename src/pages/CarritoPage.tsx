@@ -99,6 +99,7 @@ function CartItemCard({ item }: { item: IItemCarrito }) {
           <QuantityStepper
             cantidad={item.cantidad}
             onChange={(n) => actualizarCantidad(item.id, n)}
+            max={item.producto.variantes?.find(v => v.id === item.idVariante)?.stock}
             ariaLabel={`Cantidad de ${item.producto.titulo}`}
           />
 
