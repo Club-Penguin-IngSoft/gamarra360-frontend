@@ -103,6 +103,11 @@ export async function actualizarVariante(idVariante: number, payload: Partial<IV
   await apiClient.put(`/variantes-producto/${idVariante}`, payload);
 }
 
+/** Actualiza solo el stock de una variante (PATCH /variantes-producto/{id}/stock). */
+export async function actualizarStockVariante(idVariante: number, stock: number): Promise<void> {
+  await apiClient.patch(`/variantes-producto/${idVariante}/stock`, { stock });
+}
+
 /** El backend SIEMPRE devuelve esta estructura — validado en Postman */
 interface IPageBackend {
   contenido: IProductoBackend[];
