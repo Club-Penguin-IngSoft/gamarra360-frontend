@@ -22,6 +22,7 @@ interface IAuthContextValue {
   estaAutenticado: boolean;
   iniciarSesion: (sesion: ISesion) => void;
   cerrarSesion: () => void;
+  actualizarUsuario: (datos: Partial<IUsuario>) => void;
 }
 
 export const AuthContext = createContext<IAuthContextValue | undefined>(
@@ -55,14 +56,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsuario(null);
   }, []);
 
+  const actualizarUsuario = useCallback((datos: Partial<IUsuario>) => {
+    setUsuario((prev) => {
+      if (!prev) return prev;
+      const actualizado = { ...prev, ...datos };
+      localStorage.setItem(USUARIO_KEY, JSON.stringify(actualizado));
+      return actualizado;
+    });
+  }, []);
+
   const value = useMemo<IAuthContextValue>(
     () => ({
       usuario,
       estaAutenticado: usuario !== null,
       iniciarSesion,
       cerrarSesion,
+      actualizarUsuario,
     }),
-    [usuario, iniciarSesion, cerrarSesion],
+    [usuario, iniciarSesion, cerrarSesion, actualizarUsuario],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

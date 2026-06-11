@@ -13,6 +13,7 @@ import { useCarrito } from '../hooks/useCarrito';
 import { RUTAS } from '../constants/rutas';
 import { pedidoCoincideConTab, type TabPedidos } from '../utils/pedidoUi';
 import type { IDetalleOrden, IPedidoConDetalles } from '../types/IPedido';
+const ORDENES_POR_PAGINA = 10;
 
 export default function MisPedidosPage() {
   const navigate = useNavigate();
@@ -22,9 +23,15 @@ export default function MisPedidosPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabPedidos>('TODAS');
+  const [pagina, setPagina] = useState(1);
+  const handleTabChange = (nuevaTab: TabPedidos) => {
+    setTab(nuevaTab);
+    setPagina(1);
+  };
   const [cancelandoId, setCancelandoId] = useState<number | null>(null);
   const [repitiendoId, setRepitiendoId] = useState<number | null>(null);
 
+  
   useEffect(() => {
     const clienteId = Number(usuario?.id ?? 0);
     if (!clienteId) {
@@ -37,9 +44,16 @@ export default function MisPedidosPage() {
 
     pedidoService
       .obtenerMisOrdenes(clienteId)
-      .then((resumen) => Promise.all(resumen.map((o) => pedidoService.obtenerDetalleOrden(o.id))))
-      .then((detalles) => {
-        if (activo) setOrdenes(detalles);
+      .then((resumen) =>
+        Promise.allSettled(resumen.map((o) => pedidoService.obtenerDetalleOrden(o.id)))
+      )
+      .then((resultados) => {
+        if (activo) {
+          const exitosas = resultados
+            .filter((r): r is PromiseFulfilledResult<IDetalleOrden> => r.status === 'fulfilled')
+            .map((r) => r.value);
+          setOrdenes(exitosas);
+        }
       })
       .catch(() => {
         if (activo) setError('No se pudieron cargar tus pedidos. Inténtalo más tarde.');
@@ -100,6 +114,11 @@ export default function MisPedidosPage() {
 
   const ordenesVisibles = ordenes.filter((orden) => orden.pedidos.some((p) => pedidoCoincideConTab(p.estado, tab)));
 
+  const totalPaginas = Math.ceil(ordenesVisibles.length / ORDENES_POR_PAGINA);
+  const ordenesPagina = ordenesVisibles.slice(
+    (pagina - 1) * ORDENES_POR_PAGINA,
+    pagina * ORDENES_POR_PAGINA
+  );
   return (
     <div className="flex min-h-screen flex-col bg-surface-muted">
       <TopBar active="Inicio" />
@@ -114,7 +133,7 @@ export default function MisPedidosPage() {
             <div className="flex flex-1 flex-col gap-6 lg:max-w-[1000px]">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <h2 className="text-h5 font-semibold text-ink-900">Mis Pedidos</h2>
-                <PedidoTabs activa={tab} onChange={setTab} />
+                <PedidoTabs activa={tab} onChange={handleTabChange} />
               </div>
 
               {cargando && (
@@ -156,7 +175,7 @@ export default function MisPedidosPage() {
 
               {!cargando && !error && ordenesVisibles.length > 0 && (
                 <div className="flex flex-col gap-4">
-                  {ordenesVisibles.map((orden) => (
+                  {ordenesPagina.map((orden) => (
                     <PedidoOrdenCard
                       key={orden.id}
                       orden={orden}
@@ -167,6 +186,32 @@ export default function MisPedidosPage() {
                       repitiendoId={repitiendoId}
                     />
                   ))}
+
+                  {totalPaginas > 1 && (
+                    <div className="flex items-center justify-between rounded-xl border border-ink-100 bg-white px-5 py-3">
+                      <button
+                        type="button"
+                        onClick={() => setPagina((p) => Math.max(1, p - 1))}
+                        disabled={pagina === 1}
+                        className="rounded-lg border border-ink-200 px-4 py-2 text-[14px] font-medium text-ink-700 transition-colors hover:bg-ink-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        ← Anterior
+                      </button>
+
+                      <span className="text-[14px] text-ink-500">
+                        Página {pagina} de {totalPaginas}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+                        disabled={pagina === totalPaginas}
+                        className="rounded-lg border border-ink-200 px-4 py-2 text-[14px] font-medium text-ink-700 transition-colors hover:bg-ink-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Siguiente →
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

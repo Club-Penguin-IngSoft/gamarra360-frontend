@@ -10,6 +10,7 @@ import NotificacionesCard from '../components/cuenta/NotificacionesCard';
 import { useAuth } from '../hooks/useAuth';
 import { pedidoService } from '../services/pedidoService';
 import type { IDetalleOrden } from '../types/IPedido';
+import EditarPerfilModal from '../components/cuenta/EditarPerfilModal';
 import { RUTAS } from '../constants/rutas';
 
 export default function MiCuentaPage() {
@@ -17,7 +18,8 @@ export default function MiCuentaPage() {
   const navigate = useNavigate();
   const [orden, setOrden] = useState<IDetalleOrden | null>(null);
   const [cargando, setCargando] = useState(true);
-
+  const [modalPerfilAbierto, setModalPerfilAbierto] = useState(false);
+  
   useEffect(() => {
     const clienteId = Number(usuario?.id ?? 0);
     if (!clienteId) {
@@ -63,7 +65,7 @@ export default function MiCuentaPage() {
 
             <div className="flex flex-1 flex-col gap-8 lg:max-w-[1000px]">
               <h2 className="text-h5 font-semibold text-ink-900">Información Personal</h2>
-              <PerfilHeaderCard usuario={usuario} onEditarPerfil={() => navigate(RUTAS.CONFIGURACION)} />
+              <PerfilHeaderCard usuario={usuario} onEditarPerfil={() => setModalPerfilAbierto(true)} />
               <DireccionCard direccion={direccionReciente} />
               <PedidosRecientesCard orden={orden} cargando={cargando} />
               <NotificacionesCard />
@@ -73,6 +75,9 @@ export default function MiCuentaPage() {
       </main>
 
       <Footer />
+      {modalPerfilAbierto && (
+        <EditarPerfilModal usuario={usuario} onCerrar={() => setModalPerfilAbierto(false)} />
+      )}
     </div>
   );
 }
