@@ -18,6 +18,8 @@ import RegistroPage from '../pages/RegistroPage';
 import VenderPage from '../pages/VenderPage';
 import RegistroComerciantePage from '../pages/RegistroComerciantePage';
 import PersonalizacionPage from '../pages/PersonalizacionPage';
+import MisPersonalizacionesPage from '../pages/MisPersonalizacionesPage';
+import PersonalizacionDetallePage from '../pages/PersonalizacionDetallePage';
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
 import AdminUsuariosPage from '../pages/admin/AdminUsuariosPage';
 import AdminAprobacionesPage from '../pages/admin/AdminAprobacionesPage';
@@ -33,6 +35,9 @@ import CheckoutEntregaPage from '../pages/CheckoutEntregaPage';
 import PagoPage from '../pages/PagoPage';
 import MisPedidosPage from '../pages/MisPedidosPage';
 import DetallePedidoPage from '../pages/DetallePedidoPage';
+import PedidoDetallePage from '../pages/PedidoDetallePage';
+import MiCuentaPage from '../pages/MiCuentaPage';
+import ConfiguracionPage from '../pages/ConfiguracionPage';
 import StripeCompletado from '../pages/comerciante/StripeCompletado';
 import StripeRefresh from '../pages/comerciante/StripeRefresh';
 import { useAuth } from '../hooks/useAuth';
@@ -65,17 +70,9 @@ export default function AppRouter() {
       />
       <Route path={RUTAS.VENDER} element={<VenderPage />} />
       <Route path={RUTAS.REGISTRO_COMERCIANTE} element={<RegistroComerciantePage />} />
-      <Route
-        path={RUTAS.CUENTA}
-        element={
-          <ComingSoonPage
-            active="Inicio"
-            title="Mi cuenta"
-            description="Inicia sesión o crea tu cuenta. Muy pronto disponible."
-          />
-        }
-      />
-      
+      <Route path={RUTAS.CUENTA} element={<SoloClientes><MiCuentaPage /></SoloClientes>} />
+      <Route path={RUTAS.CONFIGURACION} element={<SoloClientes><ConfiguracionPage /></SoloClientes>} />
+
 
       <Route path={RUTAS.CARRITO} element={<SoloClientes><CarritoPage /></SoloClientes>} />
       
@@ -86,6 +83,7 @@ export default function AppRouter() {
       <Route path={RUTAS.PAGO} element={<SoloClientes><PagoPage /></SoloClientes>} />
       <Route path={RUTAS.MIS_PEDIDOS} element={<SoloClientes><MisPedidosPage /></SoloClientes>} />
       <Route path={RUTAS.DETALLE_PEDIDO()} element={<SoloClientes><DetallePedidoPage /></SoloClientes>} />
+      <Route path={RUTAS.PEDIDO_DETALLE()} element={<SoloClientes><PedidoDetallePage /></SoloClientes>} />
 
       <Route path={RUTAS.LOGIN} element={<LoginPage />} />
       <Route path={RUTAS.REGISTRO} element={<RegistroPage />} />
@@ -93,16 +91,8 @@ export default function AppRouter() {
         path={RUTAS.PERSONALIZAR()}
         element={<PersonalizacionPage />}
       />
-      <Route
-        path={RUTAS.PERSONALIZACIONES}
-        element={
-          <ComingSoonPage
-            active="Inicio"
-            title="Mis Personalizaciones"
-            description="Aquí podrás hacer seguimiento de tus solicitudes de personalización (HU-29). Disponible próximamente."
-          />
-        }
-      />
+      <Route path={RUTAS.PERSONALIZACIONES} element={<SoloClientes><MisPersonalizacionesPage /></SoloClientes>} />
+      <Route path={RUTAS.PERSONALIZACION_DETALLE()} element={<SoloClientes><PersonalizacionDetallePage /></SoloClientes>} />
       <Route
         path={RUTAS.COTIZACIONES}
         element={

@@ -4,6 +4,11 @@
  */
 
 import apiClient from './apiClient';
+import type {
+  IAceptarPersonalizacionResponse,
+  IPersonalizacionDetalle,
+  IPersonalizacionResumen,
+} from '../types/IPersonalizacion';
 
 /* ── Mapeo de tipos frontend → enums del backend ──────────────────────── */
 
@@ -32,6 +37,8 @@ export interface IPersonalizacionRequest {
   urlLogo?: string;
   /** Descripción combinada: posición, medidas, instrucciones y/o texto */
   descripcion: string;
+  /** Cantidad de unidades solicitadas */
+  cantidad?: number;
 }
 
 export interface IPersonalizacionResponse {
@@ -61,3 +68,39 @@ export async function crearSolicitudPersonalizacion(
   );
   return data;
 }
+
+/** Lista las personalizaciones del cliente autenticado para "Mis Personalizaciones". */
+async function listarMisPersonalizaciones(): Promise<IPersonalizacionResumen[]> {
+  const { data } = await apiClient.get<IPersonalizacionResumen[]>(
+    '/personalizaciones/mis-personalizaciones',
+  );
+  return data;
+}
+
+/** Detalle completo de una personalización para la página "Ver detalle". */
+async function obtenerDetallePersonalizacion(id: number): Promise<IPersonalizacionDetalle> {
+  const { data } = await apiClient.get<IPersonalizacionDetalle>(
+    `/personalizaciones/${id}/detalle`,
+  );
+  return data;
+}
+
+/** Acepta la propuesta del vendedor (RESPONDIDA → ACEPTADA). */
+async function aceptarPersonalizacion(id: number): Promise<IAceptarPersonalizacionResponse> {
+  const { data } = await apiClient.patch<IAceptarPersonalizacionResponse>(
+    `/personalizaciones/${id}/aceptar`,
+  );
+  return data;
+}
+
+/** Rechaza la propuesta del vendedor (RESPONDIDA → RECHAZADA). */
+async function rechazarPersonalizacion(id: number): Promise<void> {
+  await apiClient.patch(`/personalizaciones/${id}/rechazar`);
+}
+
+export const personalizacionService = {
+  listarMisPersonalizaciones,
+  obtenerDetallePersonalizacion,
+  aceptarPersonalizacion,
+  rechazarPersonalizacion,
+};

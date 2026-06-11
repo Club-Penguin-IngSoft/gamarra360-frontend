@@ -4,29 +4,17 @@ import { ArrowLeft, Package, Truck, Store as StoreIcon, ShoppingBag } from 'luci
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
 import { pedidoService } from '../services/pedidoService';
+import { personalizacionService } from '../services/personalizacionService';
 import { formatearPrecio } from '../utils/formatearPrecio';
+import { ESTADO_PEDIDO_INFO } from '../utils/pedidoUi';
 import { RUTAS } from '../constants/rutas';
-import type { IDetalleOrden, EstadoPedido, EstadoPago } from '../types/IPedido';
+import type { IDetalleOrden, EstadoPago } from '../types/IPedido';
 import apiClient from '../services/apiClient';
 
 const ETIQUETA_ESTADO_ORDEN: Record<EstadoPago, string> = {
   PENDIENTE: 'Pendiente de pago',
   PAGADO: 'Pagado',
   FALLIDO: 'Fallido',
-};
-
-const ETIQUETA_ESTADO_PEDIDO: Record<EstadoPedido, string> = {
-  PENDIENTE_CONFIRMACION: 'Pendiente de confirmación',
-  CONFIRMADO: 'Confirmado',
-  EN_PREPARACION: 'En preparación',
-  LISTO_PARA_ENTREGA: 'Listo para entrega',
-};
-
-const COLOR_ESTADO_PEDIDO: Record<EstadoPedido, string> = {
-  PENDIENTE_CONFIRMACION: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  CONFIRMADO: 'bg-blue-50 text-blue-700 border-blue-200',
-  EN_PREPARACION: 'bg-orange-50 text-orange-700 border-orange-200',
-  LISTO_PARA_ENTREGA: 'bg-green-50 text-green-700 border-green-200',
 };
 
 function formatearFecha(fechaIso: string): string {
@@ -52,16 +40,29 @@ useEffect(() => {
   const params = new URLSearchParams(window.location.search);
   const redirectStatus = params.get('redirect_status');
 
-  const cargarDetalle = async () => {
-    try {
-      const data = await pedidoService.obtenerDetalleOrden(Number(id));
-      setOrden(data);
-    } catch {
-      setError('No se pudo cargar el detalle del pedido.');
-    } finally {
-      setCargando(false);
-    }
-  };
+    const cargarDetalle = async () => {
+      try {
+        if (redirectStatus === 'succeeded') {
+          await apiClient.patch(`/ordenes-pago/${id}/marcar-pagado`);
+
+          const pendingPersonalizacionId = sessionStorage.getItem('pendingPersonalizacionId');
+          if (pendingPersonalizacionId) {
+            sessionStorage.removeItem('pendingPersonalizacionId');
+            try {
+              await personalizacionService.aceptarPersonalizacion(Number(pendingPersonalizacionId));
+            } catch (err) {
+              console.error('[DetallePedidoPage] Error al confirmar personalización:', err);
+            }
+          }
+        }
+        const data = await pedidoService.obtenerDetalleOrden(Number(id));
+        setOrden(data);
+      } catch {
+        setError('No se pudo cargar el detalle del pedido.');
+      } finally {
+        setCargando(false);
+      }
+    };
 
   const esperarPagoConfirmado = async () => {
     for (let intento = 0; intento < MAX_INTENTOS; intento++) {
@@ -197,8 +198,8 @@ useEffect(() => {
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1.5">
-                        <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${COLOR_ESTADO_PEDIDO[pedido.estado as EstadoPedido] ?? 'bg-ink-50 text-ink-500 border-ink-200'}`}>
-                          {ETIQUETA_ESTADO_PEDIDO[pedido.estado as EstadoPedido] ?? pedido.estado}
+                        <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${ESTADO_PEDIDO_INFO[pedido.estado].className}`}>
+                          {ESTADO_PEDIDO_INFO[pedido.estado].label}
                         </span>
                         <div className="flex items-center gap-1 text-[12px] text-ink-500">
                           {pedido.tipoEntrega === 'DELIVERY'
