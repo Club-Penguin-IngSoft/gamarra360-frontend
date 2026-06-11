@@ -1,15 +1,16 @@
 interface DireccionCardProps {
   direccion: string | null;
+  onEditarDireccion: () => void;
 }
 
-export default function DireccionCard({ direccion }: DireccionCardProps) {
+export default function DireccionCard({ direccion, onEditarDireccion }: DireccionCardProps) {
   return (
     <div className="flex flex-col gap-6 rounded-xl bg-white p-6 shadow-sm">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-title1 font-bold text-ink-700">Dirección de entrega</h3>
         <button
           type="button"
-          title="Próximamente disponible"
+          onClick={onEditarDireccion}
           className="text-label-md font-medium text-brand-600 transition-colors hover:text-brand-700"
         >
           {direccion ? 'Cambiar' : 'Agregar'}

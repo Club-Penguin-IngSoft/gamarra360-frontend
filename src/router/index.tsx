@@ -37,7 +37,6 @@ import MisPedidosPage from '../pages/MisPedidosPage';
 import DetallePedidoPage from '../pages/DetallePedidoPage';
 import PedidoDetallePage from '../pages/PedidoDetallePage';
 import MiCuentaPage from '../pages/MiCuentaPage';
-import ConfiguracionPage from '../pages/ConfiguracionPage';
 import StripeCompletado from '../pages/comerciante/StripeCompletado';
 import StripeRefresh from '../pages/comerciante/StripeRefresh';
 import { useAuth } from '../hooks/useAuth';
@@ -71,7 +70,7 @@ export default function AppRouter() {
       <Route path={RUTAS.VENDER} element={<VenderPage />} />
       <Route path={RUTAS.REGISTRO_COMERCIANTE} element={<RegistroComerciantePage />} />
       <Route path={RUTAS.CUENTA} element={<SoloClientes><MiCuentaPage /></SoloClientes>} />
-      <Route path={RUTAS.CONFIGURACION} element={<SoloClientes><ConfiguracionPage /></SoloClientes>} />
+      <Route path={RUTAS.CONFIGURACION} element={<Navigate to={RUTAS.CUENTA} replace />} />
 
 
       <Route path={RUTAS.CARRITO} element={<SoloClientes><CarritoPage /></SoloClientes>} />

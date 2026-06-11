@@ -21,6 +21,7 @@ interface IAuthContextValue {
   usuario: IUsuario | null;
   estaAutenticado: boolean;
   iniciarSesion: (sesion: ISesion) => void;
+  actualizarUsuario: (usuarioActualizado: Partial<IUsuario>) => void;
   cerrarSesion: () => void;
 }
 
@@ -49,6 +50,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsuario(sesion.usuario);
   }, []);
 
+  const actualizarUsuario = useCallback((usuarioActualizado: Partial<IUsuario>) => {
+    setUsuario((actual) => {
+      if (!actual) return actual;
+
+      const fusionado = { ...actual, ...usuarioActualizado };
+      localStorage.setItem(USUARIO_KEY, JSON.stringify(fusionado));
+      return fusionado;
+    });
+  }, []);
+
   const cerrarSesion = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USUARIO_KEY);
@@ -60,9 +71,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       usuario,
       estaAutenticado: usuario !== null,
       iniciarSesion,
+      actualizarUsuario,
       cerrarSesion,
     }),
-    [usuario, iniciarSesion, cerrarSesion],
+    [usuario, iniciarSesion, actualizarUsuario, cerrarSesion],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
