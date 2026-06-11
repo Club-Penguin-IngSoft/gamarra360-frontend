@@ -6,6 +6,7 @@ import {
   listarCategorias,
   listarTiposPorCategoria,
   actualizarProducto,
+  actualizarStockVariante,
   eliminarProducto,
   subirImagenS3,
   type ICategoriaOpcion,
@@ -311,6 +312,7 @@ export default function EditarProductoPage() {
           ? [{ url: imagenPrincipalUrl, esPrincipal: true }, ...imagenesExistentes.filter((i) => !i.esPrincipal)]
           : imagenesExistentes,
       });
+      await Promise.all(variantes.map((v) => actualizarStockVariante(v.id, v.stock)));
       navigate(RUTAS.COMERCIANTE_CATALOGO);
     } catch (err: any) {
       setErrorApi(err.response?.data?.mensaje ?? 'Error al guardar los cambios');
