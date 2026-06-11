@@ -5,10 +5,12 @@
 
 // Valores reales del enum EstadoPedido en el backend Java
 export type EstadoPedido =
-  | 'PENDIENTE_CONFIRMACION'
-  | 'CONFIRMADO'
+  | 'RECIBIDO'
   | 'EN_PREPARACION'
-  | 'LISTO_PARA_ENTREGA';
+  | 'EN_CAMINO'
+  | 'LISTO_PARA_ENTREGA'
+  | 'ENTREGADO'
+  | 'CANCELADO';
 
 export type TipoEntrega = 'DELIVERY' | 'RECOJO_TIENDA';
 // MetodoPago se maneja solo en el frontend (simulación); el backend no lo persiste en Pedido
@@ -27,6 +29,7 @@ export interface IDetallePedidoResponse {
   id: number;
   pedidoId: number;
   idVarianteProducto: number | null;
+  idProducto: number | null;
   cantidad: number;
   precio: number;
   nombreProducto: string | null;
@@ -70,6 +73,8 @@ export interface IPedidoConDetalles {
   tipoEntrega: TipoEntrega;
   direccionEntrega: string | null;
   total: number;
+  fecha: string;
+  fechaActualizacion: string | null;
   detalles: IDetallePedidoResponse[];
 }
 
@@ -104,6 +109,24 @@ export interface ICrearDetallePedidoRequest {
   idVarianteProducto: number | null;
   cantidad: number;
   precio: number;
+  personalizacionId?: number | null;
+}
+
+/** Item normalizado para el checkout, ya sea proveniente del carrito o de una personalización */
+export interface ICheckoutItem {
+  id: string;
+  nombreProducto: string;
+  imagenUrl?: string;
+  cantidad: number;
+  precioUnitario: number;
+  precioBase: number;
+  idVarianteProducto: number | null;
+}
+
+/** Grupo de items de checkout agrupados por tienda/vendedor */
+export interface ICheckoutGrupo {
+  nombreTienda: string;
+  items: ICheckoutItem[];
 }
 
 export interface ICotizacion {

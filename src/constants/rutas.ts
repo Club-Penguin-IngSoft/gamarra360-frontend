@@ -15,6 +15,7 @@ export const RUTAS = {
   DETALLE_TIENDA: (id: string | number = ':id') => `/tiendas/${id}`,
   VENDER: '/vender',
   CUENTA: '/cuenta',
+  CONFIGURACION: '/cuenta/configuracion',
   CARRITO: '/carrito',
   CHECKOUT: '/checkout',
   PAGO: '/pago',
@@ -34,10 +35,15 @@ export const RUTAS = {
   PERSONALIZAR: (id: string | number = ':id') => `/personalizar/${id}`,
   /** Mis personalizaciones (seguimiento del cliente — HU-29) */
   PERSONALIZACIONES: '/personalizaciones',
+  /** Detalle de una personalización específica */
+  PERSONALIZACION_DETALLE: (id: string | number = ':id') => `/personalizaciones/${id}`,
   /** Historial de pedidos del cliente (HU-37) */
   MIS_PEDIDOS: '/mis-pedidos',
   /** Detalle de un pedido específico */
   DETALLE_PEDIDO: (id: string | number = ':id') => `/mis-pedidos/${id}`,
+  /** Detalle de un pedido (una tienda) dentro de una orden, vista "Mi Cuenta" */
+  PEDIDO_DETALLE: (ordenId: string | number = ':ordenId', pedidoId: string | number = ':pedidoId') =>
+    `/mis-pedidos/${ordenId}/pedido/${pedidoId}`,
   /** Panel de Administración */
   ADMIN_DASHBOARD: '/admin',
   ADMIN_USUARIOS: '/admin/usuarios',

@@ -15,6 +15,7 @@ export interface IItemParaDetalle {
   idVarianteProducto: number | null;
   cantidad: number;
   precio: number;
+  personalizacionId?: number | null;
 }
 
 export interface IGrupoTienda {
@@ -60,6 +61,7 @@ async function crearOrdenCompleta(
         idVarianteProducto: item.idVarianteProducto,
         cantidad: item.cantidad,
         precio: item.precio,
+        personalizacionId: item.personalizacionId ?? null,
       }));
 
       await Promise.all(detalles.map((d) => apiClient.post(BASE_DETALLES, d)));
@@ -81,8 +83,14 @@ async function obtenerDetalleOrden(ordenId: number): Promise<IDetalleOrden> {
   return data;
 }
 
+/** Cancela un pedido propio (verifica titularidad en el backend). */
+async function cancelarPedido(pedidoId: number): Promise<void> {
+  await apiClient.patch(`${BASE_PEDIDOS}/${pedidoId}/cancelar`);
+}
+
 export const pedidoService = {
   crearOrdenCompleta,
   obtenerMisOrdenes,
   obtenerDetalleOrden,
+  cancelarPedido,
 };

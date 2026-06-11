@@ -58,9 +58,11 @@ const TIPOS_TRABAJO: ITipoTrabajoOption[] = [
 function ProductSummaryCard({
   producto,
   onVarianteChange,
+  onCantidadChange,
 }: {
   producto: IProducto;
   onVarianteChange: (idVariante: string | undefined) => void;
+  onCantidadChange: (cantidad: number) => void;
 }) {
   const colores = useMemo(() => {
     const seen = new Map<string, { name: string; hex: string }>();
@@ -159,7 +161,10 @@ function ProductSummaryCard({
           <span className="text-[12px] font-semibold tracking-wider text-ink-900">CANTIDAD</span>
           <QuantityStepper
             cantidad={cantidad}
-            onChange={setCantidad}
+            onChange={(c) => {
+              setCantidad(c);
+              onCantidadChange(c);
+            }}
             size="sm"
             ariaLabel="Selector de cantidad a personalizar"
           />
@@ -589,6 +594,7 @@ export default function PersonalizacionPage() {
 
   /* ── Variante seleccionada en ProductSummaryCard ── */
   const [varianteId, setVarianteId] = useState<string | undefined>(undefined);
+  const [cantidad, setCantidad] = useState(1);
 
   /* ── Estado de envío ── */
   const [enviando,        setEnviando]        = useState(false);
@@ -665,6 +671,7 @@ export default function PersonalizacionPage() {
         tipoPersonalizacion: TIPO_TRABAJO_BACKEND[tipoSeleccionado],
         urlLogo,
         descripcion,
+        cantidad,
       });
 
       setSolicitudEnviada(true);
@@ -702,7 +709,7 @@ export default function PersonalizacionPage() {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_400px]">
           {/* Columna izquierda: formulario */}
           <div className="flex flex-col gap-6">
-            <ProductSummaryCard producto={producto} onVarianteChange={setVarianteId} />
+            <ProductSummaryCard producto={producto} onVarianteChange={setVarianteId} onCantidadChange={setCantidad} />
             <DetallesPersonalizacionCard
               tipoSeleccionado={tipoSeleccionado}
               setTipoSeleccionado={setTipoSeleccionado}
