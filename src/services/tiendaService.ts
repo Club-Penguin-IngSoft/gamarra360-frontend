@@ -5,7 +5,6 @@
 
 import type { ITienda } from '../types/ITienda';
 import type { IFiltrosTiendas } from '../types/IFiltro';
-import { mapearCategoria } from './catalogoService';
 import apiClient from './apiClient';
 
 /* ── Tipo que devuelve el backend ──────────────────────────────────────── */
@@ -30,8 +29,8 @@ function adaptarTienda(t: ITiendaBackend): ITienda {
     descripcion: t.informacion,
     logo: t.foto,
     verificada: t.verificada,
-    // Normaliza "Hombre" → 'HOMBRE', "Mujer" → 'MUJER', etc.
-    categorias: t.categorias?.map(mapearCategoria) ?? [],
+    // Categorías dinámicas desde BD (strings como "Hombre", "Mujer", etc.)
+    categorias: t.categorias ?? [],
     tiposServicio: (t.tiposServicio as any) ?? ['COMPRA_DIRECTA'],
     tiposProducto: t.tiposProducto ?? [],
   };
@@ -60,9 +59,9 @@ function aplicarFiltrosTiendaClienteSide(
   }
 
   // Filtrar por tipo de servicio: la tienda debe tener AL MENOS UN tipo que coincida
-  if (filtros.tipoServicio) {
+  if (filtros.tipoServicio && filtros.tipoServicio.length > 0) {
     resultado = resultado.filter((t) =>
-      t.tiposServicio?.includes(filtros.tipoServicio!),
+      t.tiposServicio?.some((ts) => filtros.tipoServicio!.includes(ts)),
     );
   }
 

@@ -19,7 +19,7 @@ function tieneFiltrosActivos(filtros?: Partial<IFiltrosCatalogo>): boolean {
   return (
     (filtros.categorias?.length ?? 0) > 0 ||
     (filtros.tiposProducto?.length ?? 0) > 0 ||
-    filtros.tipoServicio != null ||
+    (filtros.tipoServicio?.length ?? 0) > 0 ||
     filtros.material != null ||
     filtros.color != null ||
     (filtros.tallas?.length ?? 0) > 0 ||
@@ -59,8 +59,14 @@ export function useCatalogo(
           if (filtros?.categorias && filtros.categorias.length > 0) {
             filtrados = filtrados.filter(p => filtros.categorias!.includes(p.categoria));
           }
-          if (filtros?.tipoServicio) {
-            filtrados = filtrados.filter(p => p.tipoServicio === filtros.tipoServicio);
+          if (filtros?.tipoServicio && filtros.tipoServicio.length > 0) {
+            filtrados = filtrados.filter(p => {
+              const coincideTipo = filtros.tipoServicio!.includes(p.tipoServicio);
+              const esCompraDirectaHibrida =
+                filtros.tipoServicio!.includes('COMPRA_DIRECTA') &&
+                p.precioFinal != null;
+              return coincideTipo || esCompraDirectaHibrida;
+            });
           }
           if (filtros?.precioMin != null) {
             filtrados = filtrados.filter(p => (p.precioFinal ?? Infinity) >= filtros.precioMin!);

@@ -16,6 +16,7 @@ const OPCIONES_VACIAS: IOpcionesFiltro = {
   materiales: [],
   tallas: [],
   tiposProducto: [],
+  categorias: [],
 };
 
 // Caché en módulo — se popula una sola vez por sesión de navegador

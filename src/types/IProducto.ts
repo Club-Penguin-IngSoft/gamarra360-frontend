@@ -3,14 +3,10 @@
  * Alineado con el módulo `catalogo` del backend (Spring Boot).
  */
 
-export type TipoServicio = 'COMPRA_DIRECTA' | 'PERSONALIZABLE' | 'COTIZACION';
+export type TipoServicio = 'COMPRA_DIRECTA' | 'PERSONALIZABLE';
 
-export type Categoria =
-  | 'HOMBRE'
-  | 'MUJER'
-  | 'NINOS'
-  | 'UNISEX_ADULTOS'
-  | 'UNISEX_NINOS';
+/** Categoría de producto — valor dinámico desde la BD (no enum) */
+export type Categoria = string;
 
 export interface IVarianteProducto {
   id: string;
@@ -49,7 +45,6 @@ export type EtiquetaProducto = 'COMPRA DIRECTA' | 'PERSONALIZABLE' | 'COTIZACIÓ
 export const ETIQUETA_POR_TIPO_SERVICIO: Record<TipoServicio, EtiquetaProducto> = {
   COMPRA_DIRECTA: 'COMPRA DIRECTA',
   PERSONALIZABLE: 'PERSONALIZABLE',
-  COTIZACION: 'COTIZACIÓN',
 };
 
 /**
@@ -62,5 +57,4 @@ export const ETIQUETA_POR_TIPO_SERVICIO: Record<TipoServicio, EtiquetaProducto> 
 export const COLOR_BG_TAG_POR_TIPO_SERVICIO: Record<TipoServicio, string> = {
   COMPRA_DIRECTA: 'bg-brand-500',
   PERSONALIZABLE: 'bg-[#146C43]',
-  COTIZACION: 'bg-[#087990]',
 };
