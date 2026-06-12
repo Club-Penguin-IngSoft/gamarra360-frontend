@@ -28,7 +28,7 @@ import DashboardPage from '../pages/comerciante/DashboardPage';
 import GestionInventarioPage from '../pages/comerciante/GestionInventarioPage';
 import EditarProductoPage from '../pages/comerciante/EditarProductoPage';
 import NuevoProductoPage from '../pages/comerciante/NuevoProductoPage';
-import ComingSoonPage from '../pages/ComingSoonPage';
+
 import ComingSoonInternalPage from '../pages/ComingSoonInternalPage';
 import ComercianteSidebar from '../components/ComercianteSidebar';
 import CheckoutEntregaPage from '../pages/CheckoutEntregaPage';
@@ -40,6 +40,11 @@ import MiCuentaPage from '../pages/MiCuentaPage';
 import ConfiguracionPage from '../pages/ConfiguracionPage';
 import StripeCompletado from '../pages/comerciante/StripeCompletado';
 import StripeRefresh from '../pages/comerciante/StripeRefresh';
+import SolicitarCotizacionPage from '../pages/SolicitarCotizacionPage';
+import MisCotizacionesPage from '../pages/MisCotizacionesPage';
+import DetalleCotizacionClientePage from '../pages/DetalleCotizacionClientePage';
+import CotizacionesComerciantePage from '../pages/comerciante/CotizacionesComerciantePage';
+import DetalleCotizacionComerciantePage from '../pages/comerciante/DetalleCotizacionComerciantePage';
 import { useAuth } from '../hooks/useAuth';
 /**
  * Definición de rutas. NO incluye BrowserRouter — ese se monta en `main.tsx`
@@ -91,16 +96,9 @@ export default function AppRouter() {
       />
       <Route path={RUTAS.PERSONALIZACIONES} element={<SoloClientes><MisPersonalizacionesPage /></SoloClientes>} />
       <Route path={RUTAS.PERSONALIZACION_DETALLE()} element={<SoloClientes><PersonalizacionDetallePage /></SoloClientes>} />
-      <Route
-        path={RUTAS.COTIZACIONES}
-        element={
-          <ComingSoonPage
-            active="Cotizaciones"
-            title="Cotizaciones"
-            description="Solicita y gestiona cotizaciones con comerciantes. Disponible en el Sprint 2."
-          />
-        }
-      />
+      <Route path={RUTAS.COTIZACIONES} element={<SoloClientes><SolicitarCotizacionPage /></SoloClientes>} />
+      <Route path={RUTAS.MIS_COTIZACIONES} element={<SoloClientes><MisCotizacionesPage /></SoloClientes>} />
+      <Route path={RUTAS.DETALLE_COTIZACION()} element={<SoloClientes><DetalleCotizacionClientePage /></SoloClientes>} />
       <Route element={<RutaProtegida rolesPermitidos={['ADMIN']} />}>
         <Route path={RUTAS.ADMIN_DASHBOARD} element={<AdminDashboardPage />} />
         <Route path={RUTAS.ADMIN_USUARIOS} element={<AdminUsuariosPage />} />
@@ -133,16 +131,8 @@ export default function AppRouter() {
             />
           }
         />
-        <Route
-          path={RUTAS.COMERCIANTE_COTIZACIONES}
-          element={
-            <ComingSoonInternalPage
-              sidebar={<ComercianteSidebar />}
-              title="Cotizaciones"
-              description="Gestión de cotizaciones enviadas por clientes. Disponible próximamente."
-            />
-          }
-        />
+        <Route path={RUTAS.COMERCIANTE_COTIZACIONES} element={<CotizacionesComerciantePage />} />
+        <Route path={RUTAS.COMERCIANTE_COTIZACION_DETALLE()} element={<DetalleCotizacionComerciantePage />} />
         <Route
           path={RUTAS.COMERCIANTE_NOTIFICACIONES}
           element={

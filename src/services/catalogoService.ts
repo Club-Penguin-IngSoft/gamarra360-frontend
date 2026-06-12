@@ -62,6 +62,7 @@ export interface IProductoPayload {
   idCategoria: number;
   idTipoProducto: number;
   imagenes: { url: string; esPrincipal: boolean }[];
+  especificaciones?: { nombre: string; descripcion: string }[];
 }
 
 export interface IVariantePayload {
@@ -73,6 +74,7 @@ export interface IVariantePayload {
   producto: { idProducto: number };
   color: { idColor: number };
   talla: { idTalla: number };
+  imagenUrl?: string | null;
 }
 
 /** Busca una talla por nombre; si no existe la crea. Devuelve el idTalla. */
@@ -106,6 +108,11 @@ export async function actualizarVariante(idVariante: number, payload: Partial<IV
 /** Actualiza solo el stock de una variante (PATCH /variantes-producto/{id}/stock). */
 export async function actualizarStockVariante(idVariante: number, stock: number): Promise<void> {
   await apiClient.patch(`/variantes-producto/${idVariante}/stock`, { stock });
+}
+
+/** Actualiza la imagen de una variante (PATCH /variantes-producto/{id}/imagen). */
+export async function actualizarImagenVariante(idVariante: number, imagenUrl: string | null): Promise<void> {
+  await apiClient.patch(`/variantes-producto/${idVariante}/imagen`, { imagenUrl });
 }
 
 /** El backend SIEMPRE devuelve esta estructura — validado en Postman */
@@ -278,6 +285,17 @@ export async function actualizarProducto(id: string, payload: IProductoPayload):
 /** Eliminación lógica de un producto (DELETE /productos/{id}). */
 export async function eliminarProducto(id: string): Promise<void> {
   await apiClient.delete(`/productos/${id}`);
+}
+
+/**
+ * Búsqueda server-side por keyword — GET /productos/buscar?q=...&size=6
+ * Solo devuelve productos de catálogo público (tienda y comerciante verificados).
+ */
+export async function buscarProductos(q: string, size = 6): Promise<IProducto[]> {
+  const { data } = await apiClient.get<IProductoBackend[]>('/productos/buscar', {
+    params: { q, size },
+  });
+  return data.map(adaptarProducto);
 }
 
 /** Sube un archivo de imagen a S3 y devuelve la URL pública. */

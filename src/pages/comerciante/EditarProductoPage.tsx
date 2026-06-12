@@ -7,6 +7,7 @@ import {
   listarTiposPorCategoria,
   actualizarProducto,
   actualizarStockVariante,
+  actualizarImagenVariante,
   eliminarProducto,
   subirImagenS3,
   type ICategoriaOpcion,
@@ -31,6 +32,11 @@ const generarSKUVariante = (skuBase: string, talla: string, colorNombre: string)
   return `${base}-${tallaCode}-${colorCode}`;
 };
 
+interface IImagen {
+  url: string;
+  esPrincipal: boolean;
+}
+
 interface IColor {
   nombre: string;
   hex: string;
@@ -45,7 +51,8 @@ interface IVarianteEditable {
   stock: number;
   stockMinimo: number;
   activo: boolean;
-  imagenes: string[];
+  imagenUrl: string;
+  imagenUrlOriginal: string;
 }
 
 interface IEspecificacion {
@@ -53,9 +60,6 @@ interface IEspecificacion {
   titulo: string;
   descripcion: string;
 }
-
-
-const MAX_IMG_VISIBLES = 3;
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return (
@@ -94,10 +98,12 @@ export default function EditarProductoPage() {
   const [tipos, setTipos] = useState<ITipoProductoOpcion[]>([]);
   const [correlativo] = useState(1);
   const [skuInterno, setSkuInterno] = useState('');
-  const [imagenesExistentes, setImagenesExistentes] = useState<{ url: string; esPrincipal: boolean }[]>([]);
-  const [imagenPrincipalUrl, setImagenPrincipalUrl] = useState('');
-  const [subiendoImagenPrincipal, setSubiendoImagenPrincipal] = useState(false);
-  const imagenPrincipalRef = useRef<HTMLInputElement>(null);
+
+  // --- Imágenes del producto base ---
+  const [imagenesProducto, setImagenesProducto] = useState<IImagen[]>([]);
+  const [subiendoImagen, setSubiendoImagen] = useState(false);
+  const imagenProductoRef = useRef<HTMLInputElement>(null);
+
   const [enviando, setEnviando] = useState(false);
   const [errorApi, setErrorApi] = useState('');
 
@@ -118,9 +124,9 @@ export default function EditarProductoPage() {
   const [especTitulo, setEspecTitulo] = useState('');
   const [especDescripcion, setEspecDescripcion] = useState('');
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // --- Imagen por variante ---
+  const varianteFileRef = useRef<HTMLInputElement>(null);
   const [activeVarianteId, setActiveVarianteId] = useState<number | null>(null);
-  const [modalImagenes, setModalImagenes] = useState<{ varianteId: number } | null>(null);
 
   const [submitted, setSubmitted] = useState(false);
 
@@ -138,26 +144,39 @@ export default function EditarProductoPage() {
       setPrecioBase(data.precioBase ?? 0);
       setPublicado(data.activo ?? true);
       setEsPersonalizable(data.esPersonalizable ?? false);
-      const imagenesApi: { url: string; esPrincipal: boolean }[] = (data.imagenes ?? []).map((i: any) => ({ url: i.url, esPrincipal: i.esPrincipal ?? false }));
-      setImagenesExistentes(imagenesApi);
-      const principal = imagenesApi.find((i) => i.esPrincipal) ?? imagenesApi[0];
-      if (principal?.url) setImagenPrincipalUrl(principal.url);
+
+      const imagenesApi: IImagen[] = (data.imagenes ?? []).map((i: any) => ({
+        url: i.url,
+        esPrincipal: i.esPrincipal ?? false,
+      }));
+      setImagenesProducto(imagenesApi);
+
       const catId = data.idCategoria ?? '';
       const tipoId = data.idTipoProducto ?? '';
       setIdCategoria(catId);
       setIdTipoProducto(tipoId);
+
       const variantesApi: IVarianteEditable[] = (data.variantes ?? []).map((v: any, i: number) => ({
         id: v.idVariante,
-        talla: v.sku?.split('-')[3] ?? `V${i + 1}`,
-        colorNombre: v.sku?.split('-')[4] ?? '',
-        colorHex: '#888888',
+        talla: v.talla ?? v.sku?.split('-')[3] ?? `V${i + 1}`,
+        colorNombre: v.color ?? v.sku?.split('-')[4] ?? '',
+        colorHex: v.colorHex ?? '#888888',
         precioBase: v.precioAjustado ?? data.precioBase ?? 0,
         stock: v.stock ?? 0,
         stockMinimo: 5,
         activo: v.disponible ?? true,
-        imagenes: [],
+        imagenUrl: v.imagenUrl ?? '',
+        imagenUrlOriginal: v.imagenUrl ?? '',
       }));
       setVariantes(variantesApi);
+
+      const especsApi: IEspecificacion[] = (data.especificaciones ?? []).map((e: any, i: number) => ({
+        id: i + 1,
+        titulo: e.nombre ?? '',
+        descripcion: e.descripcion ?? '',
+      }));
+      setEspecificaciones(especsApi);
+
       const firstSku = data.variantes?.[0]?.sku as string | undefined;
       if (firstSku) {
         const parts = firstSku.split('-');
@@ -236,49 +255,60 @@ export default function EditarProductoPage() {
   const updateVarianteStockMinimo = (id: number, stockMinimo: number) =>
     setVariantes((p) => p.map((v) => (v.id === id ? { ...v, stockMinimo } : v)));
 
-  const handleImagenPrincipalChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setSubiendoImagenPrincipal(true);
+  // --- Handlers de imágenes del producto ---
+  const handleAgregarImagenesProducto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    setSubiendoImagen(true);
     try {
-      const url = await subirImagenS3(file);
-      setImagenPrincipalUrl(url);
+      const urls = await Promise.all(files.map((f) => subirImagenS3(f)));
+      setImagenesProducto((prev) => {
+        const nuevas = urls.map((url, i) => ({
+          url,
+          esPrincipal: prev.length === 0 && i === 0,
+        }));
+        return [...prev, ...nuevas];
+      });
     } catch {
-      setErrorApi('No se pudo subir la imagen principal. Intenta de nuevo.');
+      setErrorApi('No se pudo subir alguna imagen. Intenta de nuevo.');
     } finally {
-      setSubiendoImagenPrincipal(false);
+      setSubiendoImagen(false);
       e.target.value = '';
     }
   };
 
-  const handleClickAgregarImagen = (varianteId: number) => {
-    setActiveVarianteId(varianteId);
-    fileInputRef.current?.click();
+  const handleEliminarImagenProducto = (index: number) => {
+    setImagenesProducto((prev) => {
+      const copia = prev.filter((_, i) => i !== index);
+      if (prev[index].esPrincipal && copia.length > 0) {
+        copia[0] = { ...copia[0], esPrincipal: true };
+      }
+      return copia;
+    });
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || activeVarianteId === null) return;
-    const files = Array.from(e.target.files);
+  const handleTogglePrincipal = (index: number) => {
+    setImagenesProducto((prev) =>
+      prev.map((img, i) => ({ ...img, esPrincipal: i === index }))
+    );
+  };
+
+  // --- Handlers de imagen por variante ---
+  const handleClickImagenVariante = (varianteId: number) => {
+    setActiveVarianteId(varianteId);
+    varianteFileRef.current?.click();
+  };
+
+  const handleVarianteFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || activeVarianteId === null) return;
     try {
-      const urls = await Promise.all(files.map((f) => subirImagenS3(f)));
-      setVariantes((p) =>
-        p.map((v) => (v.id === activeVarianteId ? { ...v, imagenes: [...v.imagenes, ...urls] } : v))
-      );
+      const url = await subirImagenS3(file);
+      setVariantes((p) => p.map((v) => (v.id === activeVarianteId ? { ...v, imagenUrl: url } : v)));
     } catch {
-      setErrorApi('No se pudo subir alguna imagen. Intenta de nuevo.');
+      setErrorApi('No se pudo subir la imagen de la variante.');
     }
     e.target.value = '';
-  };
-
-  const handleEliminarImagen = (varianteId: number, index: number) => {
-    setVariantes((p) =>
-      p.map((v) => {
-        if (v.id !== varianteId) return v;
-        const copia = [...v.imagenes];
-        copia.splice(index, 1);
-        return { ...v, imagenes: copia };
-      })
-    );
   };
 
   const agregarEspecificacion = () => {
@@ -308,11 +338,21 @@ export default function EditarProductoPage() {
         esPersonalizable,
         idCategoria: idCategoria as number,
         idTipoProducto: idTipoProducto as number,
-        imagenes: imagenPrincipalUrl
-          ? [{ url: imagenPrincipalUrl, esPrincipal: true }, ...imagenesExistentes.filter((i) => !i.esPrincipal)]
-          : imagenesExistentes,
+        imagenes: imagenesProducto,
+        especificaciones: especificaciones.length > 0
+          ? especificaciones.map((e) => ({ nombre: e.titulo, descripcion: e.descripcion }))
+          : undefined,
       });
-      await Promise.all(variantes.map((v) => actualizarStockVariante(v.id, v.stock)));
+
+      await Promise.all(
+        variantes.map(async (v) => {
+          await actualizarStockVariante(v.id, v.stock);
+          if (v.imagenUrl !== v.imagenUrlOriginal) {
+            await actualizarImagenVariante(v.id, v.imagenUrl || null);
+          }
+        })
+      );
+
       navigate(RUTAS.COMERCIANTE_CATALOGO);
     } catch (err: any) {
       setErrorApi(err.response?.data?.mensaje ?? 'Error al guardar los cambios');
@@ -344,26 +384,25 @@ export default function EditarProductoPage() {
   const errMsg = (key: keyof typeof errores) =>
     submitted && errores[key] ? <p className="text-[11px] text-red-500 mt-1">{errores[key]}</p> : null;
 
-  const varianteModal = modalImagenes ? variantes.find((v) => v.id === modalImagenes.varianteId) : null;
-
   return (
     <div className="flex min-h-screen">
       <ComercianteSidebar />
 
+      {/* Hidden file inputs */}
       <input
-        ref={imagenPrincipalRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleImagenPrincipalChange}
-      />
-      <input
-        ref={fileInputRef}
+        ref={imagenProductoRef}
         type="file"
         accept="image/*"
         multiple
         className="hidden"
-        onChange={handleFileChange}
+        onChange={handleAgregarImagenesProducto}
+      />
+      <input
+        ref={varianteFileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleVarianteFileChange}
       />
 
       <main className="ml-64 flex-1 bg-gray-100 p-7">
@@ -434,32 +473,61 @@ export default function EditarProductoPage() {
               </div>
             </div>
 
-            <div className="mb-4">
-              <label className={labelClass}>Imagen principal</label>
-              {imagenPrincipalUrl && (
-                <div className="relative w-full rounded-lg overflow-hidden border border-gray-200 mb-2" style={{ aspectRatio: '16/9' }}>
-                  <img src={imagenPrincipalUrl} className="w-full h-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => setImagenPrincipalUrl('')}
-                    className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
-                  >
-                    <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                  </button>
-                </div>
-              )}
-              <button
-                type="button"
-                disabled={subiendoImagenPrincipal}
-                onClick={() => imagenPrincipalRef.current?.click()}
-                className="w-full h-10 border-2 border-dashed border-gray-300 rounded-lg text-[13px] text-gray-500 hover:border-primario hover:text-primario transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-                {subiendoImagenPrincipal ? 'Subiendo...' : imagenPrincipalUrl ? 'Cambiar imagen' : 'Seleccionar imagen'}
-              </button>
-              <p className="text-[11px] text-gray-400 mt-1">Se sube a S3 automáticamente.</p>
+            {/* Imágenes del producto */}
+            <div className="mb-2">
+              <label className={labelClass}>Imágenes del Producto</label>
+              <div className="flex flex-wrap gap-2 items-center">
+                {imagenesProducto.map((img, i) => (
+                  <div key={i} className="relative group w-16 h-16 flex-shrink-0">
+                    <img
+                      src={img.url}
+                      className={`w-full h-full object-cover rounded-lg border-2 transition-colors ${img.esPrincipal ? 'border-primario' : 'border-gray-200'}`}
+                    />
+                    {/* Star — marca como principal */}
+                    <button
+                      type="button"
+                      title={img.esPrincipal ? 'Imagen principal' : 'Marcar como principal'}
+                      onClick={() => handleTogglePrincipal(i)}
+                      className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] transition-opacity ${
+                        img.esPrincipal
+                          ? 'bg-primario text-white opacity-100'
+                          : 'bg-black/40 text-white opacity-0 group-hover:opacity-100'
+                      }`}
+                    >
+                      ★
+                    </button>
+                    {/* Remove */}
+                    <button
+                      type="button"
+                      onClick={() => handleEliminarImagenProducto(i)}
+                      className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <svg width={8} height={8} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    </button>
+                  </div>
+                ))}
+                {/* Add button */}
+                <button
+                  type="button"
+                  disabled={subiendoImagen}
+                  onClick={() => imagenProductoRef.current?.click()}
+                  className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primario hover:text-primario transition-colors flex-shrink-0 disabled:opacity-50"
+                  title="Agregar imágenes"
+                >
+                  {subiendoImagen ? (
+                    <span className="text-[10px] text-center leading-tight">Subiendo...</span>
+                  ) : (
+                    <>
+                      <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                      <span className="text-[9px] mt-0.5">Agregar</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1.5">
+                La imagen con <span className="text-primario font-semibold">★</span> es la principal. Haz clic en ella para cambiarla.
+              </p>
             </div>
-
           </div>
 
           {/* Right: seller card */}
@@ -468,7 +536,6 @@ export default function EditarProductoPage() {
               Tarjeta del Vendedor
             </p>
 
-            {/* Precio Base editable */}
             <div className="mb-4 pb-4 border-b border-gray-200">
               <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] mb-2">
                 Precio Base <span className="text-red-500 normal-case font-normal">*</span>
@@ -489,7 +556,6 @@ export default function EditarProductoPage() {
               {errMsg('precioBase')}
             </div>
 
-            {/* Total Stock */}
             <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
               <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px]">Total Stock</p>
               <div className="text-right">
@@ -498,8 +564,6 @@ export default function EditarProductoPage() {
               </div>
             </div>
 
-
-            {/* Publicado */}
             <div className="flex items-center justify-between mb-4">
               <div>
                 <p className="text-[13px] font-semibold text-gray-900">Publicado</p>
@@ -508,7 +572,6 @@ export default function EditarProductoPage() {
               <Toggle on={publicado} onClick={() => setPublicado((v) => !v)} />
             </div>
 
-            {/* Personalizable */}
             <div className="flex items-center justify-between mb-5">
               <div>
                 <p className="text-[13px] font-semibold text-gray-900">Personalizable</p>
@@ -549,10 +612,7 @@ export default function EditarProductoPage() {
                 {tallas.map((t) => (
                   <span key={t} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-sky-700 text-[12px] font-semibold border border-sky-200">
                     {t}
-                    <button
-                      onClick={() => eliminarTalla(t)}
-                      className="w-3.5 h-3.5 rounded-full flex items-center justify-center hover:bg-sky-200 transition-colors"
-                    >
+                    <button onClick={() => eliminarTalla(t)} className="w-3.5 h-3.5 rounded-full flex items-center justify-center hover:bg-sky-200 transition-colors">
                       <svg width={8} height={8} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
                         <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                       </svg>
@@ -583,10 +643,7 @@ export default function EditarProductoPage() {
                   <span key={c.nombre} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primario-claro text-primario text-[12px] font-semibold">
                     <span className="w-3 h-3 rounded-full border border-white/60 flex-shrink-0" style={{ backgroundColor: c.hex }} />
                     {c.nombre}
-                    <button
-                      onClick={() => eliminarColor(c.nombre)}
-                      className="w-3.5 h-3.5 rounded-full flex items-center justify-center hover:bg-primario hover:text-white transition-colors"
-                    >
+                    <button onClick={() => eliminarColor(c.nombre)} className="w-3.5 h-3.5 rounded-full flex items-center justify-center hover:bg-primario hover:text-white transition-colors">
                       <svg width={8} height={8} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
                         <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                       </svg>
@@ -618,7 +675,6 @@ export default function EditarProductoPage() {
             </div>
           </div>
 
-          {/* Variants table */}
           {submitted && errores.variantes && (
             <p className="text-[11px] text-red-500 mb-3">{errores.variantes}</p>
           )}
@@ -626,7 +682,7 @@ export default function EditarProductoPage() {
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  {['Variante', 'SKU', 'Precio Base', 'Stock', 'Stock Mín.', 'Imágenes', 'Estado'].map((col, i) => (
+                  {['Variante', 'SKU', 'Precio Base', 'Stock', 'Stock Mín.', 'Imagen', 'Estado'].map((col, i) => (
                     <th
                       key={col}
                       className={`text-left text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] px-3 py-2 bg-gray-100 border-b border-gray-200 whitespace-nowrap ${
@@ -641,8 +697,6 @@ export default function EditarProductoPage() {
               <tbody>
                 {variantes.map((v) => {
                   const skuVariante = generarSKUVariante(skuInterno, v.talla, v.colorNombre);
-                  const visibles = v.imagenes.slice(0, MAX_IMG_VISIBLES);
-                  const extras = v.imagenes.length - MAX_IMG_VISIBLES;
                   return (
                     <tr key={v.id}>
                       <td className="px-3 py-3 text-[13px] text-gray-900 border-b border-gray-100 align-middle whitespace-nowrap">
@@ -678,35 +732,20 @@ export default function EditarProductoPage() {
                         />
                       </td>
                       <td className="px-3 py-3 border-b border-gray-100 align-middle">
-                        <div className="flex items-center gap-1.5">
-                          {visibles.map((img, i) => (
-                            <img
-                              key={i}
-                              src={img}
-                              className="w-9 h-9 rounded object-cover border border-gray-200 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                              onClick={() => setModalImagenes({ varianteId: v.id })}
-                              title="Ver imágenes"
-                            />
-                          ))}
-                          {extras > 0 && (
-                            <button
-                              onClick={() => setModalImagenes({ varianteId: v.id })}
-                              className="w-9 h-9 rounded border border-gray-200 bg-gray-100 flex items-center justify-center text-[11px] font-bold text-gray-600 hover:bg-gray-200 flex-shrink-0 transition-colors"
-                              title={`Ver ${extras} imagen${extras > 1 ? 'es' : ''} más`}
-                            >
-                              +{extras}
-                            </button>
+                        <button
+                          type="button"
+                          onClick={() => handleClickImagenVariante(v.id)}
+                          className="w-9 h-9 rounded border border-gray-200 overflow-hidden flex-shrink-0 hover:opacity-80 transition-opacity"
+                          title="Cambiar imagen de variante"
+                        >
+                          {v.imagenUrl ? (
+                            <img src={v.imagenUrl} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400">
+                              <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                            </div>
                           )}
-                          <button
-                            onClick={() => handleClickAgregarImagen(v.id)}
-                            className="w-9 h-9 rounded border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 hover:border-primario hover:text-primario transition-colors flex-shrink-0"
-                            title="Agregar imágenes"
-                          >
-                            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                            </svg>
-                          </button>
-                        </div>
+                        </button>
                       </td>
                       <td className="px-3 py-3 border-b border-gray-100 align-middle">
                         <Toggle on={v.activo} onClick={() => toggleVariante(v.id)} />
@@ -779,66 +818,6 @@ export default function EditarProductoPage() {
           )}
         </div>
       </main>
-
-      {/* Modal: todas las imágenes de una variante */}
-      {varianteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setModalImagenes(null)} />
-          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6 max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between mb-4 flex-shrink-0">
-              <div>
-                <h3 className="text-[15px] font-bold text-gray-900">
-                  Imágenes — {varianteModal.talla} / {varianteModal.colorNombre}
-                </h3>
-                <p className="text-[12px] text-gray-500">{varianteModal.imagenes.length} imagen{varianteModal.imagenes.length !== 1 ? 'es' : ''}</p>
-              </div>
-              <button
-                onClick={() => setModalImagenes(null)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"
-              >
-                <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="overflow-y-auto flex-1">
-              {varianteModal.imagenes.length === 0 ? (
-                <p className="text-[13px] text-gray-400 text-center py-10">No hay imágenes aún.</p>
-              ) : (
-                <div className="grid grid-cols-3 gap-3">
-                  {varianteModal.imagenes.map((img, i) => (
-                    <div key={i} className="relative group aspect-square">
-                      <img src={img} className="w-full h-full object-cover rounded-lg border border-gray-200" />
-                      <button
-                        onClick={() => handleEliminarImagen(varianteModal.id, i)}
-                        className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Eliminar imagen"
-                      >
-                        <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
-                          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4 flex-shrink-0">
-              <button
-                onClick={() => handleClickAgregarImagen(varianteModal.id)}
-                className="w-full h-10 border-2 border-dashed border-gray-300 rounded-lg text-[13px] text-gray-500 hover:border-primario hover:text-primario transition-colors flex items-center justify-center gap-2"
-              >
-                <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                Agregar más imágenes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

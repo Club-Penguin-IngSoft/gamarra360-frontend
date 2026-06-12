@@ -8,7 +8,7 @@ import MaterialIcon from './MaterialIcon';
 import { RUTAS } from '../constants/rutas';
 import { useCarrito } from '../hooks/useCarrito';
 import { useAuth } from '../hooks/useAuth';
-import { listarProductos } from '../services/catalogoService';
+import { buscarProductos } from '../services/catalogoService';
 import type { IProducto } from '../types/IProducto';
 
 export type NavKey =
@@ -55,14 +55,13 @@ export default function TopBar({
       setAbierto(false);
       return;
     }
-    listarProductos().then((todos) => {
-      const lower = query.toLowerCase();
-      const filtrados = todos
-        .filter((p) => p.titulo.toLowerCase().includes(lower))
-        .slice(0, 6);
-      setResultados(filtrados);
-      setAbierto(true);
-    });
+    const timer = setTimeout(() => {
+      buscarProductos(query.trim()).then((res) => {
+        setResultados(res);
+        setAbierto(true);
+      });
+    }, 300);
+    return () => clearTimeout(timer);
   }, [query]);
 
   useEffect(() => {
