@@ -44,10 +44,9 @@ interface CheckoutState {
 // ── Formulario interno de Stripe ──────────────────────────────────────
 function StripeCheckoutForm({
   ordenId,
-  onExito,
 }: {
   ordenId: number;
-  onExito: () => void;
+  onExito?: () => void;
 }) {
   const stripe = useStripe();
   const elements = useElements();

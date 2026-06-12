@@ -6,11 +6,11 @@ import LogoGamarra from '../components/LogoGamarra';
 import MaterialIcon from '../components/MaterialIcon';
 import Input from '../components/Input';
 import Button from '../components/Button';
-import GoogleButton from '../components/GoogleButton';
 import { useLocation } from 'react-router-dom';
 import { RUTAS } from '../constants/rutas';
 import { COLORES } from '../styles/tokens';
 import axios from 'axios';
+import { API_BASE_URL } from '../constants';
 
 const TIPOS_DOCUMENTO = ['DNI', 'Carnet de extranjería', 'Pasaporte'];
 
@@ -66,7 +66,7 @@ export default function RegistroPage() {
     
     // TODO: llamar a POST /api/v1/usuarios/registro — Responsable: equipo backend
     try {
-      await axios.post('http://localhost:8080/api/v1/auth/google/register', {
+      await axios.post(`${API_BASE_URL}/auth/google/register`, {
         nombres,
         primerApellido: apellidos.split(' ')[0] || '',
         segundoApellido: apellidos.split(' ')[1] || '',
