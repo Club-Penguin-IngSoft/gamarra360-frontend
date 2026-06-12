@@ -5,6 +5,8 @@ import type {
   ICrearDetallePedidoRequest,
   IOrdenPago,
   IDetalleOrden,
+  IPedidoComercianteResumen,
+  IPedidoComercianteDetalle,
 } from '../types/IPedido';
 
 const BASE_ORDENES = '/ordenes-pago';
@@ -88,9 +90,23 @@ async function cancelarPedido(pedidoId: number): Promise<void> {
   await apiClient.patch(`${BASE_PEDIDOS}/${pedidoId}/cancelar`);
 }
 
+/** Lista los pedidos recibidos por el comerciante autenticado. */
+async function listarPedidosComerciante(): Promise<IPedidoComercianteResumen[]> {
+  const { data } = await apiClient.get<IPedidoComercianteResumen[]>(`${BASE_PEDIDOS}/comerciante`);
+  return data;
+}
+
+/** Detalle completo de un pedido propio del comerciante (items, envío, cliente, historial). */
+async function obtenerDetallePedidoComerciante(id: number): Promise<IPedidoComercianteDetalle> {
+  const { data } = await apiClient.get<IPedidoComercianteDetalle>(`${BASE_PEDIDOS}/${id}/comerciante-detalle`);
+  return data;
+}
+
 export const pedidoService = {
   crearOrdenCompleta,
   obtenerMisOrdenes,
   obtenerDetalleOrden,
   cancelarPedido,
+  listarPedidosComerciante,
+  obtenerDetallePedidoComerciante,
 };
