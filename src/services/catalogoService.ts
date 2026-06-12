@@ -5,7 +5,7 @@
  * Estructura: { contenido: [...], paginaActual, totalPaginas, totalElementos }
  */
 
-import type { IProducto, IVarianteProducto, EtiquetaProducto, Categoria, TipoServicio } from '../types/IProducto';
+import type { IProducto, IVarianteProducto, EtiquetaProducto, TipoServicio } from '../types/IProducto';
 import { ETIQUETA_POR_TIPO_SERVICIO } from '../types/IProducto';
 import type { IFiltrosCatalogo } from '../types/IFiltro';
 import apiClient from './apiClient';
@@ -116,39 +116,22 @@ interface IPageBackend {
   totalElementos: number;
 }
 
-/* ── Mapeo categoría ───────────────────────────────────────────────────── */
 
-export function mapearCategoria(nombre: string): Categoria {
-  const n = nombre
-    .toUpperCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .replace(/\s+/g, '_');
-
-  const tabla: Record<string, Categoria> = {
-    HOMBRE:         'HOMBRE',
-    MUJER:          'MUJER',
-    NINOS:          'NINOS',
-    NINO:           'NINOS',
-    NINAS:          'NINOS',
-    NINA:           'NINOS',
-    INFANTIL:       'NINOS',
-    UNISEX_ADULTOS: 'UNISEX_ADULTOS',
-    UNISEX_ADULTO:  'UNISEX_ADULTOS',
-    UNISEX:         'UNISEX_ADULTOS',
-    UNISEX_NINOS:   'UNISEX_NINOS',
-    UNISEX_NINO:    'UNISEX_NINOS',
-  };
-
-  return tabla[n] ?? 'HOMBRE';
-}
 
 /* ── Derivar TipoServicio ──────────────────────────────────────────────── */
 
+/**
+ * Deriva el tipo de servicio principal de un producto.
+ * Prioriza PERSONALIZABLE si el producto es personalizable.
+ * Si precioBase es null/0, retorna PERSONALIZABLE (solo cotizable/personalizable).
+ * Si tiene precio base, retorna COMPRA_DIRECTA.
+ *
+ * Nota: Un producto SIEMPRE es cotizable; esto define si es solo personalizable
+ * o si tiene venta directa.
+ */
 function derivarTipoServicio(p: IProductoBackend): TipoServicio {
   if (p.esPersonalizable) return 'PERSONALIZABLE';
-  if (p.precioBase == null || p.precioBase === 0) return 'COTIZACION';
+  if (p.precioBase == null || p.precioBase === 0) return 'PERSONALIZABLE';
   return 'COMPRA_DIRECTA';
 }
 
@@ -174,10 +157,10 @@ function adaptarProducto(p: IProductoBackend): IProducto {
     id: String(p.idProducto),
     titulo: p.nombre,
     descripcion: p.descripcion,
-    idComerciante: String(p.idComerciante ?? p.idTienda ?? ''),
+    idComerciante: String(p.idTienda ?? p.idComerciante ?? ''),
     nombreTienda: p.nombreTienda ?? '',
     imagenes: urlsImagenes,
-    categoria: p.nombreCategoria ? mapearCategoria(p.nombreCategoria) : 'HOMBRE',
+    categoria: p.nombreCategoria ?? 'Desconocida',
     tipoServicio,
     tipoProducto: p.nombreTipoProducto ?? p.tipoProducto?.nombre ?? undefined,
     especificaciones: p.especificaciones?.map((e) => ({
@@ -297,6 +280,7 @@ export interface IOpcionesFiltro {
   materiales: string[];
   tallas: string[];
   tiposProducto: string[];
+  categorias: string[];  // Vendrá como ["Niños", "Hombre", "Mujer", ...]
 }
 
 /**

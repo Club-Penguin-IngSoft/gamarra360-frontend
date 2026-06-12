@@ -32,7 +32,7 @@ export default function CatalogoPage() {
 
   const hayFiltrosReales =
     (filtros.categorias && filtros.categorias.length > 0) ||
-    filtros.tipoServicio ||
+    (filtros.tipoServicio && filtros.tipoServicio.length > 0) ||
     filtros.precioMin ||
     filtros.precioMax;
 

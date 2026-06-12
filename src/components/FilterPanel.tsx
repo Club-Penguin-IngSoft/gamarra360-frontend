@@ -15,26 +15,16 @@ import {
   SlidersHorizontal,
   X,
 } from 'lucide-react';
-import type { Categoria, TipoServicio } from '../types/IProducto';
+import type { TipoServicio } from '../types/IProducto';
 import type { IFiltrosCatalogo } from '../types/IFiltro';
 import { FILTROS_VACIOS } from '../types/IFiltro';
 import { useOpcionesFiltro } from '../hooks/useOpcionesFiltro';
 
 /* ---------------------------- Constantes UI ---------------------------- */
 
-// Las categorías y tipos de servicio son enums cerrados → siguen hardcodeados
-const CATEGORIAS_UI: { value: Categoria; label: string }[] = [
-  { value: 'HOMBRE', label: 'Hombre' },
-  { value: 'MUJER', label: 'Mujer' },
-  { value: 'NINOS', label: 'Niños' },
-  { value: 'UNISEX_ADULTOS', label: 'Unisex Adultos' },
-  { value: 'UNISEX_NINOS', label: 'Unisex Niños' },
-];
-
 const TIPOS_SERVICIO_UI: { value: TipoServicio; label: string }[] = [
   { value: 'COMPRA_DIRECTA', label: 'Compra directa' },
   { value: 'PERSONALIZABLE', label: 'Personalizable' },
-  { value: 'COTIZACION', label: 'Bajo cotización' },
 ];
 // Colores, Materiales, Tallas y TiposProducto vienen del hook (dinámico desde BD)
 
@@ -98,34 +88,6 @@ function Pill({
     >
       {label}
     </button>
-  );
-}
-
-function Radio({
-  name,
-  label,
-  icon,
-  checked,
-  onChange,
-}: {
-  name: string;
-  label: string;
-  icon?: ReactNode;
-  checked: boolean;
-  onChange: () => void;
-}) {
-  return (
-    <label className="flex cursor-pointer items-center gap-2 text-[14px] text-ink-700">
-      <input
-        type="radio"
-        name={name}
-        checked={checked}
-        onChange={onChange}
-        className="h-4 w-4 accent-brand-500"
-      />
-      {icon}
-      <span>{label}</span>
-    </label>
   );
 }
 
@@ -196,7 +158,7 @@ export default function FilterPanel({ open, filtros, onChange, onClose, isTienda
   const toggleSection = (k: SectionKey) =>
     setSections((s) => ({ ...s, [k]: !s[k] }));
 
-  const toggleCategoria = (c: Categoria) =>
+  const toggleCategoria = (c: string) =>
     setBorrador((b) => ({
       ...b,
       categorias: b.categorias.includes(c)
@@ -210,6 +172,14 @@ export default function FilterPanel({ open, filtros, onChange, onClose, isTienda
       tiposProducto: b.tiposProducto.includes(t)
         ? b.tiposProducto.filter((x) => x !== t)
         : [...b.tiposProducto, t],
+    }));
+
+  const toggleTipoServicio = (ts: TipoServicio) =>
+    setBorrador((b) => ({
+      ...b,
+      tipoServicio: b.tipoServicio.includes(ts)
+        ? b.tipoServicio.filter((x) => x !== ts)
+        : [...b.tipoServicio, ts],
     }));
 
   const toggleTalla = (t: string) =>
@@ -299,12 +269,12 @@ export default function FilterPanel({ open, filtros, onChange, onClose, isTienda
             onToggle={() => toggleSection('categoria')}
           >
             <div className="flex flex-wrap gap-2">
-              {CATEGORIAS_UI.map((c) => (
+              {opciones.categorias.map((categoria) => (
                 <Pill
-                  key={c.value}
-                  label={c.label}
-                  active={borrador.categorias.includes(c.value)}
-                  onClick={() => toggleCategoria(c.value)}
+                  key={categoria}
+                  label={categoria}
+                  active={borrador.categorias.includes(categoria)}
+                  onClick={() => toggleCategoria(categoria)}
                 />
               ))}
             </div>
@@ -335,17 +305,16 @@ export default function FilterPanel({ open, filtros, onChange, onClose, isTienda
             open={sections.servicio}
             onToggle={() => toggleSection('servicio')}
           >
-            {TIPOS_SERVICIO_UI.map((s) => (
-              <Radio
-                key={s.value}
-                name="servicio"
-                label={s.label}
-                checked={borrador.tipoServicio === s.value}
-                onChange={() =>
-                  setBorrador((b) => ({ ...b, tipoServicio: s.value }))
-                }
-              />
-            ))}
+            <div className="flex flex-wrap gap-2">
+              {TIPOS_SERVICIO_UI.map((s) => (
+                <Pill
+                  key={s.value}
+                  label={s.label}
+                  active={borrador.tipoServicio.includes(s.value)}
+                  onClick={() => toggleTipoServicio(s.value)}
+                />
+              ))}
+            </div>
           </Section>
 
           {/* Solo mostrar si NO es modo tiendas */}
@@ -477,8 +446,15 @@ export function aplicarFiltrosCliente(
       (p.tipoProducto == null || !filtros.tiposProducto.includes(p.tipoProducto))
     )
       return false;
-    if (filtros.tipoServicio && p.tipoServicio !== filtros.tipoServicio)
-      return false;
+
+    if (filtros.tipoServicio.length > 0) {
+      const coincideTipo = filtros.tipoServicio.includes(p.tipoServicio);
+      const esCompraDirectaHibrida =
+        filtros.tipoServicio.includes('COMPRA_DIRECTA') && p.precioFinal != null;
+
+      if (!coincideTipo && !esCompraDirectaHibrida) return false;
+    }
+
     if (
       filtros.material != null &&
       !p.especificaciones?.some(

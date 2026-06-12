@@ -30,7 +30,7 @@ import { Store as StoreIcon } from 'lucide-react';
 import { listarTiendas } from '../services/tiendaService';
 import type { ITienda } from '../types/ITienda';
 // GaleriaGamarra y ETIQUETA_GALERIA: pendiente cuando el backend exponga galeria
-import type { Categoria, TipoServicio } from '../types/IProducto';
+import type { TipoServicio } from '../types/IProducto';
 import type { IFiltrosTiendas } from '../types/IFiltro';
 import { FILTROS_TIENDAS_VACIOS } from '../types/IFiltro';
 
@@ -38,20 +38,11 @@ import { FILTROS_TIENDAS_VACIOS } from '../types/IFiltro';
    Constantes locales (etiquetas visibles para los selectables)
    ========================================================================= */
 
-const CATEGORIAS_UI: { value: Categoria; label: string }[] = [
-  { value: 'HOMBRE', label: 'Hombre' },
-  { value: 'MUJER', label: 'Mujer' },
-  { value: 'NINOS', label: 'Niños' },
-  { value: 'UNISEX_ADULTOS', label: 'Unisex Adultos' },
-  { value: 'UNISEX_NINOS', label: 'Unisex Niños' },
-];
-
 // TIPOS_PRODUCTO: ahora viene dinámico desde el hook useOpcionesFiltro (sin hardcodear)
 
 const TIPOS_SERVICIO_UI: { value: TipoServicio; label: string }[] = [
   { value: 'COMPRA_DIRECTA', label: 'Compra directa' },
   { value: 'PERSONALIZABLE', label: 'Personalizable' },
-  { value: 'COTIZACION', label: 'Cotización' },
 ];
 
 // GALERIAS_UI: pendiente cuando el backend exponga galeria en tiendas
@@ -117,31 +108,6 @@ function PillButton({
   );
 }
 
-function RadioOption({
-  name,
-  label,
-  checked,
-  onChange,
-}: {
-  name: string;
-  label: string;
-  checked: boolean;
-  onChange: () => void;
-}) {
-  return (
-    <label className="flex cursor-pointer items-center gap-2 text-[14px] text-ink-700">
-      <input
-        type="radio"
-        name={name}
-        checked={checked}
-        onChange={onChange}
-        className="h-4 w-4 accent-brand-500"
-      />
-      <span>{label}</span>
-    </label>
-  );
-}
-
 // GaleriaSelect: pendiente cuando el backend exponga galeria en tiendas
 // function GaleriaSelect(...) { ... }
 
@@ -180,7 +146,7 @@ function TiendasFilterPanel({
   const toggleSection = (k: SeccionFiltro) =>
     setSections((s) => ({ ...s, [k]: !s[k] }));
 
-  const toggleCategoria = (c: Categoria) => {
+  const toggleCategoria = (c: string) => {
     setBorrador((b) => ({
       ...b,
       categorias: b.categorias.includes(c)
@@ -195,6 +161,15 @@ function TiendasFilterPanel({
       tiposProducto: b.tiposProducto.includes(t)
         ? b.tiposProducto.filter((x) => x !== t)
         : [...b.tiposProducto, t],
+    }));
+  };
+
+  const toggleTipoServicio = (ts: TipoServicio) => {
+    setBorrador((b) => ({
+      ...b,
+      tipoServicio: b.tipoServicio.includes(ts)
+        ? b.tipoServicio.filter((x) => x !== ts)
+        : [...b.tipoServicio, ts],
     }));
   };
 
@@ -251,12 +226,12 @@ function TiendasFilterPanel({
             onToggle={() => toggleSection('categoria')}
           >
             <div className="flex flex-wrap gap-2">
-              {CATEGORIAS_UI.map((c) => (
+              {opciones.categorias.map((categoria) => (
                 <PillButton
-                  key={c.value}
-                  label={c.label}
-                  active={borrador.categorias.includes(c.value)}
-                  onClick={() => toggleCategoria(c.value)}
+                  key={categoria}
+                  label={categoria}
+                  active={borrador.categorias.includes(categoria)}
+                  onClick={() => toggleCategoria(categoria)}
                 />
               ))}
             </div>
@@ -284,17 +259,16 @@ function TiendasFilterPanel({
             open={sections.servicio}
             onToggle={() => toggleSection('servicio')}
           >
-            {TIPOS_SERVICIO_UI.map((s) => (
-              <RadioOption
-                key={s.value}
-                name="tipoServicio"
-                label={s.label}
-                checked={borrador.tipoServicio === s.value}
-                onChange={() =>
-                  setBorrador((b) => ({ ...b, tipoServicio: s.value }))
-                }
-              />
-            ))}
+            <div className="flex flex-wrap gap-2">
+              {TIPOS_SERVICIO_UI.map((s) => (
+                <PillButton
+                  key={s.value}
+                  label={s.label}
+                  active={borrador.tipoServicio.includes(s.value)}
+                  onClick={() => toggleTipoServicio(s.value)}
+                />
+              ))}
+            </div>
           </FilterSection>
 
           {/* Oculto temporalmente: El atributo galeria aún no se recibe del backend para tiendas */}
