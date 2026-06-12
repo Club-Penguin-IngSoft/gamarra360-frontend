@@ -87,6 +87,61 @@ export interface IDetalleOrden {
   pedidos: IPedidoConDetalles[];
 }
 
+/* ── Tipos para el "Tablero de Pedidos" del comerciante ───────────── */
+
+export interface IPedidoComercianteResumen {
+  id: number;
+  fecha: string;
+  estado: EstadoPedido;
+  total: number;
+  clienteId: number;
+  nombreCliente: string | null;
+  emailCliente: string | null;
+}
+
+export interface IPersonalizacionInfoPedido {
+  id: number;
+  tipoPersonalizacion: string;
+  descripcion: string | null;
+  urlLogo: string | null;
+  cantidad: number;
+}
+
+export interface IItemDetallePedidoComerciante {
+  id: number;
+  idVarianteProducto: number | null;
+  nombreProducto: string | null;
+  imagenUrl: string | null;
+  talla: string | null;
+  color: string | null;
+  sku: string | null;
+  cantidad: number;
+  precio: number;
+  personalizacion: IPersonalizacionInfoPedido | null;
+}
+
+export interface IHistorialPedidoCliente {
+  id: number;
+  fecha: string;
+  estado: EstadoPedido;
+  total: number;
+}
+
+export interface IPedidoComercianteDetalle {
+  id: number;
+  fecha: string;
+  fechaActualizacion: string | null;
+  estado: EstadoPedido;
+  total: number;
+  tipoEntrega: TipoEntrega;
+  direccionEntrega: string | null;
+  clienteId: number;
+  nombreCliente: string | null;
+  emailCliente: string | null;
+  items: IItemDetallePedidoComerciante[];
+  historialCliente: IHistorialPedidoCliente[];
+}
+
 /** Payload para POST /api/v1/ordenes-pago */
 export interface ICrearOrdenPagoRequest {
   clienteId: number;
