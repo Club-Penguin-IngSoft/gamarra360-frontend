@@ -1,4 +1,4 @@
-import type { EstadoPedido, TipoEntrega } from './IPedido';
+import type { EstadoPedido, TipoEntregaPedido } from './IPedido';
 
 export type EstadoPersonalizacion = 'PENDIENTE' | 'RESPONDIDA' | 'ACEPTADA' | 'RECHAZADA';
 
@@ -33,7 +33,7 @@ export interface IPropuestaInfo {
 export interface IPedidoInfo {
   pedidoId: number;
   estado: EstadoPedido;
-  tipoEntrega: TipoEntrega;
+  tipoEntrega: TipoEntregaPedido;
   direccionEntrega: string | null;
   fechaActualizacion: string | null;
 }

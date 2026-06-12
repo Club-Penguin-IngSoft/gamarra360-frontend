@@ -12,7 +12,7 @@ export type EstadoPedido =
   | 'ENTREGADO'
   | 'CANCELADO';
 
-export type TipoEntrega = 'DELIVERY' | 'RECOJO_TIENDA';
+export type TipoEntregaPedido = 'DELIVERY' | 'RECOJO_TIENDA';
 // MetodoPago se maneja solo en el frontend (simulación); el backend no lo persiste en Pedido
 export type MetodoPago = 'TARJETA' | 'YAPE';
 
@@ -47,7 +47,7 @@ export interface IPedido {
   ordenPagoId?: number;
   estado: EstadoPedido;
   total: number;
-  tipoEntrega: TipoEntrega;
+  tipoEntrega: TipoEntregaPedido;
   direccionEntrega?: string;
   fecha: string;
 }
@@ -70,7 +70,7 @@ export interface IPedidoConDetalles {
   nombreTienda: string | null;
   fotoTienda: string | null;
   estado: EstadoPedido;
-  tipoEntrega: TipoEntrega;
+  tipoEntrega: TipoEntregaPedido;
   direccionEntrega: string | null;
   total: number;
   fecha: string;
@@ -98,7 +98,7 @@ export interface ICrearPedidoRequest {
   clienteId: number;
   vendedorId: number;
   ordenPagoId: number;
-  tipoEntrega: TipoEntrega;
+  tipoEntrega: TipoEntregaPedido;
   direccionEntrega?: string;
   total: number;
 }

@@ -6,7 +6,6 @@ import LogoGamarra from '../components/LogoGamarra';
 import MaterialIcon from '../components/MaterialIcon';
 import Input from '../components/Input';
 import Button from '../components/Button';
-import GoogleButton from '../components/GoogleButton';
 import { useLocation } from 'react-router-dom';
 import { RUTAS } from '../constants/rutas';
 import { COLORES } from '../styles/tokens';

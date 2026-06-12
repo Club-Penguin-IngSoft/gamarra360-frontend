@@ -22,13 +22,6 @@ const GALERIAS = [
 ];
 const TIPOS_DOCUMENTO = ['DNI', 'Carnet de extranjería', 'Pasaporte'];
 
-const rutaPorRol: Record<string, string> = {
-  CLIENTE:     RUTAS.INICIO,
-  VENDEDOR:    RUTAS.COMERCIANTE_DASHBOARD,
-  COMERCIANTE: RUTAS.COMERCIANTE_DASHBOARD,
-  ADMIN:       RUTAS.ADMIN_DASHBOARD,
-};
-
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 
 function validarContrasena(pass: string) {

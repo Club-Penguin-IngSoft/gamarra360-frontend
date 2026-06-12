@@ -19,14 +19,14 @@ import { RUTAS } from '../constants/rutas';
 import { pedidoService } from '../services/pedidoService';
 import { pagoService } from '../services/pagoService';
 import type { IGrupoTienda } from '../services/pedidoService';
-import type { TipoEntrega } from '../types/IPedido';
+import type { TipoEntregaPedido } from '../types/IPedido';
 
 // ── Stripe init (fuera del componente para no recrear en cada render) ──
 const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
 const COSTO_DELIVERY = 12;
 
 interface EntregaTiendaState {
-  tipoEntrega: TipoEntrega;
+  tipoEntrega: TipoEntregaPedido;
   fechaEntrega?: string;
 }
 interface PersonalizacionGrupoState {
@@ -44,7 +44,6 @@ interface CheckoutState {
 // ── Formulario interno de Stripe ──────────────────────────────────────
 function StripeCheckoutForm({
   ordenId,
-  onExito,
 }: {
   ordenId: number;
   onExito: () => void;
