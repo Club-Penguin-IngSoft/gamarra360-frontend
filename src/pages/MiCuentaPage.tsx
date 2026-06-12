@@ -48,9 +48,7 @@ export default function MiCuentaPage() {
     };
   }, [usuario?.id]);
 
-  const direccionReciente =
-    orden?.pedidos.find((pedido) => pedido.tipoEntrega === 'DELIVERY' && pedido.direccionEntrega)
-      ?.direccionEntrega ?? null;
+  
 
   return (
     <div className="flex min-h-screen flex-col bg-surface-muted">
@@ -66,7 +64,7 @@ export default function MiCuentaPage() {
             <div className="flex flex-1 flex-col gap-8 lg:max-w-[1000px]">
               <h2 className="text-h5 font-semibold text-ink-900">Información Personal</h2>
               <PerfilHeaderCard usuario={usuario} onEditarPerfil={() => setModalPerfilAbierto(true)} />
-              <DireccionCard direccion={direccionReciente} />
+              <DireccionCard direccion={usuario?.direccionEntrega ?? null} />
               <PedidosRecientesCard orden={orden} cargando={cargando} />
               <NotificacionesCard />
             </div>

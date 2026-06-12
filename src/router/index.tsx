@@ -71,8 +71,6 @@ export default function AppRouter() {
       <Route path={RUTAS.VENDER} element={<VenderPage />} />
       <Route path={RUTAS.REGISTRO_COMERCIANTE} element={<RegistroComerciantePage />} />
       <Route path={RUTAS.CUENTA} element={<SoloClientes><MiCuentaPage /></SoloClientes>} />
-      <Route path={RUTAS.CONFIGURACION} element={<SoloClientes><ConfiguracionPage /></SoloClientes>} />
-
 
       <Route path={RUTAS.CARRITO} element={<SoloClientes><CarritoPage /></SoloClientes>} />
       
