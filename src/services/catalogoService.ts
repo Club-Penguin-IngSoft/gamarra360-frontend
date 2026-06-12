@@ -62,6 +62,7 @@ export interface IProductoPayload {
   idCategoria: number;
   idTipoProducto: number;
   imagenes: { url: string; esPrincipal: boolean }[];
+  especificaciones?: { nombre: string; descripcion: string }[];
 }
 
 export interface IVariantePayload {
@@ -73,6 +74,7 @@ export interface IVariantePayload {
   producto: { idProducto: number };
   color: { idColor: number };
   talla: { idTalla: number };
+  imagenUrl?: string | null;
 }
 
 /** Busca una talla por nombre; si no existe la crea. Devuelve el idTalla. */
@@ -106,6 +108,11 @@ export async function actualizarVariante(idVariante: number, payload: Partial<IV
 /** Actualiza solo el stock de una variante (PATCH /variantes-producto/{id}/stock). */
 export async function actualizarStockVariante(idVariante: number, stock: number): Promise<void> {
   await apiClient.patch(`/variantes-producto/${idVariante}/stock`, { stock });
+}
+
+/** Actualiza la imagen de una variante (PATCH /variantes-producto/{id}/imagen). */
+export async function actualizarImagenVariante(idVariante: number, imagenUrl: string | null): Promise<void> {
+  await apiClient.patch(`/variantes-producto/${idVariante}/imagen`, { imagenUrl });
 }
 
 /** El backend SIEMPRE devuelve esta estructura — validado en Postman */
