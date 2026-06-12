@@ -287,6 +287,17 @@ export async function eliminarProducto(id: string): Promise<void> {
   await apiClient.delete(`/productos/${id}`);
 }
 
+/**
+ * Búsqueda server-side por keyword — GET /productos/buscar?q=...&size=6
+ * Solo devuelve productos de catálogo público (tienda y comerciante verificados).
+ */
+export async function buscarProductos(q: string, size = 6): Promise<IProducto[]> {
+  const { data } = await apiClient.get<IProductoBackend[]>('/productos/buscar', {
+    params: { q, size },
+  });
+  return data.map(adaptarProducto);
+}
+
 /** Sube un archivo de imagen a S3 y devuelve la URL pública. */
 export async function subirImagenS3(file: File): Promise<string> {
   const form = new FormData();

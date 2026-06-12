@@ -140,3 +140,64 @@ export interface ICotizacion {
   respuestaComerciante?: string;
   precioOfertado?: number;
 }
+
+/* ── Tipos para el módulo cotizaciones (Sprint 2) ─────────────────── */
+
+export interface ICotizacionResumen {
+  id: number;
+  estado: string;
+  fechaCreacion: string;
+  idTienda: number;
+  nombreTienda?: string;
+  fotoTienda?: string;
+  cantidadProductos: number;
+  precioPropuesto?: number;
+  nombreCliente?: string;
+}
+
+export interface ICotizacionDetalleProducto {
+  id: number;
+  tipo: 'CATALOGO' | 'MANUAL';
+  nombre?: string;
+  imagenUrl?: string;
+  precio?: number;
+  especificacion?: string;
+  cantidad?: number;
+}
+
+export interface ICotizacionRespuesta {
+  idRespuesta: number;
+  precioPropuesto?: number;
+  comentario?: string;
+  condiciones?: string;
+  anotaciones?: string;
+  imagen?: string;
+  fecha?: string;
+}
+
+export interface ICotizacionDetalle {
+  id: number;
+  estado: string;
+  fechaCreacion: string;
+  clienteId?: number;
+  nombreCliente?: string;
+  vendedorId?: number;
+  nombreTienda?: string;
+  fotoTienda?: string;
+  productos: ICotizacionDetalleProducto[];
+  respuesta?: ICotizacionRespuesta;
+}
+
+export interface ICotizacionRequest {
+  idTienda: number;
+  productos: IProductoCotizacionDto[];
+}
+
+export interface IProductoCotizacionDto {
+  tipo: 'CATALOGO' | 'MANUAL';
+  idVariante?: number;
+  nombre?: string;
+  imagenUrl?: string;
+  especificacion?: string;
+  cantidad?: number;
+}
