@@ -214,6 +214,18 @@ export default function RegistroComerciantePage() {
     try {
       const apellidosArr = apellidos.split(' ');
 
+      let logoUrl: string | null = null;
+      if (logoFile) {
+        const formData = new FormData();
+        formData.append('archivo', logoFile);
+        formData.append('carpeta', 'tiendas');
+        const { data: s3Data } = await axios.post<{ url: string }>(
+          'http://localhost:8080/api/v1/s3/upload',
+          formData,
+        );
+        logoUrl = s3Data.url;
+      }
+
       const payload = {
         nombres,
         primerApellido: apellidosArr[0] || '',
@@ -230,7 +242,7 @@ export default function RegistroComerciantePage() {
         piso,
         stand,
         galeria,
-        logoUrl: null,
+        logoUrl,
       };
 
       await axios.post(
