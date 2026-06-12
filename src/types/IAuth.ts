@@ -15,4 +15,5 @@ export interface ILoginResponse {
   needsRegistration: boolean;
   tenantId?: number;
   estadoSolicitud?: 'PENDIENTE' | 'RECHAZADO' | null;
+  direccionEntrega?: string | null;
 }

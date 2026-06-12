@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { MapPin, Truck, Store as StoreIcon, ShoppingBag, Package } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
 import { useCarrito } from '../hooks/useCarrito';
 import { formatearPrecio } from '../utils/formatearPrecio';
 import { RUTAS } from '../constants/rutas';
+import type { ICheckoutGrupo } from '../types/IPedido';
+import type { IPersonalizacionCheckoutState } from '../types/IPersonalizacion';
 
 const generarFechasEnvio = () => {
   const dias = [];
@@ -38,6 +40,8 @@ interface EntregaTienda {
 export default function CheckoutEntregaPage() {
   const { items } = useCarrito();
   const navigate = useNavigate();
+  const location = useLocation();
+  const personalizacion = (location.state as { personalizacion?: IPersonalizacionCheckoutState } | null)?.personalizacion;
   const [direccion, setDireccion] = useState({
     calle: '',
     distrito: '',
@@ -45,15 +49,40 @@ export default function CheckoutEntregaPage() {
     referencia: '',
   });
   const [errorDireccion, setErrorDireccion] = useState('');
-  // Agrupar items por idComerciante (mismo criterio que PagoPage)
-  const porComerciante = items.reduce<Record<string, { nombreTienda: string; items: typeof items }>>((acc, item) => {
-    const id = item.producto.idComerciante || 'default';
-    if (!acc[id]) {
-      acc[id] = { nombreTienda: item.producto.nombreTienda ?? 'Tienda', items: [] };
-    }
-    acc[id].items.push(item);
-    return acc;
-  }, {});
+
+  // Agrupar items por idComerciante (mismo criterio que PagoPage), o un único
+  // grupo sintético si venimos del flujo "Aceptar y Pagar" / "Pagar ahora" de una personalización
+  const porComerciante: Record<string, ICheckoutGrupo> = personalizacion
+    ? {
+        [String(personalizacion.vendedorId)]: {
+          nombreTienda: personalizacion.nombreTienda ?? 'Tienda',
+          items: [{
+            id: `personalizacion-${personalizacion.personalizacionId}`,
+            nombreProducto: personalizacion.nombreProducto ?? 'Producto personalizado',
+            imagenUrl: personalizacion.imagenUrl ?? undefined,
+            cantidad: 1,
+            precioUnitario: personalizacion.precioUnitario,
+            precioBase: personalizacion.precioUnitario,
+            idVarianteProducto: personalizacion.detalleProductoId,
+          }],
+        },
+      }
+    : items.reduce<Record<string, ICheckoutGrupo>>((acc, item) => {
+        const id = item.producto.idComerciante || 'default';
+        if (!acc[id]) {
+          acc[id] = { nombreTienda: item.producto.nombreTienda ?? 'Tienda', items: [] };
+        }
+        acc[id].items.push({
+          id: item.id,
+          nombreProducto: item.producto.titulo,
+          imagenUrl: item.producto.imagenes?.[0],
+          cantidad: item.cantidad,
+          precioUnitario: item.precioUnitario,
+          precioBase: item.producto.precioBase ?? item.producto.precioFinal ?? 0,
+          idVarianteProducto: item.idVariante ? Number(item.idVariante) : Number(item.producto.variantes?.[0]?.id) || null,
+        });
+        return acc;
+      }, {});
 
   const tiendas = Object.entries(porComerciante);
 
@@ -71,7 +100,7 @@ export default function CheckoutEntregaPage() {
     }));
   };
 
-  if (!items || items.length === 0) {
+  if (tiendas.length === 0) {
     return (
       <div className="flex min-h-screen flex-col bg-surface-muted">
         <TopBar active="Inicio" />
@@ -88,14 +117,10 @@ export default function CheckoutEntregaPage() {
     );
   }
 
-  const subtotalSinDescuento = items.reduce((acc, i) => {
-    const base = i.producto?.precioBase ?? i.producto?.precioFinal ?? 0;
-    return acc + base * i.cantidad;
-  }, 0);
-  const descuentos = items.reduce((acc, i) => {
-    const base = i.producto?.precioBase ?? 0;
-    const final = i.producto?.precioFinal ?? 0;
-    const ahorro = base > final ? base - final : 0;
+  const todosLosItems = tiendas.flatMap(([, grupo]) => grupo.items);
+  const subtotalSinDescuento = todosLosItems.reduce((acc, i) => acc + i.precioBase * i.cantidad, 0);
+  const descuentos = todosLosItems.reduce((acc, i) => {
+    const ahorro = i.precioBase > i.precioUnitario ? i.precioBase - i.precioUnitario : 0;
     return acc + ahorro * i.cantidad;
   }, 0);
 
@@ -121,11 +146,21 @@ export default function CheckoutEntregaPage() {
       ])
     );
 
-    navigate(RUTAS.PAGO, { 
-      state: { 
+    navigate(RUTAS.PAGO, {
+      state: {
         entregasPorTienda: entregasParaPago,
-        direccionEntrega: direccionCompleta,   // ← nueva
-      } 
+        direccionEntrega: direccionCompleta,
+        ...(personalizacion
+          ? {
+              personalizacionId: personalizacion.personalizacionId,
+              personalizacionGrupo: {
+                vendedorId: personalizacion.vendedorId,
+                idVarianteProducto: personalizacion.detalleProductoId,
+                precioUnitario: personalizacion.precioUnitario,
+              },
+            }
+          : {}),
+      },
     });
   };
 
@@ -227,11 +262,17 @@ export default function CheckoutEntregaPage() {
                     {itemsTienda.map((item) => (
                       <div key={item.id} className="flex items-center gap-3">
                         <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-ink-100 bg-surface-muted">
-                          <img src={item.producto.imagenes?.[0]} alt={item.producto.titulo}
-                            className="h-full w-full object-cover" />
+                          {item.imagenUrl ? (
+                            <img src={item.imagenUrl} alt={item.nombreProducto}
+                              className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-ink-300">
+                              <ShoppingBag className="h-6 w-6" />
+                            </div>
+                          )}
                         </div>
                         <div className="flex flex-col gap-0.5 min-w-0">
-                          <p className="text-[14px] font-medium text-ink-900 line-clamp-1">{item.producto.titulo}</p>
+                          <p className="text-[14px] font-medium text-ink-900 line-clamp-1">{item.nombreProducto}</p>
                           <p className="text-[13px] text-ink-500">Cant. {item.cantidad}</p>
                         </div>
                       </div>

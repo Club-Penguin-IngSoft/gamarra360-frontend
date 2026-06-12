@@ -9,7 +9,9 @@ export interface IUsuario {
   nombre: string;
   apellido: string;
   correo: string;
+  telefono?: string;
   rol: RolUsuario;
+  direccionEntrega?: string | null;
   /** Solo presente cuando el rol es COMERCIANTE — identifica el tenant */
   idComerciante?: string;
 }

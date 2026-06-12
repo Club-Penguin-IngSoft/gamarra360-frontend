@@ -37,7 +37,8 @@ iniciarSesion({
     nombre: response.nombres ?? '',
     apellido: '',
     correo: response.email,
-    rol, 
+    rol,
+    direccionEntrega: response.direccionEntrega ?? null,
   }
 });
 
@@ -83,6 +84,7 @@ navigate(rutaPorRol[rol] ?? RUTAS.INICIO); //
           apellido: '',
           correo: response.email,
           rol,
+          direccionEntrega: response.direccionEntrega ?? null,
         },
       });
 
