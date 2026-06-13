@@ -12,7 +12,8 @@ import { RUTAS } from '../constants/rutas';
 import { COLORES } from '../styles/tokens';
 import { useGoogleLogin } from '@react-oauth/google';
 import useLogin from '../hooks/useLogin';
-import axios from 'axios';
+import apiClient from '../services/apiClient';
+//import axios from 'axios';
 
 /* ── Datos de selects ───────────────────────────────────────────────────── */
 
@@ -22,12 +23,12 @@ const GALERIAS = [
 ];
 const TIPOS_DOCUMENTO = ['DNI', 'Carnet de extranjería', 'Pasaporte'];
 
-const rutaPorRol: Record<string, string> = {
-  CLIENTE:     RUTAS.INICIO,
-  VENDEDOR:    RUTAS.COMERCIANTE_DASHBOARD,
-  COMERCIANTE: RUTAS.COMERCIANTE_DASHBOARD,
-  ADMIN:       RUTAS.ADMIN_DASHBOARD,
-};
+//const rutaPorRol: Record<string, string> = {
+  //CLIENTE:     RUTAS.INICIO,
+  //VENDEDOR:    RUTAS.COMERCIANTE_DASHBOARD,
+  //COMERCIANTE: RUTAS.COMERCIANTE_DASHBOARD,
+  //ADMIN:       RUTAS.ADMIN_DASHBOARD,
+//};
 
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 
@@ -219,8 +220,8 @@ export default function RegistroComerciantePage() {
         const formData = new FormData();
         formData.append('archivo', logoFile);
         formData.append('carpeta', 'tiendas');
-        const { data: s3Data } = await axios.post<{ url: string }>(
-          'http://localhost:8080/api/v1/s3/upload',
+        const { data: s3Data } = await apiClient.post<{ url: string }>(
+          '/s3/upload',
           formData,
         );
         logoUrl = s3Data.url;
@@ -245,8 +246,8 @@ export default function RegistroComerciantePage() {
         logoUrl,
       };
 
-      await axios.post(
-        'http://localhost:8080/api/v1/auth/google/register-comerciante',
+      await apiClient.post(
+        '/auth/google/register-comerciante',
         payload
       );
 

@@ -6,10 +6,10 @@
 import type { TipoServicio } from './IProducto';
 import type { GaleriaGamarra } from './ITienda';
 
-export type TipoEntrega = 'DOMICILIO' | 'TIENDA';
+export type TipoEntregaFiltro = 'DOMICILIO' | 'TIENDA';
 
 export interface IFiltrosCatalogo {
-  entrega: TipoEntrega | null;
+  entrega: TipoEntregaFiltro | null;
   tipoServicio: TipoServicio[];
   categorias: string[];
   tiposProducto: string[];

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { AdminSidebar } from "../../components/admin/AdminSidebar";
 import { Search, Download, UserPlus, MoreVertical } from "lucide-react";
-import axios from 'axios';
+import apiClient from '../../services/apiClient';
+//import axios from 'axios';
 
-const BASE = 'http://localhost:8080/api/v1/admin/usuarios';
-const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+//const BASE = 'http://localhost:8080/api/v1/admin/usuarios';
+//const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 
 const ROL_STYLES: Record<string, string> = {
   VENDEDOR: 'bg-primario-claro text-primario',
@@ -41,7 +42,7 @@ export default function AdminUsuariosPage() {
       if (rolFiltro)         params.rol    = rolFiltro;
       if (activoFiltro !== null) params.activo = activoFiltro;
 
-      const res = await axios.get(BASE, { params, headers: authHeaders() });
+      const res = await apiClient.get('/admin/usuarios', { params });
       setUsers(res.data.content);
       setTotal(res.data.totalElements);
       setPage(p);
@@ -59,9 +60,9 @@ export default function AdminUsuariosPage() {
       if (user.activo) {
         const razon = prompt('Motivo de desactivación:');
         if (!razon) return;
-        await axios.patch(`${BASE}/${user.usuarioId}/desactivar`, { razon }, { headers: authHeaders() });
+        await apiClient.patch(`/admin/usuarios/${user.usuarioId}/desactivar`, { razon });
       } else {
-        await axios.patch(`${BASE}/${user.usuarioId}/reactivar`, {}, { headers: authHeaders() });
+        await apiClient.patch(`/admin/usuarios/${user.usuarioId}/reactivar`, {});
       }
       cargar(page);
     } catch (e: any) {

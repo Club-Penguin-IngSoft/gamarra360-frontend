@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
 import CuentaSidebar from '../components/cuenta/CuentaSidebar';
@@ -11,11 +10,9 @@ import { useAuth } from '../hooks/useAuth';
 import { pedidoService } from '../services/pedidoService';
 import type { IDetalleOrden } from '../types/IPedido';
 import EditarPerfilModal from '../components/cuenta/EditarPerfilModal';
-import { RUTAS } from '../constants/rutas';
 
 export default function MiCuentaPage() {
   const { usuario } = useAuth();
-  const navigate = useNavigate();
   const [orden, setOrden] = useState<IDetalleOrden | null>(null);
   const [cargando, setCargando] = useState(true);
   const [modalPerfilAbierto, setModalPerfilAbierto] = useState(false);
