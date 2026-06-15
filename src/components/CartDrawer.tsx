@@ -82,6 +82,7 @@ function CartItemRow({ item }: { item: IItemCarrito }) {
             cantidad={item.cantidad}
             onChange={(n) => actualizarCantidad(item.id, n)}
             size="sm"
+            max={item.producto.variantes?.find(v => v.id === item.idVariante)?.stock}
             ariaLabel={`Cantidad de ${item.producto.titulo}`}
           />
 

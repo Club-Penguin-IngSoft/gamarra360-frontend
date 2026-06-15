@@ -3,15 +3,15 @@
  * Se envía como query params al endpoint /api/v1/productos.
  */
 
-import type { Categoria, TipoServicio } from './IProducto';
+import type { TipoServicio } from './IProducto';
 import type { GaleriaGamarra } from './ITienda';
 
-export type TipoEntrega = 'DOMICILIO' | 'TIENDA';
+export type TipoEntregaFiltro = 'DOMICILIO' | 'TIENDA';
 
 export interface IFiltrosCatalogo {
-  entrega: TipoEntrega | null;
-  tipoServicio: TipoServicio | null;
-  categorias: Categoria[];
+  entrega: TipoEntregaFiltro | null;
+  tipoServicio: TipoServicio[];
+  categorias: string[];
   tiposProducto: string[];
   color: string | null;
   material: string | null;
@@ -22,7 +22,7 @@ export interface IFiltrosCatalogo {
 
 export const FILTROS_VACIOS: IFiltrosCatalogo = {
   entrega: null,
-  tipoServicio: null,
+  tipoServicio: [],
   categorias: [],
   tiposProducto: [],
   color: null,
@@ -40,15 +40,15 @@ export const FILTROS_VACIOS: IFiltrosCatalogo = {
  * son atributos de productos, no del comercio).
  */
 export interface IFiltrosTiendas {
-  categorias: Categoria[];
+  categorias: string[];
   tiposProducto: string[];
-  tipoServicio: TipoServicio | null;
+  tipoServicio: TipoServicio[];
   galeria: GaleriaGamarra | null;
 }
 
 export const FILTROS_TIENDAS_VACIOS: IFiltrosTiendas = {
   categorias: [],
   tiposProducto: [],
-  tipoServicio: null,
+  tipoServicio: [],
   galeria: null,
 };

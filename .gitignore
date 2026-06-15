@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+#keys privadas
+.env
+.env.local
+.claude

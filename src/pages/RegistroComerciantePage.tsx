@@ -1,12 +1,19 @@
 import { useState, useRef } from 'react';
 import type { FormEvent, ChangeEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import GoogleButton from '../components/GoogleButton';
+import { useLocation } from 'react-router-dom';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
 import MaterialIcon from '../components/MaterialIcon';
 import Input from '../components/Input';
+import ModalEstadoSolicitud from '../components/ModalEstadoSolicitud';
 import { RUTAS } from '../constants/rutas';
 import { COLORES } from '../styles/tokens';
+import { useGoogleLogin } from '@react-oauth/google';
+import useLogin from '../hooks/useLogin';
+import apiClient from '../services/apiClient';
+//import axios from 'axios';
 
 /* ── Datos de selects ───────────────────────────────────────────────────── */
 
@@ -15,6 +22,13 @@ const GALERIAS = [
   'Las Malvinas', 'Galería Molitalia', 'Galería Los Reyes',
 ];
 const TIPOS_DOCUMENTO = ['DNI', 'Carnet de extranjería', 'Pasaporte'];
+
+//const rutaPorRol: Record<string, string> = {
+  //CLIENTE:     RUTAS.INICIO,
+  //VENDEDOR:    RUTAS.COMERCIANTE_DASHBOARD,
+  //COMERCIANTE: RUTAS.COMERCIANTE_DASHBOARD,
+  //ADMIN:       RUTAS.ADMIN_DASHBOARD,
+//};
 
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 
@@ -116,7 +130,9 @@ function SuccessModal({ onClose }: { onClose: () => void }) {
 export default function RegistroComerciantePage() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const location = useLocation();
+  const emailGoogle = location.state?.email || '';
+  const { loginConGoogle } = useLogin();
   /* Datos del negocio */
   const [nombreTienda, setNombreTienda]   = useState('');
   const [razonSocial, setRazonSocial]     = useState('');
@@ -143,10 +159,38 @@ export default function RegistroComerciantePage() {
 
   const [errorForm, setErrorForm]         = useState<string | null>(null);
   const [enviado, setEnviado]             = useState(false);
+  const [estadoModal, setEstadoModal]     = useState<'pendiente' | 'rechazado' | null>(null);
+
+  const loginGoogle = useGoogleLogin({
+    flow: 'implicit',
+    onSuccess: async (tokenResponse) => {
+      try {
+        const data = await loginConGoogle(tokenResponse.access_token);
+
+        if (data?.estadoSolicitud === 'PENDIENTE') {
+          setEstadoModal('pendiente');
+          return;
+        }
+        if (data?.estadoSolicitud === 'RECHAZADO') {
+          setEstadoModal('rechazado');
+          return;
+        }
+        if (data?.needsRegistration) {
+          navigate(RUTAS.REGISTRO_COMERCIANTE, { state: { email: data.email } });
+          return;
+        }
+        // Si llegó aquí, el hook ya navegó al dashboard correctamente
+      } catch (error) {
+        console.error('Error Google login:', error);
+        setErrorForm('Error al autenticar con Google');
+      }
+    },
+    onError: () => setErrorForm('No se pudo conectar con Google'),
+  });
 
   const puedeEnviar =
     nombreTienda && razonSocial && ruc && galeria &&
-    correo && nombres && apellidos && tipoDoc && numeroDoc && celular &&
+    (emailGoogle || correo) && nombres && apellidos && tipoDoc && numeroDoc && celular &&
     validarContrasena(contrasena) && contrasena === confirmar;
 
   const handleLogoFile = (file: File | null) => {
@@ -157,7 +201,7 @@ export default function RegistroComerciantePage() {
     setLogoFile(file);
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrorForm(null);
     if (!validarContrasena(contrasena)) {
@@ -168,14 +212,62 @@ export default function RegistroComerciantePage() {
       setErrorForm('Las contraseñas no coinciden.');
       return;
     }
-    // TODO: POST /api/v1/comerciantes/registro — Responsable: equipo backend
-    setEnviado(true);
+    try {
+      const apellidosArr = apellidos.split(' ');
+
+      let logoUrl: string | null = null;
+      if (logoFile) {
+        const formData = new FormData();
+        formData.append('archivo', logoFile);
+        formData.append('carpeta', 'tiendas');
+        const { data: s3Data } = await apiClient.post<{ url: string }>(
+          '/s3/upload',
+          formData,
+        );
+        logoUrl = s3Data.url;
+      }
+
+      const payload = {
+        nombres,
+        primerApellido: apellidosArr[0] || '',
+        segundoApellido: apellidosArr[1] || '',
+        email: emailGoogle || correo,
+        contrasenha: contrasena,
+        dni: numeroDoc,
+        telefono: celular,
+        tipoDocumento: tipoDoc,
+        rol: 'VENDEDOR',
+        ruc,
+        razonSocial,
+        nombreTienda,
+        piso,
+        stand,
+        galeria,
+        logoUrl,
+      };
+
+      await apiClient.post(
+        '/auth/google/register-comerciante',
+        payload
+      );
+
+      setEnviado(true);
+
+    } catch (error: any) {
+      console.log('ERROR COMPLETO:', error);
+      console.log('RESPUESTA BACKEND:', error.response?.data);
+      setErrorForm('Error al registrar comerciante');
+    }
   };
 
   return (
     <div className="flex min-h-screen flex-col font-sans" style={{ backgroundColor: '#f7f7f7' }}>
       <TopBar active="Vender" />
 
+      {/* ── Modales ──────────────────────────────────────────────────── */}
+      {estadoModal && (
+        <ModalEstadoSolicitud tipo={estadoModal} onClose={() => setEstadoModal(null)} />
+      )}
       {enviado && <SuccessModal onClose={() => navigate(RUTAS.INICIO)} />}
 
       {/* ── Hero header ─────────────────────────────────────────────── */}
@@ -193,6 +285,18 @@ export default function RegistroComerciantePage() {
         <p className="mt-3 text-sm text-gray-500">
           Escala tu negocio de Gamarra al mundo digital con nuestra infraestructura premium.
         </p>
+      </div>
+
+      {/* ── Google ──────────────────────────────────────────────────── */}
+      <div className="mx-auto w-full max-w-[960px] px-8 flex flex-col gap-3 pb-2">
+        <GoogleButton onClick={() => loginGoogle()} />
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-gray-200" />
+          <span className="text-xs text-gray-400 uppercase tracking-widest font-medium whitespace-nowrap">
+            O continua con tus datos
+          </span>
+          <div className="flex-1 h-px bg-gray-200" />
+        </div>
       </div>
 
       {/* ── Form ────────────────────────────────────────────────────── */}
@@ -253,7 +357,6 @@ export default function RegistroComerciantePage() {
                   logoDragging ? 'border-pink-400 bg-pink-50' : 'border-gray-200 bg-gray-50'
                 }`}
               >
-                {/* Hexagonal decorative background */}
                 <svg
                   className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.07]"
                   xmlns="http://www.w3.org/2000/svg"
@@ -305,8 +408,10 @@ export default function RegistroComerciantePage() {
           <div className="flex flex-col gap-3">
             <Input
               type="email" name="correo" placeholder="Correo electrónico corporativo"
-              value={correo} onChange={(e) => setCorreo(e.target.value)}
+              value={emailGoogle || correo}
+              onChange={(e) => setCorreo(e.target.value)}
               autoComplete="email"
+              disabled={!!emailGoogle}
             />
             <Input
               type="text" name="nombres" placeholder="Nombre(s)"

@@ -1,24 +1,19 @@
-import { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import ComercianteSidebar from '../../components/ComercianteSidebar';
 import { RUTAS } from '../../constants/rutas';
-
-const CATEGORIAS = ['Hombre', 'Mujer', 'Niños', 'Unisex Adultos'];
-
-const BASE_TIPOS = [
-  'Polos', 'Camisas', 'Pantalones', 'Shorts', 'Leggins',
-  'Casacas y Abrigos', 'Poleras', 'Suéteres', 'Chalecos', 'Pijamas',
-  'Ropa interior', 'Trajes y Blazers', 'Ropa deportiva', 'Bufandas',
-  'Gorras', 'Sombreros', 'Guantes', 'Medias', 'Uniformes',
-  'Overoles', 'Delantales', 'Batas',
-];
-
-const TIPOS_POR_CATEGORIA: Record<string, string[]> = {
-  Hombre: BASE_TIPOS,
-  Mujer: [...BASE_TIPOS, 'Faldas', 'Vestidos', 'Tops', 'Blusas'],
-  Niños: [...BASE_TIPOS, 'Faldas', 'Vestidos'],
-  'Unisex Adultos': BASE_TIPOS,
-};
+import {
+  listarCategorias,
+  listarTiposPorCategoria,
+  actualizarProducto,
+  actualizarStockVariante,
+  actualizarImagenVariante,
+  eliminarProducto,
+  subirImagenS3,
+  type ICategoriaOpcion,
+  type ITipoProductoOpcion,
+} from '../../services/catalogoService';
+import apiClient from '../../services/apiClient';
 
 const CAT_ABREV: Record<string, string> = {
   Hombre: 'HON', Mujer: 'MUJ', Niños: 'NIN', 'Unisex Adultos': 'UNI',
@@ -37,6 +32,11 @@ const generarSKUVariante = (skuBase: string, talla: string, colorNombre: string)
   return `${base}-${tallaCode}-${colorCode}`;
 };
 
+interface IImagen {
+  url: string;
+  esPrincipal: boolean;
+}
+
 interface IColor {
   nombre: string;
   hex: string;
@@ -49,8 +49,10 @@ interface IVarianteEditable {
   colorHex: string;
   precioBase: number;
   stock: number;
+  stockMinimo: number;
   activo: boolean;
-  imagenes: string[];
+  imagenUrl: string;
+  imagenUrlOriginal: string;
 }
 
 interface IEspecificacion {
@@ -58,14 +60,6 @@ interface IEspecificacion {
   titulo: string;
   descripcion: string;
 }
-
-const MOCK_VARIANTES: IVarianteEditable[] = [
-  { id: 1, talla: 'M', colorNombre: 'Negro', colorHex: '#1a1a1a', precioBase: 249.90, stock: 40, activo: true, imagenes: [] },
-  { id: 2, talla: 'S', colorNombre: 'Blanco', colorHex: '#f5f5f5', precioBase: 249.90, stock: 62, activo: true, imagenes: [] },
-  { id: 3, talla: 'L', colorNombre: 'Blanco', colorHex: '#f5f5f5', precioBase: 249.90, stock: 55, activo: false, imagenes: [] },
-];
-
-const MAX_IMG_VISIBLES = 3;
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return (
@@ -95,68 +89,141 @@ function PrecioInput({ value, onChange }: { value: number; onChange: (v: number)
 }
 
 export default function EditarProductoPage() {
-  const [nombreProducto, setNombreProducto] = useState('Blazer Cotton');
-  const [descripcion, setDescripcion] = useState(
-    'Blazer de corte confeccionado en mezcla de lino Milano. Corte slim fit contemporáneo con bolsillos de chaleco y solapa enrollada en cada extremo.'
-  );
-  const [categoria, setCategoria] = useState('');
-  const [tipoProducto, setTipoProducto] = useState('');
+  const { id } = useParams<{ id: string }>();
+  const [nombreProducto, setNombreProducto] = useState('');
+  const [descripcion, setDescripcion] = useState('');
+  const [idCategoria, setIdCategoria] = useState<number | ''>('');
+  const [idTipoProducto, setIdTipoProducto] = useState<number | ''>('');
+  const [categorias, setCategorias] = useState<ICategoriaOpcion[]>([]);
+  const [tipos, setTipos] = useState<ITipoProductoOpcion[]>([]);
   const [correlativo] = useState(1);
-  const [skuInterno, setSkuInterno] = useState('GEN-PRD-001-GEN');
-  const [envioADomicilio, setEnvioADomicilio] = useState(false);
-  const [retiroEnTienda, setRetiroEnTienda] = useState(false);
+  const [skuInterno, setSkuInterno] = useState('');
 
-  const [precioBase, setPrecioBase] = useState(249.90);
-  const [stockMinimo, setStockMinimo] = useState(5);
+  // --- Imágenes del producto base ---
+  const [imagenesProducto, setImagenesProducto] = useState<IImagen[]>([]);
+  const [subiendoImagen, setSubiendoImagen] = useState(false);
+  const imagenProductoRef = useRef<HTMLInputElement>(null);
+
+  const [enviando, setEnviando] = useState(false);
+  const [errorApi, setErrorApi] = useState('');
+
+  const [precioBase, setPrecioBase] = useState(0);
   const [publicado, setPublicado] = useState(true);
+  const [esPersonalizable, setEsPersonalizable] = useState(false);
 
-  const [tallas, setTallas] = useState<string[]>(['S', 'M', 'L']);
+  const [tallas, setTallas] = useState<string[]>([]);
   const [tallaInput, setTallaInput] = useState('');
 
-  const [colores, setColores] = useState<IColor[]>([
-    { nombre: 'Negro', hex: '#1a1a1a' },
-    { nombre: 'Blanco', hex: '#f5f5f5' },
-  ]);
+  const [colores, setColores] = useState<IColor[]>([]);
   const [colorNombreInput, setColorNombreInput] = useState('');
   const [colorHexInput, setColorHexInput] = useState('#000000');
 
-  const [variantes, setVariantes] = useState<IVarianteEditable[]>(MOCK_VARIANTES);
+  const [variantes, setVariantes] = useState<IVarianteEditable[]>([]);
 
   const [especificaciones, setEspecificaciones] = useState<IEspecificacion[]>([]);
   const [especTitulo, setEspecTitulo] = useState('');
   const [especDescripcion, setEspecDescripcion] = useState('');
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // --- Imagen por variante ---
+  const varianteFileRef = useRef<HTMLInputElement>(null);
   const [activeVarianteId, setActiveVarianteId] = useState<number | null>(null);
-  const [modalImagenes, setModalImagenes] = useState<{ varianteId: number } | null>(null);
 
   const [submitted, setSubmitted] = useState(false);
 
   const navigate = useNavigate();
-  const tiposDisponibles = categoria ? TIPOS_POR_CATEGORIA[categoria] ?? [] : [];
+
+  useEffect(() => {
+    listarCategorias().then(setCategorias).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (!id) return;
+    apiClient.get<any>(`/productos/${id}`).then(({ data }) => {
+      setNombreProducto(data.nombre ?? '');
+      setDescripcion(data.descripcion ?? '');
+      setPrecioBase(data.precioBase ?? 0);
+      setPublicado(data.activo ?? true);
+      setEsPersonalizable(data.esPersonalizable ?? false);
+
+      const imagenesApi: IImagen[] = (data.imagenes ?? []).map((i: any) => ({
+        url: i.url,
+        esPrincipal: i.esPrincipal ?? false,
+      }));
+      setImagenesProducto(imagenesApi);
+
+      const catId = data.idCategoria ?? '';
+      const tipoId = data.idTipoProducto ?? '';
+      setIdCategoria(catId);
+      setIdTipoProducto(tipoId);
+
+      const variantesApi: IVarianteEditable[] = (data.variantes ?? []).map((v: any, i: number) => ({
+        id: v.idVariante,
+        talla: v.talla ?? v.sku?.split('-')[3] ?? `V${i + 1}`,
+        colorNombre: v.color ?? v.sku?.split('-')[4] ?? '',
+        colorHex: v.colorHex ?? '#888888',
+        precioBase: v.precioAjustado ?? data.precioBase ?? 0,
+        stock: v.stock ?? 0,
+        stockMinimo: 5,
+        activo: v.disponible ?? true,
+        imagenUrl: v.imagenUrl ?? '',
+        imagenUrlOriginal: v.imagenUrl ?? '',
+      }));
+      setVariantes(variantesApi);
+
+      const especsApi: IEspecificacion[] = (data.especificaciones ?? []).map((e: any, i: number) => ({
+        id: i + 1,
+        titulo: e.nombre ?? '',
+        descripcion: e.descripcion ?? '',
+      }));
+      setEspecificaciones(especsApi);
+
+      const firstSku = data.variantes?.[0]?.sku as string | undefined;
+      if (firstSku) {
+        const parts = firstSku.split('-');
+        if (parts.length >= 5) {
+          setSkuInterno(`${parts[0]}-${parts[1]}-${parts[2]}-GEN`);
+        }
+      }
+      if (catId !== '') {
+        listarTiposPorCategoria(catId as number).then(setTipos).catch(console.error);
+      }
+    }).catch(console.error);
+  }, [id]);
+
+  useEffect(() => {
+    if (idCategoria !== '') {
+      listarTiposPorCategoria(idCategoria as number).then(setTipos).catch(console.error);
+    } else {
+      setTipos([]);
+    }
+  }, [idCategoria]);
 
   const totalStock = variantes.reduce((sum, v) => sum + v.stock, 0);
 
   const errores = {
     nombreProducto: !nombreProducto.trim() ? 'El nombre es obligatorio' : '',
     descripcion: !descripcion.trim() ? 'La descripción es obligatoria' : '',
-    categoria: !categoria ? 'Selecciona una categoría' : '',
-    tipoProducto: !tipoProducto ? 'Selecciona un tipo de producto' : '',
+    categoria: idCategoria === '' ? 'Selecciona una categoría' : '',
+    tipoProducto: idTipoProducto === '' ? 'Selecciona un tipo de producto' : '',
     precioBase: precioBase <= 0 ? 'El precio debe ser mayor a 0' : '',
-    tipoEntrega: !envioADomicilio && !retiroEnTienda ? 'Selecciona al menos un tipo de entrega' : '',
     variantes: variantes.length === 0 ? 'Debe haber al menos una variante' : '',
   };
   const hayErrores = Object.values(errores).some(Boolean);
 
   const handleCategoriaChange = (val: string) => {
-    setCategoria(val);
-    setTipoProducto('');
-    setSkuInterno(generarSKUBase(val, '', correlativo));
+    const newId = val === '' ? '' : Number(val);
+    setIdCategoria(newId as number | '');
+    setIdTipoProducto('');
+    const cat = categorias.find((c) => c.idCategoria === Number(val));
+    setSkuInterno(cat ? generarSKUBase(cat.nombre, '', correlativo) : '');
   };
 
   const handleTipoChange = (val: string) => {
-    setTipoProducto(val);
-    setSkuInterno(generarSKUBase(categoria, val, correlativo));
+    const newId = val === '' ? '' : Number(val);
+    setIdTipoProducto(newId as number | '');
+    const cat = categorias.find((c) => c.idCategoria === idCategoria);
+    const tipo = tipos.find((t) => t.idTipoProducto === Number(val));
+    if (cat && tipo) setSkuInterno(generarSKUBase(cat.nombre, tipo.nombre, correlativo));
   };
 
   const agregarTalla = () => {
@@ -185,30 +252,63 @@ export default function EditarProductoPage() {
   const updateVarianteStock = (id: number, stock: number) =>
     setVariantes((p) => p.map((v) => (v.id === id ? { ...v, stock } : v)));
 
-  const handleClickAgregarImagen = (varianteId: number) => {
+  const updateVarianteStockMinimo = (id: number, stockMinimo: number) =>
+    setVariantes((p) => p.map((v) => (v.id === id ? { ...v, stockMinimo } : v)));
+
+  // --- Handlers de imágenes del producto ---
+  const handleAgregarImagenesProducto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    setSubiendoImagen(true);
+    try {
+      const urls = await Promise.all(files.map((f) => subirImagenS3(f)));
+      setImagenesProducto((prev) => {
+        const nuevas = urls.map((url, i) => ({
+          url,
+          esPrincipal: prev.length === 0 && i === 0,
+        }));
+        return [...prev, ...nuevas];
+      });
+    } catch {
+      setErrorApi('No se pudo subir alguna imagen. Intenta de nuevo.');
+    } finally {
+      setSubiendoImagen(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleEliminarImagenProducto = (index: number) => {
+    setImagenesProducto((prev) => {
+      const copia = prev.filter((_, i) => i !== index);
+      if (prev[index].esPrincipal && copia.length > 0) {
+        copia[0] = { ...copia[0], esPrincipal: true };
+      }
+      return copia;
+    });
+  };
+
+  const handleTogglePrincipal = (index: number) => {
+    setImagenesProducto((prev) =>
+      prev.map((img, i) => ({ ...img, esPrincipal: i === index }))
+    );
+  };
+
+  // --- Handlers de imagen por variante ---
+  const handleClickImagenVariante = (varianteId: number) => {
     setActiveVarianteId(varianteId);
-    fileInputRef.current?.click();
+    varianteFileRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || activeVarianteId === null) return;
-    const nuevas = Array.from(e.target.files).map((f) => URL.createObjectURL(f));
-    setVariantes((p) =>
-      p.map((v) => (v.id === activeVarianteId ? { ...v, imagenes: [...v.imagenes, ...nuevas] } : v))
-    );
+  const handleVarianteFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || activeVarianteId === null) return;
+    try {
+      const url = await subirImagenS3(file);
+      setVariantes((p) => p.map((v) => (v.id === activeVarianteId ? { ...v, imagenUrl: url } : v)));
+    } catch {
+      setErrorApi('No se pudo subir la imagen de la variante.');
+    }
     e.target.value = '';
-  };
-
-  const handleEliminarImagen = (varianteId: number, index: number) => {
-    setVariantes((p) =>
-      p.map((v) => {
-        if (v.id !== varianteId) return v;
-        const copia = [...v.imagenes];
-        URL.revokeObjectURL(copia[index]);
-        copia.splice(index, 1);
-        return { ...v, imagenes: copia };
-      })
-    );
   };
 
   const agregarEspecificacion = () => {
@@ -224,13 +324,53 @@ export default function EditarProductoPage() {
   const eliminarEspecificacion = (id: number) =>
     setEspecificaciones((p) => p.filter((e) => e.id !== id));
 
-  const handleGuardar = () => {
+  const handleGuardar = async () => {
     setSubmitted(true);
     if (hayErrores) return;
-    // TODO: integrar catalogoService.actualizarProducto() - Kevin
+    if (!id) return;
+    setEnviando(true);
+    setErrorApi('');
+    try {
+      await actualizarProducto(id, {
+        nombre: nombreProducto,
+        descripcion,
+        precioBase,
+        esPersonalizable,
+        idCategoria: idCategoria as number,
+        idTipoProducto: idTipoProducto as number,
+        imagenes: imagenesProducto,
+        especificaciones: especificaciones.length > 0
+          ? especificaciones.map((e) => ({ nombre: e.titulo, descripcion: e.descripcion }))
+          : undefined,
+      });
+
+      await Promise.all(
+        variantes.map(async (v) => {
+          await actualizarStockVariante(v.id, v.stock);
+          if (v.imagenUrl !== v.imagenUrlOriginal) {
+            await actualizarImagenVariante(v.id, v.imagenUrl || null);
+          }
+        })
+      );
+
+      navigate(RUTAS.COMERCIANTE_CATALOGO);
+    } catch (err: any) {
+      setErrorApi(err.response?.data?.mensaje ?? 'Error al guardar los cambios');
+    } finally {
+      setEnviando(false);
+    }
   };
-  const handleEliminar = () => {
-    // TODO: integrar catalogoService.eliminarProducto() - Kevin
+
+  const handleEliminar = async () => {
+    if (!id || !window.confirm('¿Eliminar este producto? Esta acción no se puede deshacer.')) return;
+    setEnviando(true);
+    try {
+      await eliminarProducto(id);
+      navigate(RUTAS.COMERCIANTE_CATALOGO);
+    } catch (err: any) {
+      setErrorApi(err.response?.data?.mensaje ?? 'No se pudo eliminar el producto');
+      setEnviando(false);
+    }
   };
 
   const labelClass = 'block text-[11px] font-semibold text-gray-600 uppercase tracking-[0.4px] mb-1.5';
@@ -244,20 +384,25 @@ export default function EditarProductoPage() {
   const errMsg = (key: keyof typeof errores) =>
     submitted && errores[key] ? <p className="text-[11px] text-red-500 mt-1">{errores[key]}</p> : null;
 
-  const varianteModal = modalImagenes ? variantes.find((v) => v.id === modalImagenes.varianteId) : null;
-
   return (
     <div className="flex min-h-screen">
       <ComercianteSidebar />
 
-      {/* Hidden file input */}
+      {/* Hidden file inputs */}
       <input
-        ref={fileInputRef}
+        ref={imagenProductoRef}
         type="file"
         accept="image/*"
         multiple
         className="hidden"
-        onChange={handleFileChange}
+        onChange={handleAgregarImagenesProducto}
+      />
+      <input
+        ref={varianteFileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleVarianteFileChange}
       />
 
       <main className="ml-64 flex-1 bg-gray-100 p-7">
@@ -310,9 +455,9 @@ export default function EditarProductoPage() {
                 <label className={labelClass}>
                   Categoría <span className="text-red-500 normal-case font-normal">*</span>
                 </label>
-                <select className={fc('categoria')} value={categoria} onChange={(e) => handleCategoriaChange(e.target.value)}>
+                <select className={fc('categoria')} value={idCategoria} onChange={(e) => handleCategoriaChange(e.target.value)}>
                   <option value="">Seleccionar</option>
-                  {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
+                  {categorias.map((c) => <option key={c.idCategoria} value={c.idCategoria}>{c.nombre}</option>)}
                 </select>
                 {errMsg('categoria')}
               </div>
@@ -320,53 +465,68 @@ export default function EditarProductoPage() {
                 <label className={labelClass}>
                   Tipo de Producto <span className="text-red-500 normal-case font-normal">*</span>
                 </label>
-                <select className={fc('tipoProducto')} value={tipoProducto} onChange={(e) => handleTipoChange(e.target.value)} disabled={!categoria}>
-                  <option value="">{categoria ? 'Seleccionar' : 'Elige categoría primero'}</option>
-                  {tiposDisponibles.map((t) => <option key={t} value={t}>{t}</option>)}
+                <select className={fc('tipoProducto')} value={idTipoProducto} onChange={(e) => handleTipoChange(e.target.value)} disabled={idCategoria === ''}>
+                  <option value="">{idCategoria !== '' ? 'Seleccionar' : 'Elige categoría primero'}</option>
+                  {tipos.map((t) => <option key={t.idTipoProducto} value={t.idTipoProducto}>{t.nombre}</option>)}
                 </select>
                 {errMsg('tipoProducto')}
               </div>
             </div>
 
-            <div className="mb-4">
-              <label className={labelClass}>SKU Interno</label>
-              <input
-                type="text"
-                readOnly
-                className="w-full h-[42px] border border-gray-200 rounded-lg px-3.5 text-[13px] font-mono text-gray-500 bg-gray-50 cursor-default select-all"
-                value={skuInterno}
-              />
-              <p className="text-[11px] text-gray-400 mt-1">Autogenerado: categoría · tipo · correlativo · GEN</p>
-            </div>
-
-            <div className="mb-4">
-              <label className={labelClass}>
-                Tipo de Entrega <span className="text-red-500 normal-case font-normal">*</span>
-              </label>
-              <div className="flex gap-3">
-                {[
-                  { label: 'Envío a domicilio', val: envioADomicilio, toggle: () => setEnvioADomicilio((v) => !v) },
-                  { label: 'Retiro en tienda', val: retiroEnTienda, toggle: () => setRetiroEnTienda((v) => !v) },
-                ].map(({ label, val, toggle }) => (
-                  <button
-                    key={label}
-                    onClick={toggle}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border-[1.5px] text-[13px] font-medium transition-colors ${
-                      val ? 'border-primario bg-primario-claro text-primario' : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
-                    }`}
-                  >
-                    <span className={`w-4 h-4 rounded border-[1.5px] flex items-center justify-center flex-shrink-0 transition-colors ${val ? 'border-primario bg-primario' : 'border-gray-400 bg-white'}`}>
-                      {val && (
-                        <svg width={9} height={9} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3.5}>
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      )}
-                    </span>
-                    {label}
-                  </button>
+            {/* Imágenes del producto */}
+            <div className="mb-2">
+              <label className={labelClass}>Imágenes del Producto</label>
+              <div className="flex flex-wrap gap-2 items-center">
+                {imagenesProducto.map((img, i) => (
+                  <div key={i} className="relative group w-16 h-16 flex-shrink-0">
+                    <img
+                      src={img.url}
+                      className={`w-full h-full object-cover rounded-lg border-2 transition-colors ${img.esPrincipal ? 'border-primario' : 'border-gray-200'}`}
+                    />
+                    {/* Star — marca como principal */}
+                    <button
+                      type="button"
+                      title={img.esPrincipal ? 'Imagen principal' : 'Marcar como principal'}
+                      onClick={() => handleTogglePrincipal(i)}
+                      className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] transition-opacity ${
+                        img.esPrincipal
+                          ? 'bg-primario text-white opacity-100'
+                          : 'bg-black/40 text-white opacity-0 group-hover:opacity-100'
+                      }`}
+                    >
+                      ★
+                    </button>
+                    {/* Remove */}
+                    <button
+                      type="button"
+                      onClick={() => handleEliminarImagenProducto(i)}
+                      className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <svg width={8} height={8} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    </button>
+                  </div>
                 ))}
+                {/* Add button */}
+                <button
+                  type="button"
+                  disabled={subiendoImagen}
+                  onClick={() => imagenProductoRef.current?.click()}
+                  className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primario hover:text-primario transition-colors flex-shrink-0 disabled:opacity-50"
+                  title="Agregar imágenes"
+                >
+                  {subiendoImagen ? (
+                    <span className="text-[10px] text-center leading-tight">Subiendo...</span>
+                  ) : (
+                    <>
+                      <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                      <span className="text-[9px] mt-0.5">Agregar</span>
+                    </>
+                  )}
+                </button>
               </div>
-              {errMsg('tipoEntrega')}
+              <p className="text-[11px] text-gray-400 mt-1.5">
+                La imagen con <span className="text-primario font-semibold">★</span> es la principal. Haz clic en ella para cambiarla.
+              </p>
             </div>
           </div>
 
@@ -376,7 +536,6 @@ export default function EditarProductoPage() {
               Tarjeta del Vendedor
             </p>
 
-            {/* Precio Base editable */}
             <div className="mb-4 pb-4 border-b border-gray-200">
               <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] mb-2">
                 Precio Base <span className="text-red-500 normal-case font-normal">*</span>
@@ -397,7 +556,6 @@ export default function EditarProductoPage() {
               {errMsg('precioBase')}
             </div>
 
-            {/* Total Stock */}
             <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
               <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px]">Total Stock</p>
               <div className="text-right">
@@ -406,26 +564,7 @@ export default function EditarProductoPage() {
               </div>
             </div>
 
-            {/* Alerta de stock */}
-            <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
-              <div>
-                <p className="text-[12px] font-semibold text-gray-900">Alerta de stock bajo</p>
-                <p className="text-[11px] text-gray-500">Notificar al llegar a</p>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="number"
-                  min={0}
-                  className="w-14 h-9 border border-gray-300 rounded-lg px-2 text-[13px] text-gray-900 text-center focus:border-primario focus:outline-none"
-                  value={stockMinimo}
-                  onChange={(e) => setStockMinimo(Number(e.target.value))}
-                />
-                <span className="text-[11px] text-gray-500">uds.</span>
-              </div>
-            </div>
-
-            {/* Publicado */}
-            <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center justify-between mb-4">
               <div>
                 <p className="text-[13px] font-semibold text-gray-900">Publicado</p>
                 <p className="text-[11px] text-gray-500">Visible en la tienda</p>
@@ -433,15 +572,28 @@ export default function EditarProductoPage() {
               <Toggle on={publicado} onClick={() => setPublicado((v) => !v)} />
             </div>
 
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <p className="text-[13px] font-semibold text-gray-900">Personalizable</p>
+                <p className="text-[11px] text-gray-500">Permite solicitudes de diseño</p>
+              </div>
+              <Toggle on={esPersonalizable} onClick={() => setEsPersonalizable((v) => !v)} />
+            </div>
+
+            {errorApi && (
+              <p className="text-[11px] text-red-500 mb-2 text-center">{errorApi}</p>
+            )}
             <button
-              className="w-full h-[42px] bg-primario text-white rounded-lg text-[13px] font-semibold mb-2.5 hover:bg-primario-hover transition-colors"
+              className="w-full h-[42px] bg-primario text-white rounded-lg text-[13px] font-semibold mb-2.5 hover:bg-primario-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleGuardar}
+              disabled={enviando}
             >
-              Guardar Cambios
+              {enviando ? 'Guardando...' : 'Guardar Cambios'}
             </button>
             <button
-              className="w-full h-[42px] bg-white text-red-600 rounded-lg text-[13px] font-semibold border-[1.5px] border-red-500 hover:bg-[#FEE2E2] transition-colors"
+              className="w-full h-[42px] bg-white text-red-600 rounded-lg text-[13px] font-semibold border-[1.5px] border-red-500 hover:bg-[#FEE2E2] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleEliminar}
+              disabled={enviando}
             >
               Eliminar Producto
             </button>
@@ -460,10 +612,7 @@ export default function EditarProductoPage() {
                 {tallas.map((t) => (
                   <span key={t} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-sky-700 text-[12px] font-semibold border border-sky-200">
                     {t}
-                    <button
-                      onClick={() => eliminarTalla(t)}
-                      className="w-3.5 h-3.5 rounded-full flex items-center justify-center hover:bg-sky-200 transition-colors"
-                    >
+                    <button onClick={() => eliminarTalla(t)} className="w-3.5 h-3.5 rounded-full flex items-center justify-center hover:bg-sky-200 transition-colors">
                       <svg width={8} height={8} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
                         <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                       </svg>
@@ -494,10 +643,7 @@ export default function EditarProductoPage() {
                   <span key={c.nombre} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primario-claro text-primario text-[12px] font-semibold">
                     <span className="w-3 h-3 rounded-full border border-white/60 flex-shrink-0" style={{ backgroundColor: c.hex }} />
                     {c.nombre}
-                    <button
-                      onClick={() => eliminarColor(c.nombre)}
-                      className="w-3.5 h-3.5 rounded-full flex items-center justify-center hover:bg-primario hover:text-white transition-colors"
-                    >
+                    <button onClick={() => eliminarColor(c.nombre)} className="w-3.5 h-3.5 rounded-full flex items-center justify-center hover:bg-primario hover:text-white transition-colors">
                       <svg width={8} height={8} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
                         <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                       </svg>
@@ -529,7 +675,6 @@ export default function EditarProductoPage() {
             </div>
           </div>
 
-          {/* Variants table */}
           {submitted && errores.variantes && (
             <p className="text-[11px] text-red-500 mb-3">{errores.variantes}</p>
           )}
@@ -537,11 +682,11 @@ export default function EditarProductoPage() {
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  {['Variante', 'SKU', 'Precio Base', 'Stock', 'Imágenes', 'Estado'].map((col, i) => (
+                  {['Variante', 'SKU', 'Precio Base', 'Stock', 'Stock Mín.', 'Imagen', 'Estado'].map((col, i) => (
                     <th
                       key={col}
                       className={`text-left text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] px-3 py-2 bg-gray-100 border-b border-gray-200 whitespace-nowrap ${
-                        i === 0 ? 'rounded-tl' : i === 5 ? 'rounded-tr' : ''
+                        i === 0 ? 'rounded-tl' : i === 6 ? 'rounded-tr' : ''
                       }`}
                     >
                       {col}
@@ -552,8 +697,6 @@ export default function EditarProductoPage() {
               <tbody>
                 {variantes.map((v) => {
                   const skuVariante = generarSKUVariante(skuInterno, v.talla, v.colorNombre);
-                  const visibles = v.imagenes.slice(0, MAX_IMG_VISIBLES);
-                  const extras = v.imagenes.length - MAX_IMG_VISIBLES;
                   return (
                     <tr key={v.id}>
                       <td className="px-3 py-3 text-[13px] text-gray-900 border-b border-gray-100 align-middle whitespace-nowrap">
@@ -580,35 +723,29 @@ export default function EditarProductoPage() {
                         />
                       </td>
                       <td className="px-3 py-3 border-b border-gray-100 align-middle">
-                        <div className="flex items-center gap-1.5">
-                          {visibles.map((img, i) => (
-                            <img
-                              key={i}
-                              src={img}
-                              className="w-9 h-9 rounded object-cover border border-gray-200 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                              onClick={() => setModalImagenes({ varianteId: v.id })}
-                              title="Ver imágenes"
-                            />
-                          ))}
-                          {extras > 0 && (
-                            <button
-                              onClick={() => setModalImagenes({ varianteId: v.id })}
-                              className="w-9 h-9 rounded border border-gray-200 bg-gray-100 flex items-center justify-center text-[11px] font-bold text-gray-600 hover:bg-gray-200 flex-shrink-0 transition-colors"
-                              title={`Ver ${extras} imagen${extras > 1 ? 'es' : ''} más`}
-                            >
-                              +{extras}
-                            </button>
+                        <input
+                          type="number"
+                          min={0}
+                          className="w-20 h-[34px] border border-gray-300 rounded px-2.5 text-[13px] text-gray-900 bg-white focus:border-primario focus:outline-none"
+                          value={v.stockMinimo}
+                          onChange={(e) => updateVarianteStockMinimo(v.id, Number(e.target.value))}
+                        />
+                      </td>
+                      <td className="px-3 py-3 border-b border-gray-100 align-middle">
+                        <button
+                          type="button"
+                          onClick={() => handleClickImagenVariante(v.id)}
+                          className="w-9 h-9 rounded border border-gray-200 overflow-hidden flex-shrink-0 hover:opacity-80 transition-opacity"
+                          title="Cambiar imagen de variante"
+                        >
+                          {v.imagenUrl ? (
+                            <img src={v.imagenUrl} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400">
+                              <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                            </div>
                           )}
-                          <button
-                            onClick={() => handleClickAgregarImagen(v.id)}
-                            className="w-9 h-9 rounded border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 hover:border-primario hover:text-primario transition-colors flex-shrink-0"
-                            title="Agregar imágenes"
-                          >
-                            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                            </svg>
-                          </button>
-                        </div>
+                        </button>
                       </td>
                       <td className="px-3 py-3 border-b border-gray-100 align-middle">
                         <Toggle on={v.activo} onClick={() => toggleVariante(v.id)} />
@@ -681,66 +818,6 @@ export default function EditarProductoPage() {
           )}
         </div>
       </main>
-
-      {/* Modal: todas las imágenes de una variante */}
-      {varianteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setModalImagenes(null)} />
-          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6 max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between mb-4 flex-shrink-0">
-              <div>
-                <h3 className="text-[15px] font-bold text-gray-900">
-                  Imágenes — {varianteModal.talla} / {varianteModal.colorNombre}
-                </h3>
-                <p className="text-[12px] text-gray-500">{varianteModal.imagenes.length} imagen{varianteModal.imagenes.length !== 1 ? 'es' : ''}</p>
-              </div>
-              <button
-                onClick={() => setModalImagenes(null)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"
-              >
-                <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="overflow-y-auto flex-1">
-              {varianteModal.imagenes.length === 0 ? (
-                <p className="text-[13px] text-gray-400 text-center py-10">No hay imágenes aún.</p>
-              ) : (
-                <div className="grid grid-cols-3 gap-3">
-                  {varianteModal.imagenes.map((img, i) => (
-                    <div key={i} className="relative group aspect-square">
-                      <img src={img} className="w-full h-full object-cover rounded-lg border border-gray-200" />
-                      <button
-                        onClick={() => handleEliminarImagen(varianteModal.id, i)}
-                        className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Eliminar imagen"
-                      >
-                        <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
-                          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4 flex-shrink-0">
-              <button
-                onClick={() => handleClickAgregarImagen(varianteModal.id)}
-                className="w-full h-10 border-2 border-dashed border-gray-300 rounded-lg text-[13px] text-gray-500 hover:border-primario hover:text-primario transition-colors flex items-center justify-center gap-2"
-              >
-                <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                Agregar más imágenes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

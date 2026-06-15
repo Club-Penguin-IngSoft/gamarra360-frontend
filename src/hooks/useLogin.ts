@@ -5,10 +5,11 @@ import { ILoginRequest, RolUsuario } from '../types/IAuth';
 import { RUTAS } from '../constants/rutas';
 import { useAuth } from './useAuth';
 
-const rutaPorRol: Record<RolUsuario, string> = {
-  CLIENTE: RUTAS.INICIO, // Ajustado a las rutas del proyecto principal
+const rutaPorRol: Record<string, string> = {
+  CLIENTE:     RUTAS.INICIO,
+  VENDEDOR:    RUTAS.COMERCIANTE_DASHBOARD,
   COMERCIANTE: RUTAS.COMERCIANTE_DASHBOARD,
-  ADMIN: RUTAS.ADMIN_DASHBOARD,
+  ADMIN:       RUTAS.ADMIN_DASHBOARD,
 };
 
 const useLogin = () => {
@@ -22,70 +23,29 @@ const useLogin = () => {
       setCargando(true);
       setError(null);
 
-      // MOCK FALLBACK: Permitir login de admin sin backend para pruebas
-      if (credentials.email === 'admin@gamarra360.com') {
-        iniciarSesion({
-          token: 'mock-admin-token-' + Date.now(),
-          usuario: {
-            id: 'admin-1',
-            nombre: 'Administrador',
-            apellido: 'Gamarra360',
-            correo: credentials.email,
-            rol: 'ADMIN',
-          }
-        });
-        navigate(rutaPorRol['ADMIN']);
-        return;
-      }
+const response = await authService.login(credentials);
 
-      // MOCK FALLBACK: Permitir login de vendedor sin backend para pruebas
-      if (credentials.email === 'vendedor@gamarra360.com') {
-        iniciarSesion({
-          token: 'mock-vendedor-token-' + Date.now(),
-          usuario: {
-            id: 'vendedor-1',
-            nombre: 'Vendedor',
-            apellido: 'Prueba',
-            correo: credentials.email,
-            rol: 'COMERCIANTE',
-            idComerciante: 'comerciante-1',
-          }
-        });
-        navigate(rutaPorRol['COMERCIANTE']);
-        return;
-      }
+const rol = (response.rol === 'VENDEDOR' ? 'COMERCIANTE' : response.rol) as RolUsuario;
 
-      // MOCK FALLBACK: Permitir login de cliente sin backend para pruebas
-      if (credentials.email === 'cliente@gamarra360.com') {
-        iniciarSesion({
-          token: 'mock-cliente-token-' + Date.now(),
-          usuario: {
-            id: 'cliente-1',
-            nombre: 'Cliente',
-            apellido: 'Prueba',
-            correo: credentials.email,
-            rol: 'CLIENTE',
-          }
-        });
-        navigate(rutaPorRol['CLIENTE']);
-        return;
-      }
+localStorage.setItem('token', response.token);
+localStorage.setItem('nombreUsuario', response.nombres ?? response.email);
 
-      const response = await authService.login(credentials);
-      
-      // Integración con el estado global de AuthContext
-      iniciarSesion({
-        token: response.token,
-        usuario: {
-          id: response.email, // O el ID real si el backend lo devuelve
-          nombre: response.nombreCompleto.split(' ')[0],
-          apellido: response.nombreCompleto.split(' ').slice(1).join(' '),
-          correo: response.email,
-          rol: response.rol,
-        }
-      });
+iniciarSesion({
+  token: response.token,
+  usuario: {
+    id: String(response.usuarioId),
+    nombre: response.nombres ?? '',
+    apellido: '',
+    correo: response.email,
+    rol,
+    direccionEntrega: response.direccionEntrega ?? null,
+  }
+});
 
-      navigate(rutaPorRol[response.rol]);
+navigate(rutaPorRol[rol] ?? RUTAS.INICIO); // 
+// Guardar nombre para el TopBar
+//localStorage.setItem('token', response.token);
+//localStorage.setItem('nombreUsuario', response.nombres ?? response.email);
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { mensaje?: string } } };
       const mensaje =
@@ -97,9 +57,52 @@ const useLogin = () => {
     }
   };
 
+  const loginConGoogle = async (accessToken: string) => {
+    try {
+      setCargando(true);
+      setError(null);
+
+      const response = await authService.loginConGoogle(accessToken);
+
+      //Comerciante bloqueado — retornar para que LoginPage muestre el modal
+    if (response.estadoSolicitud === 'PENDIENTE' || response.estadoSolicitud === 'RECHAZADO') {
+      return response;
+    }
+
+    if (response.needsRegistration) {
+      navigate(RUTAS.REGISTRO, { state: { email: response.email } });
+      return response;
+    }
+
+    const rol = (response.rol === 'VENDEDOR' ? 'COMERCIANTE' : response.rol) as RolUsuario;
+
+      iniciarSesion({
+        token: response.token,
+        usuario: {
+          id: String(response.usuarioId),
+          nombre: response.nombres ?? '',
+          apellido: '',
+          correo: response.email,
+          rol,
+          direccionEntrega: response.direccionEntrega ?? null,
+        },
+      });
+
+      navigate(rutaPorRol[rol] ?? RUTAS.INICIO);
+      return response;
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { mensaje?: string } } };
+      const mensaje =
+        axiosError?.response?.data?.mensaje ?? 'Error al iniciar sesión con Google.';
+      setError(mensaje);
+    } finally {
+      setCargando(false);
+    }
+  };
+
   const limpiarError = () => setError(null);
 
-  return { iniciarSesion: login, cargando, error, limpiarError };
+  return { iniciarSesion: login, loginConGoogle, cargando, error, limpiarError };
 };
 
 export default useLogin;

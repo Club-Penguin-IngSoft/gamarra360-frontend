@@ -13,41 +13,22 @@ import type { ReactNode } from 'react';
 import {
   ChevronDown,
   SlidersHorizontal,
-  Store as StoreIcon,
-  Truck,
   X,
 } from 'lucide-react';
-import type { Categoria, TipoServicio } from '../types/IProducto';
+import type { TipoServicio } from '../types/IProducto';
 import type { IFiltrosCatalogo } from '../types/IFiltro';
 import { FILTROS_VACIOS } from '../types/IFiltro';
+import { useOpcionesFiltro } from '../hooks/useOpcionesFiltro';
 
 /* ---------------------------- Constantes UI ---------------------------- */
-
-const CATEGORIAS_UI: { value: Categoria; label: string }[] = [
-  { value: 'HOMBRE', label: 'Hombre' },
-  { value: 'MUJER', label: 'Mujer' },
-  { value: 'NINOS', label: 'Niños' },
-  { value: 'UNISEX_ADULTOS', label: 'Unisex Adultos' },
-  { value: 'UNISEX_NINOS', label: 'Unisex Niños' },
-];
-
-const TIPOS_PRODUCTO = [
-  'Polos',
-  'Blusas',
-  'Pantalones',
-  'Casacas',
-  'Vestidos',
-];
 
 const TIPOS_SERVICIO_UI: { value: TipoServicio; label: string }[] = [
   { value: 'COMPRA_DIRECTA', label: 'Compra directa' },
   { value: 'PERSONALIZABLE', label: 'Personalizable' },
 ];
-
-const TALLAS = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+// Colores, Materiales, Tallas y TiposProducto vienen del hook (dinámico desde BD)
 
 type SectionKey =
-  | 'entrega'
   | 'categoria'
   | 'producto'
   | 'servicio'
@@ -110,34 +91,6 @@ function Pill({
   );
 }
 
-function Radio({
-  name,
-  label,
-  icon,
-  checked,
-  onChange,
-}: {
-  name: string;
-  label: string;
-  icon?: ReactNode;
-  checked: boolean;
-  onChange: () => void;
-}) {
-  return (
-    <label className="flex cursor-pointer items-center gap-2 text-[14px] text-ink-700">
-      <input
-        type="radio"
-        name={name}
-        checked={checked}
-        onChange={onChange}
-        className="h-4 w-4 accent-brand-500"
-      />
-      {icon}
-      <span>{label}</span>
-    </label>
-  );
-}
-
 function Select({
   placeholder,
   value,
@@ -175,9 +128,14 @@ interface Props {
   filtros: IFiltrosCatalogo;
   onChange: (f: IFiltrosCatalogo) => void;
   onClose: () => void;
+  /** Si true, oculta secciones de "Tipo de Producto" y "Tipo de Entrega" para modo tiendas */
+  isTienda?: boolean;
 }
 
-export default function FilterPanel({ open, filtros, onChange, onClose }: Props) {
+export default function FilterPanel({ open, filtros, onChange, onClose, isTienda = false }: Props) {
+  // Opciones dinámicas desde la BD (colores, materiales, tallas, tiposProducto)
+  const opciones = useOpcionesFiltro();
+
   // Estado borrador: se edita internamente y solo se aplica al padre con "Aplicar filtros"
   const [borrador, setBorrador] = useState<IFiltrosCatalogo>(filtros);
 
@@ -188,7 +146,6 @@ export default function FilterPanel({ open, filtros, onChange, onClose }: Props)
   }, [open]);
 
   const [sections, setSections] = useState<Record<SectionKey, boolean>>({
-    entrega: true,
     categoria: true,
     producto: true,
     servicio: true,
@@ -201,7 +158,7 @@ export default function FilterPanel({ open, filtros, onChange, onClose }: Props)
   const toggleSection = (k: SectionKey) =>
     setSections((s) => ({ ...s, [k]: !s[k] }));
 
-  const toggleCategoria = (c: Categoria) =>
+  const toggleCategoria = (c: string) =>
     setBorrador((b) => ({
       ...b,
       categorias: b.categorias.includes(c)
@@ -215,6 +172,14 @@ export default function FilterPanel({ open, filtros, onChange, onClose }: Props)
       tiposProducto: b.tiposProducto.includes(t)
         ? b.tiposProducto.filter((x) => x !== t)
         : [...b.tiposProducto, t],
+    }));
+
+  const toggleTipoServicio = (ts: TipoServicio) =>
+    setBorrador((b) => ({
+      ...b,
+      tipoServicio: b.tipoServicio.includes(ts)
+        ? b.tipoServicio.filter((x) => x !== ts)
+        : [...b.tipoServicio, ts],
     }));
 
   const toggleTalla = (t: string) =>
@@ -274,26 +239,29 @@ export default function FilterPanel({ open, filtros, onChange, onClose }: Props)
 
         {/* Secciones scrollables */}
         <div className="flex-1 overflow-y-auto px-6">
-          <Section
-            title="Tipo de Entrega"
-            open={sections.entrega}
-            onToggle={() => toggleSection('entrega')}
-          >
-            <Radio
-              name="entrega"
-              label="Envío a domicilio"
-              icon={<Truck className="h-4 w-4 text-ink-500" />}
-              checked={borrador.entrega === 'DOMICILIO'}
-              onChange={() => setBorrador((b) => ({ ...b, entrega: 'DOMICILIO' }))}
-            />
-            <Radio
-              name="entrega"
-              label="Retiro en tienda"
-              icon={<StoreIcon className="h-4 w-4 text-ink-500" />}
-              checked={borrador.entrega === 'TIENDA'}
-              onChange={() => setBorrador((b) => ({ ...b, entrega: 'TIENDA' }))}
-            />
-          </Section>
+          {/* PENDIENTE — Tipo de Entrega (requiere columna ofrece_envio en tiendas)
+          {!isTienda && (
+            <Section
+              title="Tipo de Entrega"
+              open={sections.entrega}
+              onToggle={() => toggleSection('entrega')}
+            >
+              <Radio
+                name="entrega"
+                label="Envío a domicilio"
+                icon={<StoreIcon className="h-4 w-4 text-ink-500" />}
+                checked={borrador.entrega === 'DOMICILIO'}
+                onChange={() => setBorrador((b) => ({ ...b, entrega: 'DOMICILIO' }))}
+              />
+              <Radio
+                name="entrega"
+                label="Retiro en tienda"
+                icon={<StoreIcon className="h-4 w-4 text-ink-500" />}
+                checked={borrador.entrega === 'TIENDA'}
+                onChange={() => setBorrador((b) => ({ ...b, entrega: 'TIENDA' }))}
+              />
+            </Section>
+          )} */}
 
           <Section
             title="Categoría"
@@ -301,132 +269,139 @@ export default function FilterPanel({ open, filtros, onChange, onClose }: Props)
             onToggle={() => toggleSection('categoria')}
           >
             <div className="flex flex-wrap gap-2">
-              {CATEGORIAS_UI.map((c) => (
+              {opciones.categorias.map((categoria) => (
                 <Pill
-                  key={c.value}
-                  label={c.label}
-                  active={borrador.categorias.includes(c.value)}
-                  onClick={() => toggleCategoria(c.value)}
+                  key={categoria}
+                  label={categoria}
+                  active={borrador.categorias.includes(categoria)}
+                  onClick={() => toggleCategoria(categoria)}
                 />
               ))}
             </div>
           </Section>
 
-          <Section
-            title="Tipo de Producto"
-            open={sections.producto}
-            onToggle={() => toggleSection('producto')}
-          >
-            <div className="flex flex-wrap gap-2">
-              {TIPOS_PRODUCTO.map((t) => (
-                <Pill
-                  key={t}
-                  label={t}
-                  active={borrador.tiposProducto.includes(t)}
-                  onClick={() => toggleTipoProducto(t)}
-                />
-              ))}
-            </div>
-          </Section>
+          {/* Solo mostrar si NO es modo tiendas */}
+          {!isTienda && (
+            <Section
+              title="Tipo de Producto"
+              open={sections.producto}
+              onToggle={() => toggleSection('producto')}
+            >
+              <div className="flex flex-wrap gap-2">
+                {opciones.tiposProducto.map((t) => (
+                  <Pill
+                    key={t}
+                    label={t}
+                    active={borrador.tiposProducto.includes(t)}
+                    onClick={() => toggleTipoProducto(t)}
+                  />
+                ))}
+              </div>
+            </Section>
+          )}
 
           <Section
             title="Tipo de Servicio"
             open={sections.servicio}
             onToggle={() => toggleSection('servicio')}
           >
-            {TIPOS_SERVICIO_UI.map((s) => (
-              <Radio
-                key={s.value}
-                name="servicio"
-                label={s.label}
-                checked={borrador.tipoServicio === s.value}
-                onChange={() =>
-                  setBorrador((b) => ({ ...b, tipoServicio: s.value }))
-                }
-              />
-            ))}
-          </Section>
-
-          <Section
-            title="Color"
-            open={sections.color}
-            onToggle={() => toggleSection('color')}
-          >
-            <Select
-              placeholder="Todos"
-              value={borrador.color ?? ''}
-              onChange={(v) =>
-                setBorrador((b) => ({ ...b, color: v ? v : null }))
-              }
-              options={['Negro', 'Blanco', 'Azul', 'Rojo', 'Verde']}
-            />
-          </Section>
-
-          <Section
-            title="Material"
-            open={sections.material}
-            onToggle={() => toggleSection('material')}
-          >
-            <Select
-              placeholder="Todos"
-              value={borrador.material ?? ''}
-              onChange={(v) =>
-                setBorrador((b) => ({ ...b, material: v ? v : null }))
-              }
-              options={['Algodón', 'Denim', 'Cuero', 'Poliéster', 'Lana']}
-            />
-          </Section>
-
-          <Section
-            title="Talla"
-            open={sections.talla}
-            onToggle={() => toggleSection('talla')}
-          >
             <div className="flex flex-wrap gap-2">
-              {TALLAS.map((t) => (
+              {TIPOS_SERVICIO_UI.map((s) => (
                 <Pill
-                  key={t}
-                  label={t}
-                  active={borrador.tallas.includes(t)}
-                  onClick={() => toggleTalla(t)}
+                  key={s.value}
+                  label={s.label}
+                  active={borrador.tipoServicio.includes(s.value)}
+                  onClick={() => toggleTipoServicio(s.value)}
                 />
               ))}
             </div>
           </Section>
 
-          <Section
-            title="Rango de Precio"
-            open={sections.precio}
-            onToggle={() => toggleSection('precio')}
-          >
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                placeholder="Mín"
-                value={borrador.precioMin ?? ''}
-                onChange={(e) =>
-                  setBorrador((b) => ({
-                    ...b,
-                    precioMin: e.target.value ? Number(e.target.value) : null,
-                  }))
-                }
-                className="h-10 w-full rounded-md border border-ink-100 bg-white px-3 text-[14px] text-ink-700 focus:border-brand-500 focus:outline-none"
-              />
-              <span className="text-ink-500">—</span>
-              <input
-                type="number"
-                placeholder="Máx"
-                value={borrador.precioMax ?? ''}
-                onChange={(e) =>
-                  setBorrador((b) => ({
-                    ...b,
-                    precioMax: e.target.value ? Number(e.target.value) : null,
-                  }))
-                }
-                className="h-10 w-full rounded-md border border-ink-100 bg-white px-3 text-[14px] text-ink-700 focus:border-brand-500 focus:outline-none"
-              />
-            </div>
-          </Section>
+          {/* Solo mostrar si NO es modo tiendas */}
+          {!isTienda && (
+            <>
+              <Section
+                title="Color"
+                open={sections.color}
+                onToggle={() => toggleSection('color')}
+              >
+                <Select
+                  placeholder="Todos"
+                  value={borrador.color ?? ''}
+                  onChange={(v) =>
+                    setBorrador((b) => ({ ...b, color: v ? v : null }))
+                  }
+                  options={opciones.colores}
+                />
+              </Section>
+
+              <Section
+                title="Material"
+                open={sections.material}
+                onToggle={() => toggleSection('material')}
+              >
+                <Select
+                  placeholder="Todos"
+                  value={borrador.material ?? ''}
+                  onChange={(v) =>
+                    setBorrador((b) => ({ ...b, material: v ? v : null }))
+                  }
+                  options={opciones.materiales}
+                />
+              </Section>
+
+              <Section
+                title="Talla"
+                open={sections.talla}
+                onToggle={() => toggleSection('talla')}
+              >
+                <div className="flex flex-wrap gap-2">
+                  {opciones.tallas.map((t) => (
+                    <Pill
+                      key={t}
+                      label={t}
+                      active={borrador.tallas.includes(t)}
+                      onClick={() => toggleTalla(t)}
+                    />
+                  ))}
+                </div>
+              </Section>
+
+              <Section
+                title="Rango de Precio"
+                open={sections.precio}
+                onToggle={() => toggleSection('precio')}
+              >
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    placeholder="Mín"
+                    value={borrador.precioMin ?? ''}
+                    onChange={(e) =>
+                      setBorrador((b) => ({
+                        ...b,
+                        precioMin: e.target.value ? Number(e.target.value) : null,
+                      }))
+                    }
+                    className="h-10 w-full rounded-md border border-ink-100 bg-white px-3 text-[14px] text-ink-700 focus:border-brand-500 focus:outline-none"
+                  />
+                  <span className="text-ink-500">—</span>
+                  <input
+                    type="number"
+                    placeholder="Máx"
+                    value={borrador.precioMax ?? ''}
+                    onChange={(e) =>
+                      setBorrador((b) => ({
+                        ...b,
+                        precioMax: e.target.value ? Number(e.target.value) : null,
+                      }))
+                    }
+                    className="h-10 w-full rounded-md border border-ink-100 bg-white px-3 text-[14px] text-ink-700 focus:border-brand-500 focus:outline-none"
+                  />
+                </div>
+              </Section>
+            </>
+          )}
         </div>
 
         {/* Footer buttons */}
@@ -456,21 +431,43 @@ export default function FilterPanel({ open, filtros, onChange, onClose }: Props)
  * Útil cuando ya tienes la data cargada y no quieres re-fetchear al backend
  * (ej. en DetalleTiendaPage donde solo filtras dentro del catálogo de UNA tienda).
  *
- * Nota: campos como `entrega`, `color`, `material`, `tallas`, `tiposProducto`
- * no se aplican porque los productos mock no tienen esa info. Cuando el backend
- * exista, estos llegarán como query params al endpoint.
+ * Aplica: categoría, tipoServicio, tiposProducto, material, color, tallas, precioMin/Max.
+ * No aplica: entrega (pendiente columna ofrece_envio en tiendas).
  */
 export function aplicarFiltrosCliente(
   productos: import('../types/IProducto').IProducto[],
   filtros: IFiltrosCatalogo,
 ): import('../types/IProducto').IProducto[] {
   return productos.filter((p) => {
+    if (filtros.categorias.length > 0 && !filtros.categorias.includes(p.categoria))
+      return false;
     if (
-      filtros.categorias.length > 0 &&
-      !filtros.categorias.includes(p.categoria)
+      filtros.tiposProducto.length > 0 &&
+      (p.tipoProducto == null || !filtros.tiposProducto.includes(p.tipoProducto))
     )
       return false;
-    if (filtros.tipoServicio && p.tipoServicio !== filtros.tipoServicio)
+
+    if (filtros.tipoServicio.length > 0) {
+      const coincideTipo = filtros.tipoServicio.includes(p.tipoServicio);
+      const esCompraDirectaHibrida =
+        filtros.tipoServicio.includes('COMPRA_DIRECTA') && p.precioFinal != null;
+
+      if (!coincideTipo && !esCompraDirectaHibrida) return false;
+    }
+
+    if (
+      filtros.material != null &&
+      !p.especificaciones?.some(
+        (e) => e.etiqueta === 'Material' && e.valor === filtros.material,
+      )
+    )
+      return false;
+    if (filtros.color != null && !p.variantes?.some((v) => v.color === filtros.color))
+      return false;
+    if (
+      filtros.tallas.length > 0 &&
+      !p.variantes?.some((v) => v.talla != null && filtros.tallas.includes(v.talla))
+    )
       return false;
     if (filtros.precioMin != null && (p.precioFinal ?? Infinity) < filtros.precioMin)
       return false;

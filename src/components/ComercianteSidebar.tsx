@@ -53,13 +53,18 @@ export default function ComercianteSidebar() {
       </nav>
 
       <div className="p-3 border-t border-white/10 space-y-0.5">
-        <Link
-          to={RUTAS.INICIO}
-          className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-white/65 hover:bg-white/5 hover:text-white transition-colors"
+        {/* Ver Tienda — deshabilitado hasta implementación futura */}
+        <div
+          className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-white/25 cursor-not-allowed select-none"
+          title="Próximamente disponible"
         >
           <MaterialIcon name="storefront" style={{ fontSize: '18px' }} />
           Ver Tienda
-        </Link>
+          <span className="ml-auto text-[10px] font-semibold uppercase tracking-wide bg-white/10 text-white/40 px-1.5 py-0.5 rounded">
+            Pronto
+          </span>
+        </div>
+
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-white/65 hover:bg-red-500/15 hover:text-red-400 transition-colors"

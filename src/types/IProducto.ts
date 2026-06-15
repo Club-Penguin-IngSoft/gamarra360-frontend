@@ -5,12 +5,8 @@
 
 export type TipoServicio = 'COMPRA_DIRECTA' | 'PERSONALIZABLE' | 'COTIZACION';
 
-export type Categoria =
-  | 'HOMBRE'
-  | 'MUJER'
-  | 'NINOS'
-  | 'UNISEX_ADULTOS'
-  | 'UNISEX_NINOS';
+/** Categoría de producto — valor dinámico desde la BD (no enum) */
+export type Categoria = string;
 
 export interface IVarianteProducto {
   id: string;
@@ -26,11 +22,14 @@ export interface IProducto {
   titulo: string;
   descripcion?: string;
   /** ID del comerciante dueño (multi-tenant) */
+  idTienda: string;
   idComerciante: string;
   nombreTienda: string;
   imagenes: string[];
   categoria: Categoria;
   tipoServicio: TipoServicio;
+  /** Tipo de producto (ej. "Polos", "Blusas", "Casacas") — usado por filtros */
+  tipoProducto?: string;
   /** Precio base sin descuento. Undefined cuando es COTIZACION */
   precioBase?: number;
   /** Precio final con descuentos aplicados. Undefined cuando es COTIZACION */

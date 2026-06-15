@@ -21,3 +21,7 @@ export const HTTP_TIMEOUT_MS = 15000;
 
 /** Cantidad de productos por página en el catálogo */
 export const PAGINA_TAMANO_CATALOGO = 12;
+/** Llave pública de Stripe para el frontend */
+export const STRIPE_PUBLISHABLE_KEY: string =
+  (import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined) ??
+  '';

@@ -9,9 +9,8 @@
  * junto con totalPaginas y totalElementos para que la UI pueda renderizar
  * los controles de paginación correctamente.
  */
-
 import { useEffect, useState } from 'react';
-import { listarProductos, listarProductosPaginados } from '../services/catalogoService';
+import { listarProductosPaginados } from '../services/catalogoService';
 import type { IProducto } from '../types/IProducto';
 import type { IFiltrosCatalogo } from '../types/IFiltro';
 
@@ -19,7 +18,11 @@ function tieneFiltrosActivos(filtros?: Partial<IFiltrosCatalogo>): boolean {
   if (!filtros) return false;
   return (
     (filtros.categorias?.length ?? 0) > 0 ||
-    filtros.tipoServicio != null ||
+    (filtros.tiposProducto?.length ?? 0) > 0 ||
+    (filtros.tipoServicio?.length ?? 0) > 0 ||
+    filtros.material != null ||
+    filtros.color != null ||
+    (filtros.tallas?.length ?? 0) > 0 ||
     filtros.precioMin != null ||
     filtros.precioMax != null
   );
@@ -46,14 +49,37 @@ export function useCatalogo(
     setError(null);
 
     if (conFiltros) {
-      // ── Con filtros: trae lote grande, filtra y pagina en memoria ──────
-      listarProductos(filtros)
-        .then((todos) => {
+      // Con filtros: trae lote grande (page=0, size=500), filtra y pagina en memoria
+      listarProductosPaginados(0, 500, filtros)
+        .then(({ contenido }) => {
           if (cancelado) return;
-          const total = todos.length;
+
+          // Aplicar filtros client-side
+          let filtrados = contenido;
+          if (filtros?.categorias && filtros.categorias.length > 0) {
+            filtrados = filtrados.filter(p => filtros.categorias!.includes(p.categoria));
+          }
+          if (filtros?.tipoServicio && filtros.tipoServicio.length > 0) {
+            filtrados = filtrados.filter(p => {
+              const coincideTipo = filtros.tipoServicio!.includes(p.tipoServicio);
+              const esCompraDirectaHibrida =
+                filtros.tipoServicio!.includes('COMPRA_DIRECTA') &&
+                p.precioFinal != null;
+              return coincideTipo || esCompraDirectaHibrida;
+            });
+          }
+          if (filtros?.precioMin != null) {
+            filtrados = filtrados.filter(p => (p.precioFinal ?? Infinity) >= filtros.precioMin!);
+          }
+          if (filtros?.precioMax != null) {
+            filtrados = filtrados.filter(p => (p.precioFinal ?? 0) <= filtros.precioMax!);
+          }
+
+          const total = filtrados.length;
           const totalPags = Math.max(1, Math.ceil(total / size));
           const safePage = Math.min(page, totalPags);
-          const slice = todos.slice((safePage - 1) * size, safePage * size);
+          const slice = filtrados.slice((safePage - 1) * size, safePage * size);
+
           setProductos(slice);
           setTotalPaginas(totalPags);
           setTotalElementos(total);
@@ -61,8 +87,8 @@ export function useCatalogo(
         .catch((e: Error) => { if (!cancelado) setError(e.message); })
         .finally(() => { if (!cancelado) setCargando(false); });
     } else {
-      // ── Sin filtros: server-side pagination ─────────────────────────────
-      listarProductosPaginados(page - 1, size)   // convierte a 0-indexed
+      // Sin filtros: server-side pagination — convierte 1-indexed → 0-indexed
+      listarProductosPaginados(page - 1, size)
         .then(({ contenido, totalPaginas: tp, totalElementos: te }) => {
           if (cancelado) return;
           setProductos(contenido);
