@@ -164,6 +164,7 @@ function adaptarProducto(p: IProductoBackend): IProducto {
     id: String(p.idProducto),
     titulo: p.nombre,
     descripcion: p.descripcion,
+    idTienda: String(p.idTienda ?? ''),
     idComerciante: String(p.idComerciante ?? p.idTienda ?? ''),
     nombreTienda: p.nombreTienda ?? '',
     imagenes: urlsImagenes,

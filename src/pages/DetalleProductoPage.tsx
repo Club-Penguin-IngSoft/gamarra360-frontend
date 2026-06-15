@@ -117,7 +117,7 @@ function StoreCard({ producto }: { producto: IProducto }) {
         </span>
       </div>
       <Link
-        to={RUTAS.DETALLE_TIENDA(producto.idComerciante)}
+        to={RUTAS.DETALLE_TIENDA(producto.idTienda)}
         className="inline-flex items-center text-[15px] font-medium text-brand-600 hover:text-brand-500"
       >
         Visitar tienda
@@ -616,10 +616,10 @@ function RelatedProducts({ producto }: { producto: IProducto }) {
   const [relacionados, setRelacionados] = useState<IProducto[]>([]);
 
   useEffect(() => {
-    listarProductosDeTienda(producto.idComerciante, producto.id).then(
+    listarProductosDeTienda(producto.idTienda, producto.id).then(
       setRelacionados,
     );
-  }, [producto.idComerciante, producto.id]);
+  }, [producto.idTienda, producto.id]);
 
   if (relacionados.length === 0) return null;
 

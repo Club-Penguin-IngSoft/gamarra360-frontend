@@ -37,7 +37,6 @@ import MisPedidosPage from '../pages/MisPedidosPage';
 import DetallePedidoPage from '../pages/DetallePedidoPage';
 import PedidoDetallePage from '../pages/PedidoDetallePage';
 import MiCuentaPage from '../pages/MiCuentaPage';
-import ConfiguracionPage from '../pages/ConfiguracionPage';
 import StripeCompletado from '../pages/comerciante/StripeCompletado';
 import StripeRefresh from '../pages/comerciante/StripeRefresh';
 import SolicitarCotizacionPage from '../pages/SolicitarCotizacionPage';
