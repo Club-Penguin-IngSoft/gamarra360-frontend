@@ -237,22 +237,22 @@ function CantidadStepper({
   );
 }
 
-function EntregaInfo({ mostrarRetiroEnTienda = true }: { mostrarRetiroEnTienda?: boolean }) {
+function EntregaInfo({ ofreceEnvio }: { ofreceEnvio?: boolean }) {
   return (
     <div className="flex flex-col gap-3 border-t border-ink-100 pt-8">
       <span className="text-[12px] font-semibold tracking-[0.08em] text-ink-900">
         ENTREGA
       </span>
-      <div className="flex items-center gap-2 text-[15px] text-ink-700">
-        <Truck className="h-5 w-5 text-ink-500" />
-        <span>Envío a domicilio</span>
-      </div>
-      {mostrarRetiroEnTienda && (
+      {ofreceEnvio && (
         <div className="flex items-center gap-2 text-[15px] text-ink-700">
-          <StoreIcon className="h-5 w-5 text-ink-500" />
-          <span>Retiro en tienda</span>
+          <Truck className="h-5 w-5 text-ink-500" />
+          <span>Envío a domicilio</span>
         </div>
       )}
+      <div className="flex items-center gap-2 text-[15px] text-ink-700">
+        <StoreIcon className="h-5 w-5 text-ink-500" />
+        <span>Retiro en tienda</span>
+      </div>
     </div>
   );
 }
@@ -354,7 +354,7 @@ function CompraDirectaInfo({ producto }: { producto: IProducto }) {
         Añadir al carrito
       </button>
 
-      <EntregaInfo />
+      <EntregaInfo ofreceEnvio={producto.tiendaOfreceEnvio} />
     </div>
   );
 }
@@ -467,8 +467,7 @@ function PersonalizableInfo({ producto }: { producto: IProducto }) {
         Añadir al carrito
       </button>
 
-      {/* Entrega: ambas opciones como placeholder hasta que BD soporte tipo_entrega */}
-      <EntregaInfo />
+      <EntregaInfo ofreceEnvio={producto.tiendaOfreceEnvio} />
     </div>
   );
 }
@@ -521,7 +520,7 @@ function CotizacionInfo({ producto }: { producto: IProducto }) {
         Solicitar cotización
       </Link>
 
-      <EntregaInfo />
+      <EntregaInfo ofreceEnvio={producto.tiendaOfreceEnvio} />
     </div>
   );
 }

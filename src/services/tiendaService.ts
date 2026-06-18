@@ -3,7 +3,7 @@
  * Conectado a los endpoints públicos del backend Spring Boot.
  */
 
-import type { ITienda } from '../types/ITienda';
+import type { ITienda, GaleriaGamarra } from '../types/ITienda';
 import type { IFiltrosTiendas } from '../types/IFiltro';
 import apiClient from './apiClient';
 
@@ -15,9 +15,11 @@ interface ITiendaBackend {
   informacion?: string;
   foto: string;
   verificada?: boolean;
-  categorias?: string[];     // Categorías que vende la tienda
-  tiposServicio?: string[];  // Tipos de servicio que ofrece
-  tiposProducto?: string[];  // Tipos de producto (Polos, Blusas, etc.)
+  categorias?: string[];
+  tiposServicio?: string[];
+  tiposProducto?: string[];
+  galeria?: string;
+  ofreceEnvio?: boolean;
 }
 
 /* ── Adaptador backend → ITienda ──────────────────────────────────────── */
@@ -29,10 +31,11 @@ function adaptarTienda(t: ITiendaBackend): ITienda {
     descripcion: t.informacion,
     logo: t.foto,
     verificada: t.verificada,
-    // Categorías dinámicas desde BD (strings como "Hombre", "Mujer", etc.)
     categorias: t.categorias ?? [],
     tiposServicio: (t.tiposServicio as any) ?? ['COMPRA_DIRECTA'],
     tiposProducto: t.tiposProducto ?? [],
+    galeria: t.galeria as GaleriaGamarra | undefined,
+    ofreceEnvio: t.ofreceEnvio ?? false,
   };
 }
 
@@ -65,9 +68,12 @@ function aplicarFiltrosTiendaClienteSide(
     );
   }
 
-  // Filtrar por galería (si se envía)
-  if (filtros.galeria) {
-    resultado = resultado.filter((t) => t.galeria === filtros.galeria);
+  // Filtrar por galería: la tienda debe pertenecer a AL MENOS UNA de las galerías seleccionadas
+  if (filtros.galerias && filtros.galerias.length > 0) {
+    const galerias = filtros.galerias;
+    resultado = resultado.filter(
+      (t) => t.galeria != null && galerias.includes(t.galeria as GaleriaGamarra),
+    );
   }
 
   return resultado;
