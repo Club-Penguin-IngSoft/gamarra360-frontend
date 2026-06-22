@@ -19,6 +19,8 @@ interface ITiendaBackend {
   tiposServicio?: string[];
   tiposProducto?: string[];
   galeria?: string;
+  piso?: string;
+  stand?: string;
   ofreceEnvio?: boolean;
 }
 
@@ -35,6 +37,8 @@ function adaptarTienda(t: ITiendaBackend): ITienda {
     tiposServicio: (t.tiposServicio as any) ?? ['COMPRA_DIRECTA'],
     tiposProducto: t.tiposProducto ?? [],
     galeria: t.galeria as GaleriaGamarra | undefined,
+    piso: t.piso,
+    stand: t.stand,
     ofreceEnvio: t.ofreceEnvio ?? false,
   };
 }
@@ -144,5 +148,56 @@ export interface IMiTiendaResumen {
 
 export async function obtenerMiTienda(): Promise<IMiTiendaResumen> {
   const { data } = await apiClient.get<IMiTiendaResumen>('/tiendas/mi-tienda');
+  return data;
+}
+
+/* ── Perfil del comerciante autenticado ──────────────────────────────────── */
+
+export interface IPerfilComerciante {
+  // Negocio
+  nombreTienda: string;
+  razonSocial: string;
+  ruc: string;
+  galeria?: string;
+  piso?: string;
+  stand?: string;
+  logoUrl?: string;
+  informacion?: string;
+  verificada?: boolean;
+  // Titular
+  email: string;
+  nombres: string;
+  primerApellido: string;
+  segundoApellido?: string;
+  tipoDocumento: string;
+  dni: string;
+  telefono: string;
+}
+
+export interface IPerfilComerciantePayload {
+  nombreTienda: string;
+  razonSocial: string;
+  galeria?: string;
+  piso?: string;
+  stand?: string;
+  logoUrl?: string;
+  informacion?: string;
+  nombres: string;
+  primerApellido: string;
+  segundoApellido: string;
+  tipoDocumento: string;
+  dni: string;
+  telefono: string;
+}
+
+export async function obtenerPerfilComerciante(): Promise<IPerfilComerciante> {
+  const { data } = await apiClient.get<IPerfilComerciante>('/comerciantes/perfil');
+  return data;
+}
+
+export async function actualizarPerfilComerciante(
+  payload: IPerfilComerciantePayload,
+): Promise<IPerfilComerciante> {
+  const { data } = await apiClient.put<IPerfilComerciante>('/comerciantes/perfil', payload);
   return data;
 }

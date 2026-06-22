@@ -48,6 +48,7 @@ import TableroDePedidosPage from '../pages/comerciante/TableroDePedidosPage';
 import DetalleDePedidoComerciantePage from '../pages/comerciante/DetalleDePedidoComerciantePage';
 import TableroDePersonalizacionesPage from '../pages/comerciante/TableroDePersonalizacionesPage';
 import DetalleDePersonalizacionComerciantePage from '../pages/comerciante/DetalleDePersonalizacionComerciantePage';
+import MiCuentaComerciantePage from '../pages/comerciante/MiCuentaPage';
 import { useAuth } from '../hooks/useAuth';
 /**
  * Definición de rutas. NO incluye BrowserRouter — ese se monta en `main.tsx`
@@ -120,6 +121,7 @@ export default function AppRouter() {
         <Route path={RUTAS.COMERCIANTE_PERSONALIZACION_DETALLE()} element={<DetalleDePersonalizacionComerciantePage />} />
         <Route path={RUTAS.COMERCIANTE_COTIZACIONES} element={<CotizacionesComerciantePage />} />
         <Route path={RUTAS.COMERCIANTE_COTIZACION_DETALLE()} element={<DetalleCotizacionComerciantePage />} />
+        <Route path={RUTAS.COMERCIANTE_CUENTA} element={<MiCuentaComerciantePage />} />
         <Route
           path={RUTAS.COMERCIANTE_NOTIFICACIONES}
           element={

@@ -56,6 +56,10 @@ export interface ITienda {
   tiposProducto?: string[];
   /** Galería de Gamarra a la que pertenece físicamente la tienda */
   galeria?: GaleriaGamarra;
+  /** Piso dentro de la galería (ej. "Piso 2") */
+  piso?: string;
+  /** Número de stand dentro del piso (ej. "Stand 45") */
+  stand?: string;
   /** Si la tienda ofrece envío a domicilio */
   ofreceEnvio?: boolean;
   /** Dirección física dentro de la galería (ej. "3er Piso, Stand 302-A") */
