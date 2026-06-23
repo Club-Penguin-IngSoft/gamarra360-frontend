@@ -241,6 +241,8 @@ export interface ICotizacionDetalle {
   fotoTienda?: string;
   productos: ICotizacionDetalleProducto[];
   respuesta?: ICotizacionRespuesta;
+  precioDeseado?: number;
+  pedidoId?: number;
 }
 
 export interface ICotizacionRequest {
@@ -255,4 +257,10 @@ export interface IProductoCotizacionDto {
   imagenUrl?: string;
   especificacion?: string;
   cantidad?: number;
+}
+
+export interface IContraPropuestaRequest {
+  precioDeseado?: number;
+  especificacion?: string;
+  comentario?: string;
 }

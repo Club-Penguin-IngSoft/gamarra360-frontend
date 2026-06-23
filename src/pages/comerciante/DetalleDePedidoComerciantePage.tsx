@@ -37,7 +37,7 @@ export default function DetalleDePedidoComerciantePage() {
     return (
       <div className="flex min-h-screen">
         <ComercianteSidebar />
-        <main className="ml-64 flex-1 flex items-center justify-center bg-gray-100">
+        <main className="flex-1 flex items-center justify-center bg-gray-100">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-primario" />
         </main>
       </div>
@@ -48,7 +48,7 @@ export default function DetalleDePedidoComerciantePage() {
     return (
       <div className="flex min-h-screen">
         <ComercianteSidebar />
-        <main className="ml-64 flex-1 flex flex-col items-center justify-center gap-4 bg-gray-100">
+        <main className="flex-1 flex flex-col items-center justify-center gap-4 bg-gray-100">
           <p className="text-[13px] text-gray-500">{error ?? 'Pedido no encontrado.'}</p>
           <button onClick={() => navigate(RUTAS.COMERCIANTE_PEDIDOS)} className="text-[13px] text-primario underline">
             Volver a Pedidos
@@ -65,7 +65,7 @@ export default function DetalleDePedidoComerciantePage() {
     <div className="flex min-h-screen">
       <ComercianteSidebar />
 
-      <main className="ml-64 flex-1 bg-gray-100 p-7">
+      <main className="flex-1 bg-gray-100 p-7">
         <p className="text-[12px] text-gray-500 mb-2">
           <Link to={RUTAS.COMERCIANTE_PEDIDOS} className="hover:text-primario hover:underline">
             Pedidos

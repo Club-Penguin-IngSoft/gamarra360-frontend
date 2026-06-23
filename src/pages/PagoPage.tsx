@@ -34,11 +34,17 @@ interface PersonalizacionGrupoState {
   idVarianteProducto: number;
   precioUnitario: number;
 }
+interface CotizacionGrupoState {
+  vendedorId: number;
+  precioUnitario: number;
+}
 interface CheckoutState {
   entregasPorTienda?: Record<string, EntregaTiendaState>;
   direccionEntrega?: string;
   personalizacionId?: number;
   personalizacionGrupo?: PersonalizacionGrupoState;
+  cotizacionId?: number;
+  cotizacionGrupo?: CotizacionGrupoState;
 }
 
 // ── Formulario interno de Stripe ──────────────────────────────────────
@@ -120,7 +126,7 @@ export default function PagoPage() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { entregasPorTienda = {}, direccionEntrega = '', personalizacionId, personalizacionGrupo } =
+  const { entregasPorTienda = {}, direccionEntrega = '', personalizacionId, personalizacionGrupo, cotizacionId, cotizacionGrupo } =
     (location.state as CheckoutState) ?? {};
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   //const [ordenId, setOrdenId] = useState<number | null>(null);
@@ -151,6 +157,12 @@ export default function PagoPage() {
       return;
     }
 
+    if (cotizacionGrupo) {
+      const subtotalSinDescuento = cotizacionGrupo.precioUnitario;
+      setResumen({ subtotalSinDescuento, descuentos: 0, costoEnvio, total: subtotalSinDescuento + costoEnvio });
+      return;
+    }
+
     const subtotalSinDescuento = items.reduce((acc, i) => {
       const base = i.producto.precioBase ?? i.producto.precioFinal ?? 0;
       return acc + base * i.cantidad;
@@ -169,7 +181,7 @@ export default function PagoPage() {
 
   // ── Al montar: crea la orden en el backend y obtiene el clientSecret ──
   useEffect(() => {
-    if ((!items.length && !personalizacionGrupo) || !usuario) return;
+    if ((!items.length && !personalizacionGrupo && !cotizacionGrupo) || !usuario) return;
 
   const iniciarPago = async () => {
     setIniciando(true);
@@ -194,6 +206,24 @@ export default function PagoPage() {
             cantidad: 1,
             precio: personalizacionGrupo.precioUnitario,
             personalizacionId,
+          }],
+        }];
+      } else if (cotizacionGrupo) {
+        const idComerciante = String(cotizacionGrupo.vendedorId);
+        const entregaTienda = entregasPorTienda[idComerciante];
+        const tipoEntrega = entregaTienda?.tipoEntrega ?? 'DELIVERY';
+        const costoEntrega = tipoEntrega === 'DELIVERY' ? COSTO_DELIVERY : 0;
+
+        grupos = [{
+          vendedorId: cotizacionGrupo.vendedorId,
+          tipoEntrega,
+          direccionEntrega: tipoEntrega === 'DELIVERY' ? direccionEntrega : undefined,
+          total: cotizacionGrupo.precioUnitario + costoEntrega,
+          items: [{
+            idVarianteProducto: null,
+            cantidad: 1,
+            precio: cotizacionGrupo.precioUnitario,
+            cotizacionId,
           }],
         }];
       } else {
@@ -246,7 +276,7 @@ export default function PagoPage() {
 
       if (personalizacionId) {
         sessionStorage.setItem('pendingPersonalizacionId', String(personalizacionId));
-      } else {
+      } else if (!cotizacionId) {
         vaciarCarrito();
       }
     } catch (err) {
@@ -262,7 +292,7 @@ export default function PagoPage() {
     iniciarPago();
   }, []); // solo al montar
 
-  if (!items.length && !clientSecret && !personalizacionGrupo) {
+  if (!items.length && !clientSecret && !personalizacionGrupo && !cotizacionGrupo) {
     return (
       <div className="flex min-h-screen flex-col bg-surface-muted">
         <TopBar active="Inicio" />

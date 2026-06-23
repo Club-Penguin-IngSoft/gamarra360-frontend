@@ -37,11 +37,19 @@ interface EntregaTienda {
   mostrarFechas: boolean;
 }
 
+interface ICotizacionCheckoutState {
+  cotizacionId: number;
+  vendedorId: number;
+  nombreTienda?: string;
+  precioUnitario: number;
+}
+
 export default function CheckoutEntregaPage() {
   const { items } = useCarrito();
   const navigate = useNavigate();
   const location = useLocation();
   const personalizacion = (location.state as { personalizacion?: IPersonalizacionCheckoutState } | null)?.personalizacion;
+  const cotizacion = (location.state as { cotizacion?: ICotizacionCheckoutState } | null)?.cotizacion;
   const [direccion, setDireccion] = useState({
     calle: '',
     distrito: '',
@@ -52,6 +60,7 @@ export default function CheckoutEntregaPage() {
 
   // Agrupar items por idComerciante (mismo criterio que PagoPage), o un único
   // grupo sintético si venimos del flujo "Aceptar y Pagar" / "Pagar ahora" de una personalización
+  // o "Pagar cotización" de una cotización aceptada
   const porComerciante: Record<string, ICheckoutGrupo> = personalizacion
     ? {
         [String(personalizacion.vendedorId)]: {
@@ -64,6 +73,20 @@ export default function CheckoutEntregaPage() {
             precioUnitario: personalizacion.precioUnitario,
             precioBase: personalizacion.precioUnitario,
             idVarianteProducto: personalizacion.detalleProductoId,
+          }],
+        },
+      }
+    : cotizacion
+    ? {
+        [String(cotizacion.vendedorId)]: {
+          nombreTienda: cotizacion.nombreTienda ?? 'Tienda',
+          items: [{
+            id: `cotizacion-${cotizacion.cotizacionId}`,
+            nombreProducto: 'Cotización acordada',
+            cantidad: 1,
+            precioUnitario: cotizacion.precioUnitario,
+            precioBase: cotizacion.precioUnitario,
+            idVarianteProducto: null,
           }],
         },
       }
@@ -157,6 +180,15 @@ export default function CheckoutEntregaPage() {
                 vendedorId: personalizacion.vendedorId,
                 idVarianteProducto: personalizacion.detalleProductoId,
                 precioUnitario: personalizacion.precioUnitario,
+              },
+            }
+          : {}),
+        ...(cotizacion
+          ? {
+              cotizacionId: cotizacion.cotizacionId,
+              cotizacionGrupo: {
+                vendedorId: cotizacion.vendedorId,
+                precioUnitario: cotizacion.precioUnitario,
               },
             }
           : {}),

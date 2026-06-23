@@ -149,7 +149,7 @@ export default function GestionInventarioPage() {
     <div className="flex min-h-screen">
       <ComercianteSidebar />
 
-      <main className="ml-64 flex-1 bg-gray-100 p-7">
+      <main className="flex-1 bg-gray-100 p-7">
         <p className="text-[12px] text-gray-500 mb-2">
           Inicio &rsaquo; <span className="text-primario font-medium">Inventario</span>
         </p>

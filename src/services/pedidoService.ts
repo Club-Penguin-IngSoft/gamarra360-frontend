@@ -18,6 +18,7 @@ export interface IItemParaDetalle {
   cantidad: number;
   precio: number;
   personalizacionId?: number | null;
+  cotizacionId?: number | null;
 }
 
 export interface IGrupoTienda {

@@ -9,7 +9,6 @@
 import {
   createContext,
   useCallback,
-  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -30,19 +29,15 @@ export const AuthContext = createContext<IAuthContextValue | undefined>(
 );
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [usuario, setUsuario] = useState<IUsuario | null>(null);
-
-  // Rehidratación desde localStorage al montar
-  useEffect(() => {
-    const raw = localStorage.getItem(USUARIO_KEY);
-    if (raw) {
-      try {
-        setUsuario(JSON.parse(raw) as IUsuario);
-      } catch {
-        localStorage.removeItem(USUARIO_KEY);
-      }
+  const [usuario, setUsuario] = useState<IUsuario | null>(() => {
+    try {
+      const raw = localStorage.getItem(USUARIO_KEY);
+      return raw ? (JSON.parse(raw) as IUsuario) : null;
+    } catch {
+      localStorage.removeItem(USUARIO_KEY);
+      return null;
     }
-  }, []);
+  });
 
   const iniciarSesion = useCallback((sesion: ISesion) => {
     localStorage.setItem(TOKEN_KEY, sesion.token);

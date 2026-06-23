@@ -3,6 +3,7 @@ import type {
   ICotizacionRequest,
   ICotizacionResumen,
   ICotizacionDetalle,
+  IContraPropuestaRequest,
 } from '../types/IPedido';
 
 export interface IRespuestaCotizacionRequest {
@@ -47,6 +48,15 @@ async function responder(id: number, req: IRespuestaCotizacionRequest): Promise<
   return data;
 }
 
+async function contraProponerCotizacion(id: number, req: IContraPropuestaRequest): Promise<ICotizacionDetalle> {
+  const { data } = await apiClient.post<ICotizacionDetalle>(`/cotizaciones/${id}/contra-proponer`, req);
+  return data;
+}
+
+async function cancelarCotizacionComerciante(id: number): Promise<void> {
+  await apiClient.patch(`/cotizaciones/comerciante/${id}/cancelar`);
+}
+
 export const cotizacionService = {
   crearCotizacion,
   listarMisCotizaciones,
@@ -55,4 +65,6 @@ export const cotizacionService = {
   aceptar,
   rechazar,
   responder,
+  contraProponerCotizacion,
+  cancelarCotizacionComerciante,
 };
