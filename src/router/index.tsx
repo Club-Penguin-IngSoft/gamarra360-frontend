@@ -50,6 +50,7 @@ import TableroDePersonalizacionesPage from '../pages/comerciante/TableroDePerson
 import DetalleDePersonalizacionComerciantePage from '../pages/comerciante/DetalleDePersonalizacionComerciantePage';
 import MiCuentaComerciantePage from '../pages/comerciante/MiCuentaPage';
 import { useAuth } from '../hooks/useAuth';
+import PedidoConfirmadoPage from '../pages/PedidoConfirmadoPage';
 /**
  * Definición de rutas. NO incluye BrowserRouter — ese se monta en `main.tsx`
  * para que componentes globales como `CartDrawer` (que viven en StoreProvider)
@@ -136,6 +137,7 @@ export default function AppRouter() {
       {/* Stripe retorno — fuera de RutaProtegida */}
       <Route path="/comerciante/stripe/completado" element={<StripeCompletado />} />
       <Route path="/comerciante/stripe/refresh/:id" element={<StripeRefresh />} />
+      <Route path="/pedido-confirmado" element={<PedidoConfirmadoPage />} />
       <Route path="*" element={<Navigate to={RUTAS.INICIO} replace />} />
     </Routes>
   );

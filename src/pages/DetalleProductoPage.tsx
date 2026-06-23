@@ -215,6 +215,7 @@ function CantidadStepper({
   stockRestante: number;
 }) {
   const stockBajo = stockRestante > 0 && stockRestante <= 5;
+  const sinStock = stockRestante === 0;
   return (
     <div className="flex flex-col gap-3">
       <span className="text-[16px] font-bold tracking-[0.08em] text-ink-900">
@@ -224,9 +225,15 @@ function CantidadStepper({
         <QuantityStepper
           cantidad={cantidad}
           onChange={onChange}
+          min={0}
           max={stockRestante}
           ariaLabel="Selector de cantidad de producto"
         />
+        {sinStock && (
+          <span className="text-[14px] font-semibold text-red-600">
+            ¡NO QUEDAN UNIDADES!
+          </span>
+        )}
         {stockBajo && (
           <span className="text-[14px] font-semibold text-brand-600">
             ¡ÚLTIMAS {stockRestante} UNIDADES!
@@ -289,7 +296,12 @@ function useSeleccionVariante(producto: IProducto) {
       (v) => v.talla === tallaActiva && v.color === colores[colorActivo]?.name,
     );
   }, [producto.variantes, tallaActiva, colores, colorActivo]);
-
+  const stockRestante = varianteSeleccionada?.stock ?? 0;
+  useEffect(() => {
+    if (stockRestante === 0) {
+      setCantidad(0);
+    }
+  }, [stockRestante]); // eslint-disable-line react-hooks/exhaustive-deps
   return {
     colores,
     tallas,
@@ -300,7 +312,7 @@ function useSeleccionVariante(producto: IProducto) {
     cantidad,
     setCantidad,
     varianteSeleccionada,
-    stockRestante: varianteSeleccionada?.stock ?? 0,
+    stockRestante,
   };
 }
 
@@ -314,11 +326,11 @@ function CompraDirectaInfo({ producto }: { producto: IProducto }) {
 
   const handleColorChange = (i: number) => {
     s.setColorActivo(i);
-    s.setCantidad(1);
+    s.setCantidad(0);
   };
   const handleTallaChange = (t: string) => {
     s.setTallaActiva(t);
-    s.setCantidad(1);
+    s.setCantidad(0);
   };
 
   return (
@@ -349,9 +361,10 @@ function CompraDirectaInfo({ producto }: { producto: IProducto }) {
         onClick={() =>
           agregarAlCarrito(producto, s.cantidad, s.varianteSeleccionada?.id)
         }
-        className="h-14 rounded-lg bg-brand-500 text-[16px] font-medium text-white transition-colors hover:bg-brand-600"
+        disabled={s.stockRestante === 0 || s.cantidad === 0}
+        className="h-14 rounded-lg bg-brand-500 text-[16px] font-medium text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-ink-300 disabled:hover:bg-ink-300"
       >
-        Añadir al carrito
+        {s.stockRestante === 0 ? 'Sin stock' : 'Añadir al carrito'}
       </button>
 
       <EntregaInfo ofreceEnvio={producto.tiendaOfreceEnvio} />
@@ -424,11 +437,11 @@ function PersonalizableInfo({ producto }: { producto: IProducto }) {
   
   const handleColorChange = (i: number) => {
     s.setColorActivo(i);
-    s.setCantidad(1);
+    s.setCantidad(0);
   };
   const handleTallaChange = (t: string) => {
     s.setTallaActiva(t);
-    s.setCantidad(1);
+    s.setCantidad(0);
   };
 
   return (
@@ -462,9 +475,10 @@ function PersonalizableInfo({ producto }: { producto: IProducto }) {
         onClick={() =>
           agregarAlCarrito(producto, s.cantidad, s.varianteSeleccionada?.id)
         }
-        className="h-14 rounded-lg bg-brand-500 text-[16px] font-medium text-white transition-colors hover:bg-brand-600"
+        disabled={s.stockRestante === 0 || s.cantidad === 0}
+        className="h-14 rounded-lg bg-brand-500 text-[16px] font-medium text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-ink-300 disabled:hover:bg-ink-300"
       >
-        Añadir al carrito
+        {s.stockRestante === 0 ? 'Sin stock' : 'Añadir al carrito'}
       </button>
 
       <EntregaInfo ofreceEnvio={producto.tiendaOfreceEnvio} />
