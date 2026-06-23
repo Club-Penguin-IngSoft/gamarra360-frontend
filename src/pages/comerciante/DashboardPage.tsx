@@ -87,7 +87,7 @@ export default function DashboardPage() {
     <div className="flex min-h-screen">
       <ComercianteSidebar />
 
-      <main className="ml-64 flex-1 bg-gray-100 min-h-screen p-7">
+      <main className="flex-1 bg-gray-100 min-h-screen p-7">
         {/* Header */}
         <div className="flex items-start justify-between mb-7">
           <div>

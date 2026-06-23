@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Upload, X, Plus, CheckCircle } from 'lucide-react';
+import { Search, Upload, X, CheckCircle } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
 import { RUTAS } from '../constants/rutas';
 import { listarTiendas } from '../services/tiendaService';
-import { buscarProductos, subirImagenS3 } from '../services/catalogoService';
+import { buscarProductos, listarProductosDeTienda, subirImagenS3 } from '../services/catalogoService';
 import { cotizacionService } from '../services/cotizacionService';
 import type { ITienda } from '../types/ITienda';
 import type { IProducto } from '../types/IProducto';
@@ -102,6 +102,7 @@ export default function SolicitarCotizacionPage() {
   const [tipoProductoFiltro, setTipoProductoFiltro] = useState('');
   const [busquedaTienda, setBusquedaTienda]         = useState('');
   const [tiendaSeleccionada, setTiendaSeleccionada] = useState<ITienda | null>(null);
+  const [productosTienda, setProductosTienda]       = useState<IProducto[]>([]);
 
   // Productos
   const [productos, setProductos] = useState<ProductoItem[]>([crearProductoVacio()]);
@@ -126,6 +127,26 @@ export default function SolicitarCotizacionPage() {
       .then(setTodasTiendas)
       .finally(() => setCargandoTiendas(false));
   }, []);
+
+  /* ── Cargar catálogo de la tienda al seleccionarla ────────────────── */
+
+  useEffect(() => {
+    if (!tiendaSeleccionada) {
+      setProductosTienda([]);
+      return;
+    }
+    listarProductosDeTienda(tiendaSeleccionada.id)
+      .then((lista) => {
+        setProductosTienda(lista);
+        // Precarga el dropdown del producto si aún no se ha buscado ni seleccionado nada
+        setProductos((prev) => prev.map((p) =>
+          !p.productoSeleccionado && !p.busquedaQuery.trim()
+            ? { ...p, resultados: lista }
+            : p
+        ));
+      })
+      .catch(() => setProductosTienda([]));
+  }, [tiendaSeleccionada]);
 
   /* ── Tiendas filtradas derivadas ──────────────────────────────────── */
 
@@ -159,15 +180,23 @@ export default function SolicitarCotizacionPage() {
     setProductos((prev) => prev.filter((p) => p.uid !== uid));
   }
 
-  function agregarProducto() {
-    setProductos((prev) => [...prev, crearProductoVacio()]);
-  }
-
   /* ── Búsqueda de productos (debounced) ───────────────────────────── */
 
   function handleBusquedaProducto(uid: string, query: string) {
     actualizarProducto(uid, { busquedaQuery: query, productoSeleccionado: null });
     clearTimeout(timers.current[uid]);
+
+    // Con tienda ya seleccionada: filtrado instantáneo sobre su catálogo (ya cargado)
+    if (tiendaSeleccionada) {
+      const q = query.trim().toLowerCase();
+      const filtrados = q
+        ? productosTienda.filter((p) => p.titulo.toLowerCase().includes(q))
+        : productosTienda;
+      actualizarProducto(uid, { resultados: filtrados, buscando: false, dropdownAbierto: true });
+      return;
+    }
+
+    // Sin tienda seleccionada: búsqueda global server-side (como antes)
     if (query.trim().length < 2) {
       actualizarProducto(uid, { resultados: [], dropdownAbierto: false });
       return;
@@ -176,10 +205,7 @@ export default function SolicitarCotizacionPage() {
     timers.current[uid] = setTimeout(async () => {
       try {
         const res = await buscarProductos(query.trim(), 10);
-        const filtrados = tiendaSeleccionada
-          ? res.filter((p) => p.idComerciante === tiendaSeleccionada.id)
-          : res;
-        actualizarProducto(uid, { resultados: filtrados, buscando: false, dropdownAbierto: true });
+        actualizarProducto(uid, { resultados: res, buscando: false, dropdownAbierto: true });
       } catch {
         actualizarProducto(uid, { buscando: false });
       }
@@ -201,6 +227,10 @@ export default function SolicitarCotizacionPage() {
       busquedaQuery: producto.titulo,
       dropdownAbierto: false,
     });
+    if (!tiendaSeleccionada) {
+      const tienda = todasTiendas.find((t) => String(t.id) === String(producto.idComerciante));
+      if (tienda) setTiendaSeleccionada(tienda);
+    }
   }
 
   /* ── Upload imagen producto manual ───────────────────────────────── */
@@ -429,11 +459,11 @@ export default function SolicitarCotizacionPage() {
           <div className="rounded-2xl bg-white p-6 shadow-sm">
             <div className="mb-2 flex items-center gap-3">
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-500 text-sm font-bold text-white">2</span>
-              <h2 className="text-lg font-semibold text-ink-900">Detalles de los Productos</h2>
+              <h2 className="text-lg font-semibold text-ink-900">Detalles del Producto</h2>
             </div>
             <p className="mb-6 text-sm text-ink-500">
-              Puedes cotizar varios productos. Si deseas personalizar alguno de ellos, ya sea con estampado, bordado industrial o impresión textil,
-              por favor asegúrate de agregar la personalización en el enlace correspondiente.
+              Si deseas personalizar el producto con estampado, bordado industrial o impresión textil,
+              asegúrate de agregar la personalización en el enlace correspondiente.
             </p>
 
             {productos.map((producto, idx) => (
@@ -449,18 +479,9 @@ export default function SolicitarCotizacionPage() {
                 onImagenManual={(file) => handleImagenManual(producto.uid, file)}
                 onAbrirPersonalizacion={() => abrirModal(idx)}
                 onEliminarPersonalizacion={() => eliminarPersonalizacion(producto.uid)}
-                mostrarEliminar={productos.length > 1}
+                mostrarEliminar={false}
               />
             ))}
-
-            <button
-              type="button"
-              onClick={agregarProducto}
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-ink-200 py-3 text-sm font-medium text-ink-500 transition-colors hover:border-brand-400 hover:text-brand-600"
-            >
-              <Plus className="h-4 w-4" />
-              Agregar otro producto
-            </button>
           </div>
 
           {/* Error */}
