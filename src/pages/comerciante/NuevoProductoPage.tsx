@@ -5,6 +5,7 @@ import { RUTAS } from '../../constants/rutas';
 import {
   listarCategorias,
   listarTiposPorCategoria,
+  listarMateriales,
   crearProducto,
   crearVariante,
   resolverTalla,
@@ -93,6 +94,8 @@ export default function NuevoProductoPage() {
   const [idTipoProducto, setIdTipoProducto] = useState<number | ''>('');
   const [categorias, setCategorias] = useState<ICategoriaOpcion[]>([]);
   const [tipos, setTipos] = useState<ITipoProductoOpcion[]>([]);
+  const [materialesBackend, setMaterialesBackend] = useState<{ id: number; nombre: string }[]>([]);
+  const [idMaterial, setIdMaterial] = useState<number | ''>('');
   const [correlativo] = useState(1);
   const [skuInterno, setSkuInterno] = useState('');
 
@@ -131,6 +134,7 @@ export default function NuevoProductoPage() {
 
   useEffect(() => {
     listarCategorias().then(setCategorias).catch(console.error);
+    listarMateriales().then(setMaterialesBackend).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -307,6 +311,7 @@ export default function NuevoProductoPage() {
         esPersonalizable,
         idCategoria: idCategoria as number,
         idTipoProducto: idTipoProducto as number,
+        idMaterial: idMaterial !== '' ? idMaterial : undefined,
         imagenes: imagenesProducto.length > 0
           ? imagenesProducto
           : [],
@@ -446,6 +451,20 @@ export default function NuevoProductoPage() {
                 </select>
                 {errMsg('tipoProducto')}
               </div>
+            </div>
+
+            <div className="mb-4">
+              <label className={labelClass}>Material Principal</label>
+              <select
+                className="w-full h-[42px] border border-gray-300 rounded-lg px-3.5 text-[13px] text-gray-900 bg-white focus:outline-none focus:border-primario transition-colors"
+                value={idMaterial}
+                onChange={(e) => setIdMaterial(e.target.value === '' ? '' : Number(e.target.value))}
+              >
+                <option value="">Sin especificar</option>
+                {materialesBackend.map((m) => (
+                  <option key={m.id} value={m.id}>{m.nombre}</option>
+                ))}
+              </select>
             </div>
 
             {/* Imágenes del producto */}
