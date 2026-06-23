@@ -30,18 +30,8 @@ export default function CatalogoPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [filtros, setFiltros]       = useState<IFiltrosCatalogo>(FILTROS_VACIOS);
 
-  const hayFiltrosReales =
-    (filtros.categorias && filtros.categorias.length > 0) ||
-    (filtros.tipoServicio && filtros.tipoServicio.length > 0) ||
-    filtros.precioMin ||
-    filtros.precioMax;
-
-  const filtrosParaHook = hayFiltrosReales ? filtros : undefined;
-
-  // El hook ya devuelve IProducto[] completamente adaptados desde el service.
-  // NO hay que volver a mapear aquí.
   const { productos, totalPaginas, totalElementos, cargando, error } = useCatalogo(
-    filtrosParaHook,
+    filtros,
     page,
     PAGINA_TAMANO_CATALOGO,
   );

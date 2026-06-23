@@ -77,12 +77,13 @@ function BrandHero({ tienda }: { tienda: ITienda }) {
     .map((w) => w[0]!.toUpperCase())
     .join('');
 
-  const ubicacion =
-    tienda.galeria && tienda.direccion
-      ? `${ETIQUETA_GALERIA[tienda.galeria]}, ${tienda.direccion}`
-      : tienda.galeria
-        ? ETIQUETA_GALERIA[tienda.galeria]
-        : tienda.direccion ?? '';
+  const ubicacion = [
+    tienda.galeria ? ETIQUETA_GALERIA[tienda.galeria] : null,
+    tienda.piso ?? null,
+    tienda.stand ?? null,
+    // Usar direccion solo si no hay piso ni stand (campo legado)
+    !tienda.piso && !tienda.stand ? (tienda.direccion ?? null) : null,
+  ].filter(Boolean).join(', ');
 
   return (
     <section className="relative overflow-hidden rounded-xl bg-ink-800 text-white">

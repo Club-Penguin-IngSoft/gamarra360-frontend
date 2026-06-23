@@ -13,14 +13,16 @@ import { COLORES } from '../styles/tokens';
 import { useGoogleLogin } from '@react-oauth/google';
 import useLogin from '../hooks/useLogin';
 import apiClient from '../services/apiClient';
+import type { GaleriaGamarra } from '../types/ITienda';
+import { ETIQUETA_GALERIA } from '../types/ITienda';
 //import axios from 'axios';
 
 /* ── Datos de selects ───────────────────────────────────────────────────── */
 
-const GALERIAS = [
-  'Galería Guizado', 'Los Inkas', 'Gamarra Center', 'El Rey de Gamarra',
-  'Las Malvinas', 'Galería Molitalia', 'Galería Los Reyes',
-];
+const GALERIA_OPTIONS = (Object.keys(ETIQUETA_GALERIA) as GaleriaGamarra[]).map((k) => ({
+  value: k,
+  label: ETIQUETA_GALERIA[k],
+}));
 const TIPOS_DOCUMENTO = ['DNI', 'Carnet de extranjería', 'Pasaporte'];
 
 //const rutaPorRol: Record<string, string> = {
@@ -59,13 +61,14 @@ function SectionBadge({ num, label }: { num: number; label: string }) {
 }
 
 function FieldSelect({
-  name, value, onChange, placeholder, options, className = '',
+  name, value, onChange, placeholder, options = [], optionItems, className = '',
 }: {
   name: string;
   value: string;
   onChange: (e: ChangeEvent<HTMLSelectElement>) => void;
   placeholder: string;
-  options: string[];
+  options?: string[];
+  optionItems?: { value: string; label: string }[];
   className?: string;
 }) {
   return (
@@ -78,7 +81,9 @@ function FieldSelect({
         style={{ color: value ? '#212529' : '#adb5bd' }}
       >
         <option value="" disabled>{placeholder}</option>
-        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+        {optionItems
+          ? optionItems.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)
+          : options.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
       <MaterialIcon
         name="expand_more"
@@ -329,7 +334,7 @@ export default function RegistroComerciantePage() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <FieldSelect
                 name="galeria" value={galeria} placeholder="Galería"
-                options={GALERIAS} onChange={(e) => setGaleria(e.target.value)}
+                optionItems={GALERIA_OPTIONS} onChange={(e) => setGaleria(e.target.value)}
               />
               <Input
                 type="text" name="piso" placeholder="Piso (opcional)"

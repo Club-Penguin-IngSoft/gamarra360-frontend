@@ -37,6 +37,14 @@ export interface IProducto {
   variantes?: IVarianteProducto[];
   /** Especificaciones técnicas (clave/valor) — ej. MATERIAL / Cuero Top Grain */
   especificaciones?: { etiqueta: string; valor: string }[];
+  /** Material principal del producto (campo plano del backend) */
+  materialPrincipal?: string;
+  /** Lista de materiales del producto (ej. ["Algodón", "Polyester"]) */
+  materiales?: string[];
+  /** Si la tienda que vende este producto ofrece envío a domicilio */
+  tiendaOfreceEnvio?: boolean;
+  /** Galería de Gamarra donde está físicamente la tienda (para filtro de galería) */
+  galeria?: string;
 }
 
 /** Etiqueta visible del producto en cards y badges */
