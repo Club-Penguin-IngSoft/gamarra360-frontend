@@ -127,6 +127,7 @@ export default function MiCuentaPage() {
   const [piso, setPiso] = useState('');
   const [stand, setStand] = useState('');
   const [informacion, setInformacion] = useState('');
+  const [ofreceEnvio, setOfreceEnvio] = useState(false);
   const [logoUrl, setLogoUrl] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoDragging, setLogoDragging] = useState(false);
@@ -159,6 +160,7 @@ export default function MiCuentaPage() {
         setPiso(p.piso ?? '');
         setStand(p.stand ?? '');
         setInformacion(p.informacion ?? '');
+        setOfreceEnvio(p.ofreceEnvio ?? false);
         setLogoUrl(p.logoUrl ?? '');
         setVerificada(p.verificada ?? false);
         setEmail(p.email ?? '');
@@ -204,6 +206,7 @@ export default function MiCuentaPage() {
         piso: piso || undefined,
         stand: stand || undefined,
         informacion: informacion || undefined,
+        ofreceEnvio,
         logoUrl: nuevoLogoUrl ?? logoUrl,
         nombres,
         primerApellido,
@@ -237,6 +240,7 @@ export default function MiCuentaPage() {
         piso: piso || undefined,
         stand: stand || undefined,
         informacion: informacion || undefined,
+        ofreceEnvio,
         logoUrl,
         nombres,
         primerApellido,
@@ -368,6 +372,29 @@ export default function MiCuentaPage() {
                       className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-[11px] text-sm focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100 transition-all"
                     />
                   </div>
+
+                  {/* Envío a domicilio */}
+                  <label className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 cursor-pointer select-none">
+                    <div className="flex items-center gap-2.5">
+                      <MaterialIcon name="local_shipping" style={{ fontSize: '18px', color: '#6c757d' }} />
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">Envío a domicilio</p>
+                        <p className="text-xs text-gray-500">¿Tu tienda ofrece despacho a domicilio?</p>
+                      </div>
+                    </div>
+                    <div
+                      onClick={() => setOfreceEnvio((v) => !v)}
+                      className={`relative flex h-6 w-11 flex-shrink-0 rounded-full transition-colors duration-200 cursor-pointer ${
+                        ofreceEnvio ? 'bg-primario' : 'bg-gray-200'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
+                          ofreceEnvio ? 'translate-x-5' : 'translate-x-0.5'
+                        }`}
+                      />
+                    </div>
+                  </label>
 
                   {/* Logo */}
                   <div>

@@ -35,6 +35,7 @@ export const RUTAS = {
   COMERCIANTE_PERSONALIZACIONES: '/comerciante/personalizaciones',
   COMERCIANTE_PERSONALIZACION_DETALLE: (id: string | number = ':id') => `/comerciante/personalizaciones/${id}`,
   COMERCIANTE_COTIZACIONES: '/comerciante/cotizaciones',
+  COMERCIANTE_PROMOCIONES: '/comerciante/promociones',
   COMERCIANTE_NOTIFICACIONES: '/comerciante/notificaciones',
   COMERCIANTE_CUENTA: '/comerciante/cuenta',
   /** Helper: construye la ruta del formulario de personalización */

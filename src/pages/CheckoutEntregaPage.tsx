@@ -1,57 +1,90 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MapPin, Truck, Store as StoreIcon, ShoppingBag, Package } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
 import { useCarrito } from '../hooks/useCarrito';
+import { useAuth } from '../hooks/useAuth';
 import { formatearPrecio } from '../utils/formatearPrecio';
 import { RUTAS } from '../constants/rutas';
-import type { ICheckoutGrupo } from '../types/IPedido';
+import type { ICheckoutGrupo, IDistritoEnvio } from '../types/IPedido';
 import type { IPersonalizacionCheckoutState } from '../types/IPersonalizacion';
+import { pedidoService } from '../services/pedidoService';
+import { obtenerPerfilCliente } from '../services/clienteService';
 
-const generarFechasEnvio = () => {
-  const dias = [];
-  const opcionesCortas: Intl.DateTimeFormatOptions = { weekday: 'short', day: '2-digit', month: '2-digit' };
-  const opcionesLargas: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };
-  for (let i = 1; i <= 5; i++) {
-    const fecha = new Date();
-    fecha.setDate(fecha.getDate() + i);
-    let label = new Intl.DateTimeFormat('es-PE', opcionesCortas).format(fecha);
-    label = label.replace('.', '');
-    label = label.charAt(0).toUpperCase() + label.slice(1);
-    const textoLargo = `${new Intl.DateTimeFormat('es-PE', opcionesLargas).format(fecha)} de 9 a 21 h.`;
-    dias.push({ id: `dia-${i}`, label, textoLargo });
-  }
-  return dias;
-};
-
-const FECHAS_ENVIO = generarFechasEnvio();
-const COSTO_DELIVERY = 12;
-
-type FechaEnvio = typeof FECHAS_ENVIO[0];
 type TipoEntrega = 'DELIVERY' | 'RECOJO_TIENDA';
 
 interface EntregaTienda {
   tipoEntrega: TipoEntrega;
-  fechaSeleccionada: FechaEnvio;
-  mostrarFechas: boolean;
 }
+
+/* ── Helpers de fecha ─────────────────────────────────────────────────────── */
+
+function fechaConOffset(diasOffset: number): string {
+  const fecha = new Date();
+  fecha.setDate(fecha.getDate() + diasOffset);
+  const raw = new Intl.DateTimeFormat('es-PE', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(fecha);
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
+const TEXTO_DELIVERY = `Llega el ${fechaConOffset(2)}, de 9 a 21 h.`;
+const TEXTO_RECOJO   = `desde el ${fechaConOffset(1)} a las 7 pm`;
+
+/* ── Componente ──────────────────────────────────────────────────────────── */
 
 export default function CheckoutEntregaPage() {
   const { items } = useCarrito();
+  const { usuario } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const personalizacion = (location.state as { personalizacion?: IPersonalizacionCheckoutState } | null)?.personalizacion;
-  const [direccion, setDireccion] = useState({
-    calle: '',
-    distrito: '',
-    ciudad: 'Lima',
-    referencia: '',
-  });
+  const personalizacion = (
+    location.state as { personalizacion?: IPersonalizacionCheckoutState } | null
+  )?.personalizacion;
+
+  /* Dirección */
+  const [calle, setCalle]           = useState('');
+  const [referencia, setReferencia] = useState('');
+  const [idDistrito, setIdDistrito] = useState<number | null>(null);
   const [errorDireccion, setErrorDireccion] = useState('');
 
-  // Agrupar items por idComerciante (mismo criterio que PagoPage), o un único
-  // grupo sintético si venimos del flujo "Aceptar y Pagar" / "Pagar ahora" de una personalización
+  /* Distritos */
+  const [distritos, setDistritos]             = useState<IDistritoEnvio[]>([]);
+  const [cargandoDistritos, setCargandoDistritos] = useState(true);
+
+  useEffect(() => {
+    pedidoService.listarDistritos()
+      .then(setDistritos)
+      .catch(() => {})
+      .finally(() => setCargandoDistritos(false));
+  }, []);
+
+  /* Pre-poblar desde el perfil guardado si el usuario es cliente */
+  useEffect(() => {
+    if (!usuario || usuario.rol !== 'CLIENTE') return;
+    obtenerPerfilCliente()
+      .then(p => {
+        if (p.idDistrito) setIdDistrito(p.idDistrito);
+        if (p.direccionEntrega) setCalle(p.direccionEntrega);
+        if (p.referencia) setReferencia(p.referencia);
+      })
+      .catch(() => {}); // silencioso — el usuario puede ingresar manualmente
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const distritosLima   = useMemo(() => distritos.filter(d => d.ciudad === 'Lima'),   [distritos]);
+  const distritosCallao = useMemo(() => distritos.filter(d => d.ciudad === 'Callao'), [distritos]);
+
+  const distritoSeleccionado = useMemo(
+    () => distritos.find(d => d.id === idDistrito) ?? null,
+    [distritos, idDistrito],
+  );
+  const costoDistrito = distritoSeleccionado?.costoEnvio ?? 0;
+
+  /* Agrupar items por comerciante */
   const porComerciante: Record<string, ICheckoutGrupo> = personalizacion
     ? {
         [String(personalizacion.vendedorId)]: {
@@ -79,18 +112,18 @@ export default function CheckoutEntregaPage() {
           cantidad: item.cantidad,
           precioUnitario: item.precioUnitario,
           precioBase: item.producto.precioBase ?? item.producto.precioFinal ?? 0,
-          idVarianteProducto: item.idVariante ? Number(item.idVariante) : Number(item.producto.variantes?.[0]?.id) || null,
+          idVarianteProducto: item.idVariante
+            ? Number(item.idVariante)
+            : Number(item.producto.variantes?.[0]?.id) || null,
         });
         return acc;
       }, {});
 
   const tiendas = Object.entries(porComerciante);
 
-  // Estado de entrega independiente por tienda
+  /* Estado de entrega independiente por tienda */
   const [entregasPorTienda, setEntregasPorTienda] = useState<Record<string, EntregaTienda>>(() =>
-    Object.fromEntries(
-      tiendas.map(([id]) => [id, { tipoEntrega: 'DELIVERY', fechaSeleccionada: FECHAS_ENVIO[0], mostrarFechas: false }])
-    )
+    Object.fromEntries(tiendas.map(([id]) => [id, { tipoEntrega: 'DELIVERY' as TipoEntrega }]))
   );
 
   const actualizarEntrega = (idComerciante: string, cambios: Partial<EntregaTienda>) => {
@@ -100,6 +133,23 @@ export default function CheckoutEntregaPage() {
     }));
   };
 
+  /* Cálculos */
+  const hayDelivery       = Object.values(entregasPorTienda).some(e => e.tipoEntrega === 'DELIVERY');
+  const todasRecojoTienda = !hayDelivery;
+
+  const todosLosItems = tiendas.flatMap(([, g]) => g.items);
+  const subtotal = todosLosItems.reduce((acc, i) => acc + i.precioBase * i.cantidad, 0);
+  const descuentos = todosLosItems.reduce((acc, i) => {
+    const ahorro = i.precioBase > i.precioUnitario ? i.precioBase - i.precioUnitario : 0;
+    return acc + ahorro * i.cantidad;
+  }, 0);
+  const costoEnvioTotal = Object.values(entregasPorTienda).reduce(
+    (acc, e) => acc + (e.tipoEntrega === 'DELIVERY' ? costoDistrito : 0),
+    0,
+  );
+  const total = subtotal - descuentos + costoEnvioTotal;
+
+  /* Carrito vacío */
   if (tiendas.length === 0) {
     return (
       <div className="flex min-h-screen flex-col bg-surface-muted">
@@ -107,8 +157,11 @@ export default function CheckoutEntregaPage() {
         <main className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
           <ShoppingBag className="h-16 w-16 text-ink-300" />
           <h2 className="text-[24px] font-bold text-ink-900">Tu carrito está vacío</h2>
-          <button type="button" onClick={() => navigate(RUTAS.CARRITO)}
-            className="mt-4 rounded-lg bg-brand-500 px-6 py-3 font-medium text-white hover:bg-brand-600">
+          <button
+            type="button"
+            onClick={() => navigate(RUTAS.CARRITO)}
+            className="mt-4 rounded-lg bg-brand-500 px-6 py-3 font-medium text-white hover:bg-brand-600"
+          >
             Volver al Carrito
           </button>
         </main>
@@ -117,32 +170,27 @@ export default function CheckoutEntregaPage() {
     );
   }
 
-  const todosLosItems = tiendas.flatMap(([, grupo]) => grupo.items);
-  const subtotalSinDescuento = todosLosItems.reduce((acc, i) => acc + i.precioBase * i.cantidad, 0);
-  const descuentos = todosLosItems.reduce((acc, i) => {
-    const ahorro = i.precioBase > i.precioUnitario ? i.precioBase - i.precioUnitario : 0;
-    return acc + ahorro * i.cantidad;
-  }, 0);
-
-  // Costo de envío total = suma de cada tienda que eligió DELIVERY
-  const costoEnvioTotal = Object.values(entregasPorTienda).reduce(
-    (acc, e) => acc + (e.tipoEntrega === 'DELIVERY' ? COSTO_DELIVERY : 0), 0
-  );
-  const total = subtotalSinDescuento - descuentos + costoEnvioTotal;
-  const todasRecojoTienda = Object.values(entregasPorTienda).every((e) => e.tipoEntrega === 'RECOJO_TIENDA');
+  /* Continuar al pago */
   const handleContinuar = () => {
-    if (!todasRecojoTienda && (!direccion.calle.trim() || !direccion.distrito.trim())) {
-      setErrorDireccion('Ingresa la calle y el distrito para continuar.');
+    if (hayDelivery && (!calle.trim() || !idDistrito)) {
+      setErrorDireccion('Ingresa la calle y selecciona el distrito para continuar.');
       return;
     }
     setErrorDireccion('');
 
-    const direccionCompleta = `${direccion.calle}, ${direccion.distrito}, ${direccion.ciudad}${direccion.referencia ? ` (Ref: ${direccion.referencia})` : ''}`;
+    const nombreDistrito = distritoSeleccionado?.nombre ?? '';
+    const ciudadDistrito = distritoSeleccionado?.ciudad ?? '';
+    const direccionCompleta = hayDelivery
+      ? `${calle.trim()}, ${nombreDistrito}, ${ciudadDistrito}${referencia ? ` (Ref: ${referencia})` : ''}`
+      : 'Recojo en tienda';
 
     const entregasParaPago = Object.fromEntries(
       Object.entries(entregasPorTienda).map(([id, e]) => [
         id,
-        { tipoEntrega: e.tipoEntrega, fechaEntrega: e.fechaSeleccionada.textoLargo },
+        {
+          tipoEntrega: e.tipoEntrega,
+          fechaEntrega: e.tipoEntrega === 'DELIVERY' ? TEXTO_DELIVERY : `Gamarra, ${TEXTO_RECOJO}`,
+        },
       ])
     );
 
@@ -150,6 +198,7 @@ export default function CheckoutEntregaPage() {
       state: {
         entregasPorTienda: entregasParaPago,
         direccionEntrega: direccionCompleta,
+        idDistrito,
         ...(personalizacion
           ? {
               personalizacionId: personalizacion.personalizacionId,
@@ -164,6 +213,7 @@ export default function CheckoutEntregaPage() {
     });
   };
 
+  /* ── Render ────────────────────────────────────────────────────────────── */
   return (
     <div className="flex min-h-screen flex-col bg-surface-muted">
       <TopBar active="Inicio" />
@@ -186,67 +236,87 @@ export default function CheckoutEntregaPage() {
           <section className="flex flex-col gap-4">
             <h1 className="text-[28px] font-bold text-ink-900">Entrega</h1>
 
-          {/* Dirección de entrega — ingresada por el cliente */}
-          <div className="rounded-xl border border-ink-100 bg-white px-5 py-4 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <MapPin className="h-4 w-4 text-brand-500" />
-              <span className="text-[14px] font-semibold text-ink-900">Dirección de entrega</span>
-            </div>
+            {/* Dirección de entrega */}
+            <div className="rounded-xl border border-ink-100 bg-white px-5 py-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <MapPin className="h-4 w-4 text-brand-500" />
+                <span className="text-[14px] font-semibold text-ink-900">Dirección de entrega</span>
+              </div>
 
-            <div className="flex flex-col gap-3">
-              <div>
+              <div className="flex flex-col gap-3">
+                {/* Calle */}
                 <input
                   type="text"
                   placeholder="Calle y número (ej. Av. Arequipa 3421)"
-                  value={direccion.calle}
-                  onChange={(e) => setDireccion(p => ({ ...p, calle: e.target.value }))}
-                  disabled={todasRecojoTienda}
-                    className="w-full rounded-lg border border-ink-200 px-4 py-3 text-[14px] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  type="text"
-                  placeholder="Distrito"
-                  value={direccion.distrito}
-                  onChange={(e) => setDireccion(p => ({ ...p, distrito: e.target.value }))}
+                  value={calle}
+                  onChange={(e) => setCalle(e.target.value)}
                   disabled={todasRecojoTienda}
                   className="w-full rounded-lg border border-ink-200 px-4 py-3 text-[14px] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                 />
+
+                {/* Distrito — select agrupado por ciudad */}
+                <div className="relative">
+                  <select
+                    value={idDistrito ?? ''}
+                    onChange={(e) => setIdDistrito(e.target.value ? Number(e.target.value) : null)}
+                    disabled={todasRecojoTienda || cargandoDistritos}
+                    className="w-full appearance-none rounded-lg border border-ink-200 bg-white px-4 py-3 text-[14px] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                    style={{ color: idDistrito ? '#212529' : '#adb5bd' }}
+                  >
+                    <option value="">
+                      {cargandoDistritos ? 'Cargando distritos…' : 'Selecciona tu distrito'}
+                    </option>
+                    {distritosLima.length > 0 && (
+                      <optgroup label="Lima">
+                        {distritosLima.map(d => (
+                          <option key={d.id} value={d.id} style={{ color: '#212529' }}>
+                            {d.nombre}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {distritosCallao.length > 0 && (
+                      <optgroup label="Callao">
+                        {distritosCallao.map(d => (
+                          <option key={d.id} value={d.id} style={{ color: '#212529' }}>
+                            {d.nombre}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                  <svg
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </div>
+
+                {/* Referencia */}
                 <input
                   type="text"
-                  placeholder="Ciudad"
-                  value={direccion.ciudad}
-                  onChange={(e) => setDireccion(p => ({ ...p, ciudad: e.target.value }))}
+                  placeholder="Referencia (opcional, ej. frente al parque)"
+                  value={referencia}
+                  onChange={(e) => setReferencia(e.target.value)}
                   disabled={todasRecojoTienda}
                   className="w-full rounded-lg border border-ink-200 px-4 py-3 text-[14px] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                 />
+
+                {errorDireccion && (
+                  <p className="text-[13px] text-red-500">{errorDireccion}</p>
+                )}
               </div>
-
-              <input
-                type="text"
-                placeholder="Referencia (opcional, ej. frente al parque)"
-                value={direccion.referencia}
-                onChange={(e) => setDireccion(p => ({ ...p, referencia: e.target.value }))}
-                disabled={todasRecojoTienda}
-                className="w-full rounded-lg border border-ink-200 px-4 py-3 text-[14px] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-              />
-
-              {errorDireccion && (
-                <p className="text-[13px] text-red-500">{errorDireccion}</p>
-              )}
             </div>
-          </div>
 
-            {/* Paquete por tienda — cada uno con su propia selección de entrega */}
+            {/* Paquete por tienda */}
             {tiendas.map(([idComerciante, { nombreTienda, items: itemsTienda }], idx) => {
               const entrega = entregasPorTienda[idComerciante];
               if (!entrega) return null;
 
               return (
                 <div key={idComerciante} className="rounded-xl border border-ink-100 bg-white shadow-sm overflow-hidden">
-                  {/* Cabecera paquete */}
+                  {/* Cabecera */}
                   <div className="flex items-center justify-between border-b border-ink-100 px-5 py-3">
                     <div className="flex flex-col">
                       <span className="text-[11px] font-medium uppercase tracking-wider text-ink-400">
@@ -257,14 +327,17 @@ export default function CheckoutEntregaPage() {
                     <Package className="h-5 w-5 text-ink-300" />
                   </div>
 
-                  {/* Items del paquete */}
+                  {/* Items */}
                   <div className="px-5 pt-4 pb-2 flex flex-col gap-3">
                     {itemsTienda.map((item) => (
                       <div key={item.id} className="flex items-center gap-3">
                         <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-ink-100 bg-surface-muted">
                           {item.imagenUrl ? (
-                            <img src={item.imagenUrl} alt={item.nombreProducto}
-                              className="h-full w-full object-cover" />
+                            <img
+                              src={item.imagenUrl}
+                              alt={item.nombreProducto}
+                              className="h-full w-full object-cover"
+                            />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center text-ink-300">
                               <ShoppingBag className="h-6 w-6" />
@@ -279,89 +352,99 @@ export default function CheckoutEntregaPage() {
                     ))}
                   </div>
 
-                  {/* Opciones de entrega — independientes por tienda */}
+                  {/* Opciones de entrega */}
                   <div className="px-5 pb-5 pt-3 flex flex-col gap-2">
 
                     {/* Delivery */}
                     <div
-                      className={`rounded-lg border px-4 py-3 cursor-pointer transition-all ${entrega.tipoEntrega === 'DELIVERY' ? 'border-brand-400 bg-brand-50/40' : 'border-ink-100 hover:border-ink-200'}`}
-                      onClick={() => actualizarEntrega(idComerciante, { tipoEntrega: 'DELIVERY', mostrarFechas: false })}
+                      className={`rounded-lg border px-4 py-3 cursor-pointer transition-all ${
+                        entrega.tipoEntrega === 'DELIVERY'
+                          ? 'border-brand-400 bg-brand-50/40'
+                          : 'border-ink-100 hover:border-ink-200'
+                      }`}
+                      onClick={() => actualizarEntrega(idComerciante, { tipoEntrega: 'DELIVERY' })}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <Truck className={`mt-0.5 h-4 w-4 shrink-0 ${entrega.tipoEntrega === 'DELIVERY' ? 'text-brand-500' : 'text-ink-400'}`} />
+                          <Truck className={`mt-0.5 h-4 w-4 shrink-0 ${
+                            entrega.tipoEntrega === 'DELIVERY' ? 'text-brand-500' : 'text-ink-400'
+                          }`} />
                           <div className="flex flex-col min-w-0">
                             <span className="text-[14px] font-semibold text-ink-900">Envío a domicilio</span>
                             {entrega.tipoEntrega === 'DELIVERY' ? (
-                              <span className="text-[13px] text-ink-500">Llega el {entrega.fechaSeleccionada.textoLargo}</span>
+                              <>
+                                <span className="text-[13px] text-ink-500">{TEXTO_DELIVERY}</span>
+                                <span className="mt-0.5 text-[13px] text-ink-500">
+                                  {idDistrito
+                                    ? costoDistrito > 0 ? formatearPrecio(costoDistrito) : 'Gratis'
+                                    : 'Costo según distrito'}
+                                </span>
+                              </>
                             ) : (
-                              <span className="text-[13px] text-ink-500">S/ {COSTO_DELIVERY}.00</span>
-                            )}
-                            {entrega.tipoEntrega === 'DELIVERY' && (
-                              <div className="mt-1 flex items-center gap-3">
-                                <span className="text-[13px] text-ink-500">S/ {COSTO_DELIVERY}.00</span>
-                                <button type="button"
-                                  onClick={(e) => { e.stopPropagation(); actualizarEntrega(idComerciante, { mostrarFechas: !entrega.mostrarFechas }); }}
-                                  className="text-[13px] font-medium text-brand-500 hover:text-brand-700">
-                                  Cambiar fecha
-                                </button>
-                              </div>
+                              <span className="text-[13px] text-ink-500">
+                                {idDistrito
+                                  ? costoDistrito > 0 ? formatearPrecio(costoDistrito) : 'Gratis'
+                                  : 'Costo según distrito'}
+                              </span>
                             )}
                           </div>
                         </div>
-                        <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${entrega.tipoEntrega === 'DELIVERY' ? 'border-brand-500' : 'border-ink-300'}`}>
-                          {entrega.tipoEntrega === 'DELIVERY' && <div className="h-2 w-2 rounded-full bg-brand-500" />}
+                        <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
+                          entrega.tipoEntrega === 'DELIVERY' ? 'border-brand-500' : 'border-ink-300'
+                        }`}>
+                          {entrega.tipoEntrega === 'DELIVERY' && (
+                            <div className="h-2 w-2 rounded-full bg-brand-500" />
+                          )}
                         </div>
                       </div>
-
-                      {/* Selector de fechas — por paquete */}
-                      {entrega.tipoEntrega === 'DELIVERY' && entrega.mostrarFechas && (
-                        <div className="mt-3 border-t border-ink-100 pt-3">
-                          <div className="flex flex-wrap gap-2">
-                            {FECHAS_ENVIO.map((fecha) => (
-                              <button key={fecha.id} type="button"
-                                onClick={(e) => { e.stopPropagation(); actualizarEntrega(idComerciante, { fechaSeleccionada: fecha, mostrarFechas: false }); }}
-                                className={`rounded-md border px-3 py-1.5 text-[12px] font-medium transition-all ${entrega.fechaSeleccionada.id === fecha.id ? 'border-brand-500 bg-brand-500 text-white' : 'border-ink-200 bg-white text-ink-700 hover:border-brand-300'}`}>
-                                {fecha.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </div>
 
                     {/* Recojo en tienda */}
                     <div
-                      className={`rounded-lg border px-4 py-3 cursor-pointer transition-all ${entrega.tipoEntrega === 'RECOJO_TIENDA' ? 'border-brand-400 bg-brand-50/40' : 'border-ink-100 hover:border-ink-200'}`}
-                      onClick={() => actualizarEntrega(idComerciante, { tipoEntrega: 'RECOJO_TIENDA', mostrarFechas: false })}
+                      className={`rounded-lg border px-4 py-3 cursor-pointer transition-all ${
+                        entrega.tipoEntrega === 'RECOJO_TIENDA'
+                          ? 'border-brand-400 bg-brand-50/40'
+                          : 'border-ink-100 hover:border-ink-200'
+                      }`}
+                      onClick={() => actualizarEntrega(idComerciante, { tipoEntrega: 'RECOJO_TIENDA' })}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <StoreIcon className={`mt-0.5 h-4 w-4 shrink-0 ${entrega.tipoEntrega === 'RECOJO_TIENDA' ? 'text-brand-500' : 'text-ink-400'}`} />
+                          <StoreIcon className={`mt-0.5 h-4 w-4 shrink-0 ${
+                            entrega.tipoEntrega === 'RECOJO_TIENDA' ? 'text-brand-500' : 'text-ink-400'
+                          }`} />
                           <div className="flex flex-col min-w-0">
                             <span className="text-[14px] font-semibold text-ink-900">Retiro en tienda</span>
-                            <span className="text-[13px] text-ink-500">{nombreTienda} — Gamarra, desde hoy a las 7 pm</span>
+                            <span className="text-[13px] text-ink-500">
+                              {nombreTienda} — Gamarra, {TEXTO_RECOJO}
+                            </span>
                             <span className="mt-0.5 text-[13px] font-medium text-brand-500">(Gratis)</span>
                           </div>
                         </div>
-                        <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${entrega.tipoEntrega === 'RECOJO_TIENDA' ? 'border-brand-500' : 'border-ink-300'}`}>
-                          {entrega.tipoEntrega === 'RECOJO_TIENDA' && <div className="h-2 w-2 rounded-full bg-brand-500" />}
+                        <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
+                          entrega.tipoEntrega === 'RECOJO_TIENDA' ? 'border-brand-500' : 'border-ink-300'
+                        }`}>
+                          {entrega.tipoEntrega === 'RECOJO_TIENDA' && (
+                            <div className="h-2 w-2 rounded-full bg-brand-500" />
+                          )}
                         </div>
                       </div>
                     </div>
+
                   </div>
                 </div>
               );
             })}
           </section>
 
-          {/* Aside — Resumen */}
+          {/* Aside: Resumen de Compra */}
           <aside className="flex h-fit flex-col gap-5 rounded-xl border border-ink-100 bg-white p-6 shadow-sm lg:sticky lg:top-24">
             <h2 className="text-[18px] font-semibold text-ink-900">Resumen de Compra</h2>
+
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between text-[14px]">
                 <span className="text-ink-600">Subtotal</span>
-                <span className="text-ink-900">{formatearPrecio(subtotalSinDescuento)}</span>
+                <span className="text-ink-900">{formatearPrecio(subtotal)}</span>
               </div>
               {descuentos > 0 && (
                 <div className="flex items-center justify-between text-[14px] text-brand-500">
@@ -369,26 +452,33 @@ export default function CheckoutEntregaPage() {
                   <span>- {formatearPrecio(descuentos)}</span>
                 </div>
               )}
-              {/* Desglose de envío por tienda */}
               {tiendas.map(([idComerciante, { nombreTienda }]) => {
                 const e = entregasPorTienda[idComerciante];
                 if (!e) return null;
+                const costoTienda = e.tipoEntrega === 'DELIVERY' ? costoDistrito : 0;
                 return (
                   <div key={idComerciante} className="flex items-center justify-between text-[14px]">
                     <span className="text-ink-600 truncate max-w-[160px]">Envío · {nombreTienda}</span>
-                    <span className={e.tipoEntrega === 'RECOJO_TIENDA' ? 'font-medium text-brand-500' : 'text-ink-900'}>
-                      {e.tipoEntrega === 'RECOJO_TIENDA' ? 'Gratis' : formatearPrecio(COSTO_DELIVERY)}
+                    <span className={costoTienda === 0 ? 'font-medium text-brand-500' : 'text-ink-900'}>
+                      {costoTienda === 0
+                        ? (e.tipoEntrega === 'RECOJO_TIENDA' ? 'Gratis' : (idDistrito ? 'Gratis' : '—'))
+                        : formatearPrecio(costoTienda)}
                     </span>
                   </div>
                 );
               })}
             </div>
+
             <div className="flex items-center justify-between border-t border-ink-100 pt-4">
               <span className="text-[16px] font-semibold text-ink-900">Total</span>
               <span className="text-[22px] font-bold text-brand-600">{formatearPrecio(total)}</span>
             </div>
-            <button type="button" onClick={handleContinuar}
-              className="h-12 w-full rounded-lg bg-[#c83a71] text-[15px] font-semibold text-white shadow-sm transition-colors hover:bg-[#a62b5a]">
+
+            <button
+              type="button"
+              onClick={handleContinuar}
+              className="h-12 w-full rounded-lg bg-[#c83a71] text-[15px] font-semibold text-white shadow-sm transition-colors hover:bg-[#a62b5a]"
+            >
               Continuar al pago
             </button>
           </aside>

@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { label: 'Inicio', icon: 'dashboard', to: RUTAS.COMERCIANTE_DASHBOARD },
   { label: 'Inventario', icon: 'inventory_2', to: RUTAS.COMERCIANTE_CATALOGO },
   { label: 'Pedidos', icon: 'shopping_bag', to: RUTAS.COMERCIANTE_PEDIDOS },
+  { label: 'Promociones', icon: 'local_offer', to: RUTAS.COMERCIANTE_PROMOCIONES },
   { label: 'Personalizaciones', icon: 'palette', to: RUTAS.COMERCIANTE_PERSONALIZACIONES },
   { label: 'Cotizaciones', icon: 'request_quote', to: RUTAS.COMERCIANTE_COTIZACIONES },
   { label: 'Notificaciones', icon: 'notifications', to: RUTAS.COMERCIANTE_NOTIFICACIONES },

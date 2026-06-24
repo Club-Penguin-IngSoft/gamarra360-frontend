@@ -145,13 +145,17 @@ export default function RegistroComerciantePage() {
   const [galeria, setGaleria]             = useState('');
   const [piso, setPiso]                   = useState('');
   const [stand, setStand]                 = useState('');
+  const [ofreceEnvio, setOfreceEnvio]     = useState(false);
   const [logoFile, setLogoFile]           = useState<File | null>(null);
   const [logoDragging, setLogoDragging]   = useState(false);
+
+  const [informacion, setInformacion]       = useState('');
 
   /* Información del titular */
   const [correo, setCorreo]               = useState('');
   const [nombres, setNombres]             = useState('');
-  const [apellidos, setApellidos]         = useState('');
+  const [primerApellido, setPrimerApellido] = useState('');
+  const [segundoApellido, setSegundoApellido] = useState('');
   const [tipoDoc, setTipoDoc]             = useState('');
   const [numeroDoc, setNumeroDoc]         = useState('');
   const [celular, setCelular]             = useState('');
@@ -195,7 +199,7 @@ export default function RegistroComerciantePage() {
 
   const puedeEnviar =
     nombreTienda && razonSocial && ruc && galeria &&
-    (emailGoogle || correo) && nombres && apellidos && tipoDoc && numeroDoc && celular &&
+    (emailGoogle || correo) && nombres && primerApellido && tipoDoc && numeroDoc && celular &&
     validarContrasena(contrasena) && contrasena === confirmar;
 
   const handleLogoFile = (file: File | null) => {
@@ -218,8 +222,6 @@ export default function RegistroComerciantePage() {
       return;
     }
     try {
-      const apellidosArr = apellidos.split(' ');
-
       let logoUrl: string | null = null;
       if (logoFile) {
         const formData = new FormData();
@@ -234,8 +236,8 @@ export default function RegistroComerciantePage() {
 
       const payload = {
         nombres,
-        primerApellido: apellidosArr[0] || '',
-        segundoApellido: apellidosArr[1] || '',
+        primerApellido,
+        segundoApellido,
         email: emailGoogle || correo,
         contrasenha: contrasena,
         dni: numeroDoc,
@@ -245,9 +247,11 @@ export default function RegistroComerciantePage() {
         ruc,
         razonSocial,
         nombreTienda,
-        piso,
-        stand,
+        informacion: informacion || undefined,
+        piso: piso || undefined,
+        stand: stand || undefined,
         galeria,
+        ofreceEnvio,
         logoUrl,
       };
 
@@ -346,6 +350,38 @@ export default function RegistroComerciantePage() {
               />
             </div>
 
+            {/* Descripción de la tienda */}
+            <textarea
+              placeholder="Descripción de la tienda (visible para los compradores)"
+              value={informacion}
+              onChange={(e) => setInformacion(e.target.value)}
+              rows={3}
+              className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-[11px] text-sm focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100 transition-all"
+            />
+
+            {/* Envío a domicilio */}
+            <label className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 cursor-pointer select-none">
+              <div className="flex items-center gap-2.5">
+                <MaterialIcon name="local_shipping" style={{ fontSize: '18px', color: '#6c757d' }} />
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Envío a domicilio</p>
+                  <p className="text-xs text-gray-500">¿Tu tienda ofrece despacho a domicilio?</p>
+                </div>
+              </div>
+              <div
+                onClick={() => setOfreceEnvio((v) => !v)}
+                className={`relative flex h-6 w-11 flex-shrink-0 rounded-full transition-colors duration-200 ${
+                  ofreceEnvio ? 'bg-primario' : 'bg-gray-200'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
+                    ofreceEnvio ? 'translate-x-5' : 'translate-x-0.5'
+                  }`}
+                />
+              </div>
+            </label>
+
             {/* Logo upload */}
             <div>
               <p className="mb-2 text-xs font-medium text-gray-600">Logo</p>
@@ -423,11 +459,17 @@ export default function RegistroComerciantePage() {
               value={nombres} onChange={(e) => setNombres(e.target.value)}
               autoComplete="given-name"
             />
-            <Input
-              type="text" name="apellidos" placeholder="Apellidos"
-              value={apellidos} onChange={(e) => setApellidos(e.target.value)}
-              autoComplete="family-name"
-            />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Input
+                type="text" name="primerApellido" placeholder="Primer apellido"
+                value={primerApellido} onChange={(e) => setPrimerApellido(e.target.value)}
+                autoComplete="family-name"
+              />
+              <Input
+                type="text" name="segundoApellido" placeholder="Segundo apellido (opcional)"
+                value={segundoApellido} onChange={(e) => setSegundoApellido(e.target.value)}
+              />
+            </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FieldSelect
