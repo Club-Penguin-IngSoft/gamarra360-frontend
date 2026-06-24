@@ -162,6 +162,7 @@ export interface IPerfilComerciante {
   piso?: string;
   stand?: string;
   logoUrl?: string;
+  foto?: string;
   informacion?: string;
   verificada?: boolean;
   // Titular
@@ -181,6 +182,7 @@ export interface IPerfilComerciantePayload {
   piso?: string;
   stand?: string;
   logoUrl?: string;
+  foto?: string;
   informacion?: string;
   nombres: string;
   primerApellido: string;
