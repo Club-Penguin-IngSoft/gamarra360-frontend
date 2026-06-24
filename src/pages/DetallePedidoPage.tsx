@@ -70,6 +70,15 @@ useEffect(() => {
         const data = await pedidoService.obtenerDetalleOrden(Number(id));
 
         if (data.estado === 'PAGADO') {
+          const pendingPersonalizacionId = sessionStorage.getItem('pendingPersonalizacionId');
+          if (pendingPersonalizacionId) {
+            sessionStorage.removeItem('pendingPersonalizacionId');
+            try {
+              await personalizacionService.aceptarPersonalizacion(Number(pendingPersonalizacionId));
+            } catch (err) {
+              console.error('[DetallePedidoPage] Error al confirmar personalización:', err);
+            }
+          }
           setOrden(data);
           setCargando(false);
           return;

@@ -49,6 +49,10 @@ export default function PersonalizacionDetallePage() {
 
   function handleAceptarYPagar() {
     if (!personalizacion) return;
+    // precioPropuesto es el precio TOTAL que cobra el vendedor, no un costo adicional.
+    const precioFinal = personalizacion.propuesta != null
+      ? personalizacion.propuesta.precioPropuesto
+      : personalizacion.total;
     navigate(RUTAS.CHECKOUT, {
       state: {
         personalizacion: {
@@ -61,7 +65,7 @@ export default function PersonalizacionDetallePage() {
           talla: personalizacion.talla,
           color: personalizacion.color,
           sku: personalizacion.sku,
-          precioUnitario: personalizacion.total,
+          precioUnitario: precioFinal,
         },
       },
     });
@@ -268,13 +272,21 @@ export default function PersonalizacionDetallePage() {
                         {personalizacion.costoPersonalizacion != null && (
                           <div className="flex items-center justify-between text-body-xl text-ink-700">
                             <span>Costo de personalización</span>
-                            <span>{formatearPrecio(personalizacion.costoPersonalizacion)}</span>
+                            <span>{formatearPrecio(
+                              personalizacion.propuesta != null
+                                ? personalizacion.propuesta.precioPropuesto - (personalizacion.precioBase ?? 0)
+                                : personalizacion.costoPersonalizacion
+                            )}</span>
                           </div>
                         )}
                         <div className="my-1 border-t border-ink-100" />
                         <div className="flex items-center justify-between">
                           <span className="text-title2 font-semibold text-ink-900">Total</span>
-                          <span className="text-h6 font-bold text-brand-600">{formatearPrecio(personalizacion.total)}</span>
+                          <span className="text-h6 font-bold text-brand-600">{formatearPrecio(
+                            personalizacion.propuesta != null
+                              ? personalizacion.propuesta.precioPropuesto
+                              : personalizacion.total
+                          )}</span>
                         </div>
                       </div>
 
