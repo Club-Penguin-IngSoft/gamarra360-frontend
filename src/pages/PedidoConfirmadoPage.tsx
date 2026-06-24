@@ -24,7 +24,7 @@ export default function PedidoConfirmadoPage() {
     const intentarResolver = async () => {
       const ordenId = await pagoService.buscarOrdenPorPaymentIntent(paymentIntentId);
       if (ordenId) {
-        navigate(RUTAS.DETALLE_PEDIDO(ordenId), { replace: true });
+        navigate(`${RUTAS.DETALLE_PEDIDO(ordenId)}?redirect_status=succeeded`, { replace: true });
         return;
       }
       intentos++;
