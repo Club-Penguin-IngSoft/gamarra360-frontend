@@ -162,6 +162,7 @@ export interface IPerfilComerciante {
   piso?: string;
   stand?: string;
   logoUrl?: string;
+  foto?: string;
   informacion?: string;
   ofreceEnvio?: boolean;
   verificada?: boolean;
@@ -182,6 +183,7 @@ export interface IPerfilComerciantePayload {
   piso?: string;
   stand?: string;
   logoUrl?: string;
+  foto?: string;
   informacion?: string;
   ofreceEnvio?: boolean;
   nombres: string;

@@ -25,7 +25,7 @@ export default function ComercianteSidebar() {
   };
 
   return (
-    <aside className="fixed top-0 left-0 w-64 min-h-screen bg-gray-900 text-white flex flex-col z-10 shadow-lg">
+    <aside className="sticky top-0 h-screen w-64 flex-shrink-0 overflow-y-auto bg-gray-900 text-white flex flex-col z-10 shadow-lg">
       <div className="px-6 py-5 border-b border-white/10">
         <LogoGamarra size="sm" className="brightness-0 invert" />
         <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/50">

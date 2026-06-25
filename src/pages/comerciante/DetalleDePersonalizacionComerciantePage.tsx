@@ -29,6 +29,7 @@ export default function DetalleDePersonalizacionComerciantePage() {
   const [comentario, setComentario] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [cancelando, setCancelando] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -75,11 +76,42 @@ export default function DetalleDePersonalizacionComerciantePage() {
     }
   }
 
+  async function handleAceptarPrecioCliente() {
+    if (!detalle?.precioDeseado) return;
+    setFormError(null);
+    setEnviando(true);
+    try {
+      const actualizado = await personalizacionService.responderPersonalizacion(detalle.id, {
+        decision: 'ACEPTAR',
+        precioPropuesto: detalle.precioDeseado,
+      });
+      setDetalle(actualizado);
+    } catch {
+      setFormError('No se pudo enviar la respuesta. Inténtalo de nuevo.');
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  async function handleCancelar() {
+    if (!detalle) return;
+    if (!window.confirm('¿Seguro que deseas cancelar esta solicitud?')) return;
+    setCancelando(true);
+    try {
+      await personalizacionService.cancelarPorVendedor(detalle.id);
+      setDetalle((prev) => (prev ? { ...prev, estado: 'RECHAZADA' } : prev));
+    } catch {
+      setFormError('No se pudo cancelar la solicitud. Inténtalo de nuevo.');
+    } finally {
+      setCancelando(false);
+    }
+  }
+
   if (cargando) {
     return (
       <div className="flex min-h-screen">
         <ComercianteSidebar />
-        <main className="ml-64 flex-1 flex items-center justify-center bg-gray-100">
+        <main className="flex-1 flex items-center justify-center bg-gray-100">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-primario" />
         </main>
       </div>
@@ -90,7 +122,7 @@ export default function DetalleDePersonalizacionComerciantePage() {
     return (
       <div className="flex min-h-screen">
         <ComercianteSidebar />
-        <main className="ml-64 flex-1 flex flex-col items-center justify-center gap-4 bg-gray-100">
+        <main className="flex-1 flex flex-col items-center justify-center gap-4 bg-gray-100">
           <p className="text-[13px] text-gray-500">{error ?? 'Solicitud no encontrada.'}</p>
           <button onClick={() => navigate(RUTAS.COMERCIANTE_PERSONALIZACIONES)} className="text-[13px] text-primario underline">
             Volver a Personalizaciones
@@ -106,7 +138,7 @@ export default function DetalleDePersonalizacionComerciantePage() {
     <div className="flex min-h-screen">
       <ComercianteSidebar />
 
-      <main className="ml-64 flex-1 bg-gray-100 p-7">
+      <main className="flex-1 bg-gray-100 p-7">
         <p className="text-[12px] text-gray-500 mb-2">
           <Link to={RUTAS.COMERCIANTE_PERSONALIZACIONES} className="hover:text-primario hover:underline">
             Personalizaciones
@@ -126,6 +158,21 @@ export default function DetalleDePersonalizacionComerciantePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Columna principal */}
           <div className="lg:col-span-2 flex flex-col gap-5">
+            {detalle.precioDeseado != null && detalle.estado === 'PENDIENTE' && (
+              <div className="bg-primario-claro border border-primario/20 rounded-xl p-5">
+                <p className="text-[11px] font-semibold text-primario uppercase tracking-[0.4px] mb-1">Precio propuesto por el cliente</p>
+                <p className="text-[22px] font-bold text-primario mb-3">{formatearPrecio(detalle.precioDeseado)}</p>
+                <button
+                  type="button"
+                  onClick={handleAceptarPrecioCliente}
+                  disabled={enviando}
+                  className="px-5 py-2.5 bg-green-600 text-white rounded-lg text-[13px] font-semibold hover:bg-green-700 transition-colors disabled:opacity-60"
+                >
+                  {enviando ? 'Enviando...' : `Aceptar precio del cliente — ${formatearPrecio(detalle.precioDeseado)}`}
+                </button>
+              </div>
+            )}
+
             {detalle.estado === 'PENDIENTE' ? (
               <div className="bg-white rounded-xl shadow-sm p-5">
                 <h2 className="text-[15px] font-bold text-gray-900 mb-4">Responder Solicitud</h2>
@@ -206,14 +253,24 @@ export default function DetalleDePersonalizacionComerciantePage() {
 
                 {formError && <p className="mt-3 text-[12px] text-error">{formError}</p>}
 
-                <button
-                  type="button"
-                  onClick={handleEnviar}
-                  disabled={enviando}
-                  className="mt-4 px-5 py-2.5 bg-primario text-white rounded-lg text-[13px] font-semibold hover:bg-primario-hover transition-colors disabled:opacity-60"
-                >
-                  {enviando ? 'Enviando...' : 'Enviar'}
-                </button>
+                <div className="mt-4 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleEnviar}
+                    disabled={enviando}
+                    className="px-5 py-2.5 bg-primario text-white rounded-lg text-[13px] font-semibold hover:bg-primario-hover transition-colors disabled:opacity-60"
+                  >
+                    {enviando ? 'Enviando...' : 'Enviar'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelar}
+                    disabled={cancelando}
+                    className="px-5 py-2.5 border border-error text-error rounded-lg text-[13px] font-semibold hover:bg-error-claro transition-colors disabled:opacity-60"
+                  >
+                    {cancelando ? 'Cancelando...' : 'Cancelar solicitud'}
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="bg-white rounded-xl shadow-sm p-5">
@@ -242,6 +299,16 @@ export default function DetalleDePersonalizacionComerciantePage() {
                         <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] mb-1">Condiciones Adicionales</p>
                         <p className="text-[13px] text-gray-700 whitespace-pre-wrap">{detalle.propuesta.condiciones}</p>
                       </div>
+                    )}
+                    {detalle.estado === 'RESPONDIDA' && (
+                      <button
+                        type="button"
+                        onClick={handleCancelar}
+                        disabled={cancelando}
+                        className="mt-2 self-start px-5 py-2.5 border border-error text-error rounded-lg text-[13px] font-semibold hover:bg-error-claro transition-colors disabled:opacity-60"
+                      >
+                        {cancelando ? 'Cancelando...' : 'Cancelar solicitud'}
+                      </button>
                     )}
                   </div>
                 )}

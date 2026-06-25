@@ -4,8 +4,9 @@ import { ArrowLeft, CheckCircle, XCircle, Package, Store } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
 import { cotizacionService } from '../services/cotizacionService';
+import apiClient from '../services/apiClient';
 import { RUTAS } from '../constants/rutas';
-import type { ICotizacionDetalle } from '../types/IPedido';
+import type { ICotizacionDetalle, IPedido } from '../types/IPedido';
 
 const ESTADO_LABELS: Record<string, string> = {
   PENDIENTE:  'Pendiente',
@@ -30,6 +31,13 @@ export default function DetalleCotizacionClientePage() {
   const [error, setError]           = useState<string | null>(null);
   const [accion, setAccion]         = useState<'aceptando' | 'rechazando' | null>(null);
   const [confirmacion, setConfirmacion] = useState<'ACEPTADA' | 'RECHAZADA' | null>(null);
+
+  // Negotiation form
+  const [negociando, setNegociando]             = useState(false);
+  const [precioDeseado, setPrecioDeseado]       = useState('');
+  const [nuevaEspecificacion, setNuevaEspecificacion] = useState('');
+  const [comentarioNeg, setComentarioNeg]       = useState('');
+  const [enviandoNeg, setEnviandoNeg]           = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -67,6 +75,52 @@ export default function DetalleCotizacionClientePage() {
     }
   }
 
+  async function handleNegociar() {
+    if (!cotizacion) return;
+    setEnviandoNeg(true);
+    setError(null);
+    try {
+      const actualizada = await cotizacionService.contraProponerCotizacion(cotizacion.id, {
+        precioDeseado: precioDeseado ? Number(precioDeseado) : undefined,
+        especificacion: nuevaEspecificacion.trim() || undefined,
+        comentario: comentarioNeg.trim() || undefined,
+      });
+      setCotizacion(actualizada);
+      setNegociando(false);
+      setPrecioDeseado('');
+      setNuevaEspecificacion('');
+      setComentarioNeg('');
+    } catch {
+      setError('No se pudo enviar la contrapropuesta. Inténtalo de nuevo.');
+    } finally {
+      setEnviandoNeg(false);
+    }
+  }
+
+  function handlePagar() {
+    if (!cotizacion) return;
+    navigate(RUTAS.CHECKOUT, {
+      state: {
+        cotizacion: {
+          cotizacionId: cotizacion.id,
+          vendedorId: cotizacion.vendedorId,
+          nombreTienda: cotizacion.nombreTienda,
+          precioUnitario: cotizacion.respuesta?.precioPropuesto ?? 0,
+        },
+      },
+    });
+  }
+
+  async function handleVerPedido() {
+    if (!cotizacion?.pedidoId) return;
+    try {
+      const { data } = await apiClient.get<IPedido>(`/pedidos/${cotizacion.pedidoId}`);
+      navigate(RUTAS.DETALLE_PEDIDO(data.ordenPagoId ?? cotizacion.pedidoId));
+    } catch {
+      setError('No se pudo cargar el pedido. Inténtalo de nuevo.');
+    }
+  }
+
   if (cargando) {
     return (
       <div className="flex min-h-screen flex-col bg-surface-muted">
@@ -95,8 +149,6 @@ export default function DetalleCotizacionClientePage() {
   }
 
   if (!cotizacion) return null;
-
-  const puedeActuar = cotizacion.estado === 'RESPONDIDA';
 
   return (
     <div className="flex min-h-screen flex-col bg-surface-muted">
@@ -157,6 +209,12 @@ export default function DetalleCotizacionClientePage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+            {cotizacion.precioDeseado != null && (
+              <div className="mt-4 rounded-lg border border-brand-100 bg-brand-50 px-4 py-3">
+                <p className="text-xs font-semibold uppercase text-ink-400">Tu precio propuesto</p>
+                <p className="mt-0.5 text-lg font-bold text-brand-700">S/.{cotizacion.precioDeseado.toFixed(2)}</p>
               </div>
             )}
           </div>
@@ -221,17 +279,11 @@ export default function DetalleCotizacionClientePage() {
             </div>
           )}
 
-          {/* Acciones */}
-          {puedeActuar && !confirmacion && (
+          {/* ── Acciones por estado ──────────────────────────────── */}
+
+          {/* PENDIENTE: solo cancelar */}
+          {cotizacion.estado === 'PENDIENTE' && !confirmacion && (
             <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={handleAceptar}
-                disabled={accion !== null}
-                className="flex-1 rounded-xl bg-green-600 py-3 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-60"
-              >
-                {accion === 'aceptando' ? 'Aceptando...' : 'Aceptar propuesta'}
-              </button>
               <button
                 type="button"
                 onClick={handleRechazar}
@@ -241,6 +293,122 @@ export default function DetalleCotizacionClientePage() {
                 {accion === 'rechazando' ? 'Cancelando...' : 'Cancelar cotización'}
               </button>
             </div>
+          )}
+
+          {/* RESPONDIDA: aceptar + cancelar + negociar */}
+          {cotizacion.estado === 'RESPONDIDA' && !confirmacion && (
+            <>
+              {!negociando ? (
+                <div className="flex flex-col gap-3">
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={handleAceptar}
+                      disabled={accion !== null}
+                      className="flex-1 rounded-xl bg-green-600 py-3 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-60"
+                    >
+                      {accion === 'aceptando' ? 'Aceptando...' : 'Aceptar propuesta'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRechazar}
+                      disabled={accion !== null}
+                      className="flex-1 rounded-xl border border-red-300 py-3 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+                    >
+                      {accion === 'rechazando' ? 'Cancelando...' : 'Cancelar cotización'}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setNegociando(true)}
+                    disabled={accion !== null}
+                    className="w-full rounded-xl border border-brand-400 py-3 text-sm font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-60"
+                  >
+                    Negociar precio
+                  </button>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-brand-200 bg-brand-50 p-5">
+                  <h3 className="mb-4 font-semibold text-ink-900">Enviar contrapropuesta</h3>
+                  <div className="mb-3">
+                    <label className="mb-1 block text-xs font-medium text-ink-600">Precio deseado (S/.)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={precioDeseado}
+                      onChange={(e) => setPrecioDeseado(e.target.value)}
+                      placeholder="Ej: 150.00"
+                      className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="mb-1 block text-xs font-medium text-ink-600">Nueva especificación (opcional)</label>
+                    <textarea
+                      value={nuevaEspecificacion}
+                      onChange={(e) => setNuevaEspecificacion(e.target.value)}
+                      rows={2}
+                      placeholder="Actualiza la descripción si lo necesitas..."
+                      className="w-full resize-none rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="mb-1 block text-xs font-medium text-ink-600">Comentario (opcional)</label>
+                    <textarea
+                      value={comentarioNeg}
+                      onChange={(e) => setComentarioNeg(e.target.value)}
+                      rows={2}
+                      placeholder="Explica tu propuesta al comerciante..."
+                      className="w-full resize-none rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setNegociando(false)}
+                      disabled={enviandoNeg}
+                      className="flex-1 rounded-xl border border-ink-200 py-2.5 text-sm font-medium text-ink-700 hover:bg-white disabled:opacity-60"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleNegociar}
+                      disabled={enviandoNeg || (!precioDeseado && !nuevaEspecificacion.trim() && !comentarioNeg.trim())}
+                      className="flex-1 rounded-xl bg-brand-500 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
+                    >
+                      {enviandoNeg ? 'Enviando...' : 'Enviar contrapropuesta'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ACEPTADA: pagar o ver pedido si ya fue pagada */}
+          {cotizacion.estado === 'ACEPTADA' && (
+            cotizacion.pedidoId != null ? (
+              <div className="rounded-2xl border border-green-200 bg-green-50 p-5 text-center">
+                <p className="mb-3 text-sm font-medium text-green-800">
+                  ¡Cotización pagada! Tu pedido fue creado.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleVerPedido}
+                  className="rounded-xl bg-green-600 px-6 py-3 text-sm font-semibold text-white hover:bg-green-700"
+                >
+                  Ver mi pedido
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handlePagar}
+                className="w-full rounded-xl bg-green-600 py-3 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-60"
+              >
+                {`Pagar cotización – S/.${cotizacion.respuesta?.precioPropuesto?.toFixed(2) ?? '...'}`}
+              </button>
+            )
           )}
         </div>
       </main>

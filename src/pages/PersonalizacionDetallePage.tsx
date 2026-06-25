@@ -28,7 +28,13 @@ export default function PersonalizacionDetallePage() {
   const [personalizacion, setPersonalizacion] = useState<IPersonalizacionDetalle | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [rechazando, setRechazando] = useState(false);
+  const [rechazando, setRechazando]     = useState(false);
+  const [cancelando, setCancelando]     = useState(false);
+  const [negociando, setNegociando]     = useState(false);
+  const [enviandoNeg, setEnviandoNeg]   = useState(false);
+  const [precioNeg, setPrecioNeg]       = useState('');
+  const [especNeg, setEspecNeg]         = useState('');
+  const [comentNeg, setComentNeg]       = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -43,6 +49,10 @@ export default function PersonalizacionDetallePage() {
 
   function handleAceptarYPagar() {
     if (!personalizacion) return;
+    // precioPropuesto es el precio TOTAL que cobra el vendedor, no un costo adicional.
+    const precioFinal = personalizacion.propuesta != null
+      ? personalizacion.propuesta.precioPropuesto
+      : personalizacion.total;
     navigate(RUTAS.CHECKOUT, {
       state: {
         personalizacion: {
@@ -55,7 +65,7 @@ export default function PersonalizacionDetallePage() {
           talla: personalizacion.talla,
           color: personalizacion.color,
           sku: personalizacion.sku,
-          precioUnitario: personalizacion.total,
+          precioUnitario: precioFinal,
         },
       },
     });
@@ -72,6 +82,41 @@ export default function PersonalizacionDetallePage() {
       window.alert('No se pudo rechazar la propuesta. Inténtalo más tarde.');
     } finally {
       setRechazando(false);
+    }
+  }
+
+  async function handleCancelar() {
+    if (!personalizacion) return;
+    if (!window.confirm('¿Seguro que deseas cancelar esta solicitud?')) return;
+    setCancelando(true);
+    try {
+      await personalizacionService.cancelarPorCliente(personalizacion.id);
+      setPersonalizacion((prev) => (prev ? { ...prev, estado: 'RECHAZADA' } : prev));
+    } catch {
+      window.alert('No se pudo cancelar la solicitud. Inténtalo más tarde.');
+    } finally {
+      setCancelando(false);
+    }
+  }
+
+  async function handleNegociar() {
+    if (!personalizacion) return;
+    setEnviandoNeg(true);
+    try {
+      const actualizada = await personalizacionService.contraProponerCliente(personalizacion.id, {
+        precioDeseado: precioNeg ? Number(precioNeg) : undefined,
+        especificacion: especNeg.trim() || undefined,
+        comentario: comentNeg.trim() || undefined,
+      });
+      setPersonalizacion(actualizada);
+      setNegociando(false);
+      setPrecioNeg('');
+      setEspecNeg('');
+      setComentNeg('');
+    } catch {
+      window.alert('No se pudo enviar la contrapropuesta. Inténtalo más tarde.');
+    } finally {
+      setEnviandoNeg(false);
     }
   }
 
@@ -227,15 +272,31 @@ export default function PersonalizacionDetallePage() {
                         {personalizacion.costoPersonalizacion != null && (
                           <div className="flex items-center justify-between text-body-xl text-ink-700">
                             <span>Costo de personalización</span>
-                            <span>{formatearPrecio(personalizacion.costoPersonalizacion)}</span>
+                            <span>{formatearPrecio(
+                              personalizacion.propuesta != null
+                                ? personalizacion.propuesta.precioPropuesto - (personalizacion.precioBase ?? 0)
+                                : personalizacion.costoPersonalizacion
+                            )}</span>
                           </div>
                         )}
                         <div className="my-1 border-t border-ink-100" />
                         <div className="flex items-center justify-between">
                           <span className="text-title2 font-semibold text-ink-900">Total</span>
-                          <span className="text-h6 font-bold text-brand-600">{formatearPrecio(personalizacion.total)}</span>
+                          <span className="text-h6 font-bold text-brand-600">{formatearPrecio(
+                            personalizacion.propuesta != null
+                              ? personalizacion.propuesta.precioPropuesto
+                              : personalizacion.total
+                          )}</span>
                         </div>
                       </div>
+
+                      {/* Tu precio propuesto (contrapropuesta enviada) */}
+                      {personalizacion.precioDeseado != null && (
+                        <div className="rounded-xl border border-brand-200 bg-brand-50 p-5">
+                          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-500">Tu precio propuesto</p>
+                          <p className="text-2xl font-bold text-brand-700">{formatearPrecio(personalizacion.precioDeseado)}</p>
+                        </div>
+                      )}
 
                       {/* Propuesta del Vendedor */}
                       {personalizacion.propuesta && (
@@ -285,19 +346,95 @@ export default function PersonalizacionDetallePage() {
                         <h3 className="text-title1 font-semibold text-ink-900">Gestionar</h3>
 
                         {personalizacion.estado === 'PENDIENTE' && (
-                          <p className="rounded-lg bg-surface-muted px-4 py-3 text-body-md text-ink-700">
-                            Tu solicitud está siendo revisada por el vendedor.
-                          </p>
+                          <>
+                            <p className="rounded-lg bg-surface-muted px-4 py-3 text-body-md text-ink-700">
+                              Tu solicitud está siendo revisada por el vendedor.
+                            </p>
+                            <button type="button" onClick={handleCancelar} disabled={cancelando} className={BTN_ERROR_LIGHT}>
+                              {cancelando ? 'Cancelando...' : 'Cancelar solicitud'}
+                            </button>
+                          </>
                         )}
 
                         {personalizacion.estado === 'RESPONDIDA' && (
                           <>
-                            <button type="button" onClick={handleAceptarYPagar} className={BTN_PRIMARY}>
-                              Aceptar y Pagar
-                            </button>
-                            <button type="button" onClick={handleRechazar} disabled={rechazando} className={BTN_ERROR_LIGHT}>
-                              {rechazando ? 'Rechazando...' : 'Rechazar propuesta'}
-                            </button>
+                            {!negociando ? (
+                              <>
+                                <button type="button" onClick={handleAceptarYPagar} className={BTN_PRIMARY}>
+                                  Aceptar y Pagar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setNegociando(true)}
+                                  className={BTN_PRIMARY_LIGHT}
+                                >
+                                  Negociar precio
+                                </button>
+                                <button type="button" onClick={handleRechazar} disabled={rechazando} className={BTN_ERROR_LIGHT}>
+                                  {rechazando ? 'Rechazando...' : 'Rechazar propuesta'}
+                                </button>
+                              </>
+                            ) : (
+                              <div className="flex flex-col gap-3">
+                                <p className="text-label-md font-semibold text-ink-700">Enviar contrapropuesta</p>
+                                <div>
+                                  <label className="mb-1 block text-xs font-medium text-ink-600">
+                                    Precio deseado (S/.) (opcional)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={precioNeg}
+                                    onChange={(e) => setPrecioNeg(e.target.value)}
+                                    placeholder="Ej: 80.00"
+                                    className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="mb-1 block text-xs font-medium text-ink-600">
+                                    Nueva especificación (opcional)
+                                  </label>
+                                  <textarea
+                                    value={especNeg}
+                                    onChange={(e) => setEspecNeg(e.target.value)}
+                                    rows={2}
+                                    placeholder="Actualiza las instrucciones si lo necesitas..."
+                                    className="w-full resize-none rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="mb-1 block text-xs font-medium text-ink-600">
+                                    Comentario al vendedor (opcional)
+                                  </label>
+                                  <textarea
+                                    value={comentNeg}
+                                    onChange={(e) => setComentNeg(e.target.value)}
+                                    rows={2}
+                                    placeholder="Explica qué cambios deseas..."
+                                    className="w-full resize-none rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                                  />
+                                </div>
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setNegociando(false)}
+                                    disabled={enviandoNeg}
+                                    className="flex-1 rounded-lg border border-ink-200 py-2.5 text-sm font-medium text-ink-700 hover:bg-white disabled:opacity-60"
+                                  >
+                                    Cancelar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleNegociar}
+                                    disabled={enviandoNeg || (!especNeg.trim() && !comentNeg.trim())}
+                                    className="flex-1 rounded-lg bg-brand-500 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
+                                  >
+                                    {enviandoNeg ? 'Enviando...' : 'Enviar'}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </>
                         )}
 

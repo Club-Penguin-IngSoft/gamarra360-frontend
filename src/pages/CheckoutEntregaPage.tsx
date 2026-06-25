@@ -42,7 +42,6 @@ const TEXTO_DELIVERY = `Llega el ${fechaConOffset(2)}, de 9 a 21 h.`;
 const TEXTO_RECOJO   = `desde el ${fechaConOffset(1)} a las 7 pm`;
 
 /* ── Componente ──────────────────────────────────────────────────────────── */
-
 export default function CheckoutEntregaPage() {
   const { items } = useCarrito();
   const { usuario } = useAuth();
@@ -94,14 +93,14 @@ export default function CheckoutEntregaPage() {
   );
   const costoDistrito = distritoSeleccionado?.costoEnvio ?? 0;
 
-  /* Agrupar items por comerciante */
+  /* Agrupar items por comerciante — prioridad: cotizacion > personalizacion > carrito */
   const porComerciante: Record<string, ICheckoutGrupo> = cotizacion
     ? {
         [String(cotizacion.vendedorId)]: {
           nombreTienda: cotizacion.nombreTienda ?? 'Tienda',
           items: [{
             id: `cotizacion-${cotizacion.cotizacionId}`,
-            nombreProducto: 'Producto de cotización aceptada',
+            nombreProducto: 'Cotización acordada',
             imagenUrl: undefined,
             cantidad: 1,
             precioUnitario: cotizacion.precioUnitario,
