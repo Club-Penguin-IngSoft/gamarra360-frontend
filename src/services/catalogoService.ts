@@ -29,7 +29,11 @@ interface IProductoBackend {
   // Campos en formato anidado (para compatibilidad con respuestas futuras)
   categorias?: { idCategoria: number; nombre: string }[];
   tipoProducto?: { idTipoProducto: number; nombre: string } | null;
+  materialPrincipal?: string;
   especificaciones?: { nombre: string; descripcion: string }[];
+  materiales?: string[];
+  tiendaOfreceEnvio?: boolean;
+  galeria?: string;
   imagenes: { idImagen: number; url: string; esPrincipal: boolean }[];
   variantes: {
     idVariante: number;
@@ -61,6 +65,7 @@ export interface IProductoPayload {
   esPersonalizable: boolean;
   idCategoria: number;
   idTipoProducto: number;
+  idMaterial?: number;
   imagenes: { url: string; esPrincipal: boolean }[];
   especificaciones?: { nombre: string; descripcion: string }[];
 }
@@ -164,7 +169,8 @@ function adaptarProducto(p: IProductoBackend): IProducto {
     id: String(p.idProducto),
     titulo: p.nombre,
     descripcion: p.descripcion,
-    idComerciante: String(p.idTienda ?? p.idComerciante ?? ''),
+    idTienda: String(p.idTienda ?? ''),
+    idComerciante: String(p.idComerciante ?? p.idTienda ?? ''),
     nombreTienda: p.nombreTienda ?? '',
     imagenes: urlsImagenes,
     categoria: p.nombreCategoria ?? 'Desconocida',
@@ -177,6 +183,10 @@ function adaptarProducto(p: IProductoBackend): IProducto {
     precioBase: p.precioBase ?? undefined,
     precioFinal: p.precioFinal ?? p.precioBase ?? undefined,
     variantes: variantes.length > 0 ? variantes : undefined,
+    materialPrincipal: p.materialPrincipal ?? undefined,
+    materiales: p.materiales ?? undefined,
+    tiendaOfreceEnvio: p.tiendaOfreceEnvio ?? false,
+    galeria: p.galeria ?? undefined,
   };
 }
 
@@ -192,11 +202,19 @@ function adaptarProducto(p: IProductoBackend): IProducto {
 export async function listarProductosPaginados(
   page: number = 0,
   size: number = 12,
-  _filtros?: Partial<IFiltrosCatalogo>,
+  filtros?: Partial<IFiltrosCatalogo>,
 ): Promise<{ contenido: IProducto[]; totalPaginas: number; totalElementos: number }> {
-  const { data } = await apiClient.get<IPageBackend>('/productos', {
-    params: { page, size },
-  });
+  const params = new URLSearchParams();
+  params.append('page', String(page));
+  params.append('size', String(size));
+  filtros?.categorias?.forEach((c) => params.append('categorias', c));
+  filtros?.tiposProducto?.forEach((t) => params.append('tiposProducto', t));
+  if (filtros?.color) params.append('color', filtros.color);
+  filtros?.tallas?.forEach((t) => params.append('tallas', t));
+  if (filtros?.precioMin != null) params.append('precioMin', String(filtros.precioMin));
+  if (filtros?.precioMax != null) params.append('precioMax', String(filtros.precioMax));
+
+  const { data } = await apiClient.get<IPageBackend>('/productos', { params });
 
   return {
     contenido: data.contenido.map(adaptarProducto),
@@ -253,6 +271,12 @@ export async function listarTiposPorCategoria(idCategoria: number): Promise<ITip
   return data;
 }
 
+/** Devuelve los materiales disponibles para los selects del formulario. */
+export async function listarMateriales(): Promise<{ id: number; nombre: string }[]> {
+  const { data } = await apiClient.get<{ id: number; nombre: string }[]>('/materiales');
+  return data;
+}
+
 /** Crea un producto en la tienda del comerciante autenticado (POST /productos). */
 export async function crearProducto(payload: IProductoPayload): Promise<IProducto> {
   const { data } = await apiClient.post<IProductoBackend>('/productos', payload);
@@ -298,7 +322,7 @@ export interface IOpcionesFiltro {
   materiales: string[];
   tallas: string[];
   tiposProducto: string[];
-  categorias: string[];  // Vendrá como ["Niños", "Hombre", "Mujer", ...]
+  categorias: string[];
 }
 
 /**

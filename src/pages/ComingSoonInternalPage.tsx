@@ -10,7 +10,7 @@ export default function ComingSoonInternalPage({ sidebar, title, description }: 
   return (
     <div className="flex min-h-screen">
       {sidebar}
-      <main className="ml-64 flex-1 flex items-center justify-center bg-gray-100">
+      <main className="flex-1 flex items-center justify-center bg-gray-100">
         <div className="flex max-w-md flex-col items-center gap-4 text-center px-8">
           <span className="text-[12px] font-bold uppercase tracking-[0.08em] text-primario">
             Próximamente

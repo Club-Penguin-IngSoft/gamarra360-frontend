@@ -405,7 +405,7 @@ export default function EditarProductoPage() {
         onChange={handleVarianteFileChange}
       />
 
-      <main className="ml-64 flex-1 bg-gray-100 p-7">
+      <main className="flex-1 bg-gray-100 p-7">
         <p className="text-[12px] text-gray-500 mb-2">
           <span className="text-primario font-medium cursor-pointer hover:underline" onClick={() => navigate(RUTAS.COMERCIANTE_DASHBOARD)}>Inicio</span>
           {' '}›{' '}

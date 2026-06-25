@@ -29,11 +29,14 @@ export const RUTAS = {
   COMERCIANTE_DASHBOARD: '/comerciante/dashboard',
   COMERCIANTE_CATALOGO: '/comerciante/catalogo',
   COMERCIANTE_PEDIDOS: '/comerciante/pedidos',
+  COMERCIANTE_PEDIDO_DETALLE: (id: string | number = ':id') => `/comerciante/pedidos/${id}`,
   COMERCIANTE_NUEVO_PRODUCTO: '/comerciante/catalogo/nuevo',
   COMERCIANTE_EDITAR_PRODUCTO: (id: string | number = ':id') => `/comerciante/catalogo/${id}/editar`,
   COMERCIANTE_PERSONALIZACIONES: '/comerciante/personalizaciones',
+  COMERCIANTE_PERSONALIZACION_DETALLE: (id: string | number = ':id') => `/comerciante/personalizaciones/${id}`,
   COMERCIANTE_COTIZACIONES: '/comerciante/cotizaciones',
   COMERCIANTE_NOTIFICACIONES: '/comerciante/notificaciones',
+  COMERCIANTE_CUENTA: '/comerciante/cuenta',
   /** Helper: construye la ruta del formulario de personalización */
   PERSONALIZAR: (id: string | number = ':id') => `/personalizar/${id}`,
   /** Mis personalizaciones (seguimiento del cliente — HU-29) */

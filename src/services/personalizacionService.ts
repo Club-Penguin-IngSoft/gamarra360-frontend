@@ -6,8 +6,12 @@
 import apiClient from './apiClient';
 import type {
   IAceptarPersonalizacionResponse,
+  IContraPropuestaPersonalizacionRequest,
+  IPersonalizacionComercianteDetalle,
+  IPersonalizacionComercianteResumen,
   IPersonalizacionDetalle,
   IPersonalizacionResumen,
+  IResponderPersonalizacionRequest,
 } from '../types/IPersonalizacion';
 
 /* ── Mapeo de tipos frontend → enums del backend ──────────────────────── */
@@ -98,9 +102,65 @@ async function rechazarPersonalizacion(id: number): Promise<void> {
   await apiClient.patch(`/personalizaciones/${id}/rechazar`);
 }
 
+/** Lista las personalizaciones recibidas por el comerciante autenticado. */
+async function listarPersonalizacionesComerciante(): Promise<IPersonalizacionComercianteResumen[]> {
+  const { data } = await apiClient.get<IPersonalizacionComercianteResumen[]>(
+    '/personalizaciones/comerciante',
+  );
+  return data;
+}
+
+/** Detalle completo de una personalización para la vista "Responder Solicitud" del comerciante. */
+async function obtenerDetallePersonalizacionComerciante(id: number): Promise<IPersonalizacionComercianteDetalle> {
+  const { data } = await apiClient.get<IPersonalizacionComercianteDetalle>(
+    `/personalizaciones/${id}/comerciante-detalle`,
+  );
+  return data;
+}
+
+/** El comerciante acepta (cotiza) o rechaza una solicitud en estado PENDIENTE. */
+async function responderPersonalizacion(
+  id: number,
+  req: IResponderPersonalizacionRequest,
+): Promise<IPersonalizacionComercianteDetalle> {
+  const { data } = await apiClient.post<IPersonalizacionComercianteDetalle>(
+    `/personalizaciones/${id}/responder`,
+    req,
+  );
+  return data;
+}
+
+/** Cancela la solicitud desde el cliente (PENDIENTE o RESPONDIDA → RECHAZADA). */
+async function cancelarPorCliente(id: number): Promise<void> {
+  await apiClient.patch(`/personalizaciones/${id}/cancelar`);
+}
+
+/** Cancela la solicitud desde el comerciante (PENDIENTE o RESPONDIDA → RECHAZADA). */
+async function cancelarPorVendedor(id: number): Promise<void> {
+  await apiClient.patch(`/personalizaciones/comerciante/${id}/cancelar`);
+}
+
+/** El cliente envía una contrapropuesta cuando está en estado RESPONDIDA: vuelve a PENDIENTE. */
+async function contraProponerCliente(
+  id: number,
+  req: IContraPropuestaPersonalizacionRequest,
+): Promise<IPersonalizacionDetalle> {
+  const { data } = await apiClient.post<IPersonalizacionDetalle>(
+    `/personalizaciones/${id}/contra-proponer`,
+    req,
+  );
+  return data;
+}
+
 export const personalizacionService = {
   listarMisPersonalizaciones,
   obtenerDetallePersonalizacion,
   aceptarPersonalizacion,
   rechazarPersonalizacion,
+  cancelarPorCliente,
+  contraProponerCliente,
+  listarPersonalizacionesComerciante,
+  obtenerDetallePersonalizacionComerciante,
+  cancelarPorVendedor,
+  responderPersonalizacion,
 };
