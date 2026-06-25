@@ -18,6 +18,13 @@ interface EntregaTienda {
   tipoEntrega: TipoEntrega;
 }
 
+interface ICotizacionCheckoutState {
+  cotizacionId: number;
+  vendedorId: number;
+  nombreTienda?: string;
+  precioUnitario: number;
+}
+
 /* ── Helpers de fecha ─────────────────────────────────────────────────────── */
 
 function fechaConOffset(diasOffset: number): string {
@@ -41,9 +48,12 @@ export default function CheckoutEntregaPage() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const personalizacion = (
-    location.state as { personalizacion?: IPersonalizacionCheckoutState } | null
-  )?.personalizacion;
+  const locationState = location.state as {
+    personalizacion?: IPersonalizacionCheckoutState;
+    cotizacion?: ICotizacionCheckoutState;
+  } | null;
+  const personalizacion = locationState?.personalizacion;
+  const cotizacion      = locationState?.cotizacion;
 
   /* Dirección */
   const [calle, setCalle]           = useState('');
@@ -85,7 +95,22 @@ export default function CheckoutEntregaPage() {
   const costoDistrito = distritoSeleccionado?.costoEnvio ?? 0;
 
   /* Agrupar items por comerciante */
-  const porComerciante: Record<string, ICheckoutGrupo> = personalizacion
+  const porComerciante: Record<string, ICheckoutGrupo> = cotizacion
+    ? {
+        [String(cotizacion.vendedorId)]: {
+          nombreTienda: cotizacion.nombreTienda ?? 'Tienda',
+          items: [{
+            id: `cotizacion-${cotizacion.cotizacionId}`,
+            nombreProducto: 'Producto de cotización aceptada',
+            imagenUrl: undefined,
+            cantidad: 1,
+            precioUnitario: cotizacion.precioUnitario,
+            precioBase: cotizacion.precioUnitario,
+            idVarianteProducto: null,
+          }],
+        },
+      }
+    : personalizacion
     ? {
         [String(personalizacion.vendedorId)]: {
           nombreTienda: personalizacion.nombreTienda ?? 'Tienda',
@@ -199,6 +224,15 @@ export default function CheckoutEntregaPage() {
         entregasPorTienda: entregasParaPago,
         direccionEntrega: direccionCompleta,
         idDistrito,
+        ...(cotizacion
+          ? {
+              cotizacionId: cotizacion.cotizacionId,
+              cotizacionGrupo: {
+                vendedorId: cotizacion.vendedorId,
+                precioUnitario: cotizacion.precioUnitario,
+              },
+            }
+          : {}),
         ...(personalizacion
           ? {
               personalizacionId: personalizacion.personalizacionId,
