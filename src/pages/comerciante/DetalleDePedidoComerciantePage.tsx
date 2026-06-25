@@ -182,7 +182,7 @@ export default function DetalleDePedidoComerciantePage() {
                               Personalización: {TIPO_TRABAJO_LABEL[item.personalizacion.tipoPersonalizacion] ?? item.personalizacion.tipoPersonalizacion}
                             </p>
                             {item.personalizacion.descripcion && (
-                              <p className="text-[12px] text-gray-700 mt-1 whitespace-pre-wrap">{item.personalizacion.descripcion}</p>
+                              <p className="text-[12px] text-gray-700 mt-1 whitespace-pre-wrap break-words">{item.personalizacion.descripcion}</p>
                             )}
                           </div>
                         </div>

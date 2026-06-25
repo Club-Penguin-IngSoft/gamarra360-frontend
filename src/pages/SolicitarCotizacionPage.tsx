@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Upload, X, CheckCircle, Link2 } from 'lucide-react';
+import { Search, Upload, X, CheckCircle } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
 import { RUTAS } from '../constants/rutas';
@@ -730,12 +730,7 @@ function ProductoForm({
           {/* Alternativa: URL de imagen (sin S3) */}
           <div className="my-3 flex items-center gap-3">
             <div className="h-px flex-1 bg-ink-100" />
-            <span className="flex items-center gap-1.5 whitespace-nowrap text-xs text-ink-400">
-              o usa una URL de imagen
-              <span className="flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-600">
-                <Link2 className="h-3 w-3" /> alternativa sin S3
-              </span>
-            </span>
+            <span className="whitespace-nowrap text-xs text-ink-400">o usa una URL de imagen</span>
             <div className="h-px flex-1 bg-ink-100" />
           </div>
           <div className="flex gap-2">
@@ -912,12 +907,7 @@ function PersonalizacionModal({
           <>
             <div className="mb-3 flex items-center gap-3">
               <div className="h-px flex-1 bg-ink-100" />
-              <span className="flex items-center gap-1.5 whitespace-nowrap text-xs text-ink-400">
-                o usa una URL de imagen
-                <span className="flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-600">
-                  <Link2 className="h-3 w-3" /> alternativa sin S3
-                </span>
-              </span>
+              <span className="whitespace-nowrap text-xs text-ink-400">o usa una URL de imagen</span>
               <div className="h-px flex-1 bg-ink-100" />
             </div>
             <div className="mb-4 flex gap-2">

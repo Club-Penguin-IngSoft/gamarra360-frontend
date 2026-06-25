@@ -188,7 +188,7 @@ export default function DetalleCotizacionComerciantePage() {
                         <p className="mt-0.5 text-sm text-ink-600">Precio base: S/.{p.precio.toFixed(2)}</p>
                       )}
                       {p.especificacion && (
-                        <p className="mt-2 whitespace-pre-wrap text-sm text-ink-700">{p.especificacion}</p>
+                        <p className="mt-2 whitespace-pre-wrap break-words text-sm text-ink-700">{p.especificacion}</p>
                       )}
                     </div>
                   </div>
