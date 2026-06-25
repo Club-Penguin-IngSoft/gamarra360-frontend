@@ -100,6 +100,7 @@ export default function DetalleCotizacionClientePage() {
 
   function handlePagar() {
     if (!cotizacion) return;
+    const primerProducto = cotizacion.productos[0];
     navigate(RUTAS.CHECKOUT, {
       state: {
         cotizacion: {
@@ -107,6 +108,8 @@ export default function DetalleCotizacionClientePage() {
           vendedorId: cotizacion.vendedorId,
           nombreTienda: cotizacion.nombreTienda,
           precioUnitario: cotizacion.respuesta?.precioPropuesto ?? 0,
+          nombreProducto: primerProducto?.nombre ?? undefined,
+          imagenUrl: primerProducto?.imagenUrl ?? undefined,
         },
       },
     });
