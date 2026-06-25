@@ -150,8 +150,7 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [cargando, setCargando] = useState(false);
   const [stockCritico, setStockCritico] = useState(0);
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; label: string; valor: number } | null>(null);
-  const [pestanaAbierta, setPestanaAbierta] = useState<'completados' | 'recientes' | 'productos' | 'pedidosPorDia' | null>(null);
+const [pestanaAbierta, setPestanaAbierta] = useState<'completados' | 'recientes' | 'productos' | 'pedidosPorDia' | null>(null);
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string | null>(null);
   const navigate = useNavigate();
   const balance = useStripeBalance();

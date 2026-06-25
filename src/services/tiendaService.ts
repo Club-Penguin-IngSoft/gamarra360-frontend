@@ -164,6 +164,7 @@ export interface IPerfilComerciante {
   logoUrl?: string;
   foto?: string;
   informacion?: string;
+  ofreceEnvio?: boolean;
   verificada?: boolean;
   // Titular
   email: string;
@@ -184,6 +185,7 @@ export interface IPerfilComerciantePayload {
   logoUrl?: string;
   foto?: string;
   informacion?: string;
+  ofreceEnvio?: boolean;
   nombres: string;
   primerApellido: string;
   segundoApellido: string;

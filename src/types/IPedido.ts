@@ -3,6 +3,13 @@
  * Los enums replican exactamente los valores definidos en Java (UPPER_SNAKE_CASE).
  */
 
+export interface IDistritoEnvio {
+  id: number;
+  ciudad: string;
+  nombre: string;
+  costoEnvio: number;
+}
+
 // Valores reales del enum EstadoPedido en el backend Java
 export type EstadoPedido =
   | 'RECIBIDO'
@@ -156,6 +163,7 @@ export interface ICrearPedidoRequest {
   tipoEntrega: TipoEntrega;
   direccionEntrega?: string;
   total: number;
+  idDistrito?: number;
 }
 
 /** Payload para POST /api/v1/detalles-pedido (mapea a DetallePedido.java) */
