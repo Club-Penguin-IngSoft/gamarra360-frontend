@@ -818,6 +818,7 @@ function PersonalizacionModal({
   numerProducto, onCancelar, onGuardar,
 }: PersonalizacionModalProps) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [urlDiseno, setUrlDiseno] = useState('');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -905,6 +906,38 @@ function PersonalizacionModal({
           className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) onSubirDiseno(f); }}
         />
+
+        {/* Alternativa: URL del diseño (sin S3) */}
+        {draft.modoInfo === 'SUBIR_DISENO' && (
+          <>
+            <div className="mb-3 flex items-center gap-3">
+              <div className="h-px flex-1 bg-ink-100" />
+              <span className="flex items-center gap-1.5 whitespace-nowrap text-xs text-ink-400">
+                o usa una URL de imagen
+                <span className="flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-600">
+                  <Link2 className="h-3 w-3" /> alternativa sin S3
+                </span>
+              </span>
+              <div className="h-px flex-1 bg-ink-100" />
+            </div>
+            <div className="mb-4 flex gap-2">
+              <input
+                type="url"
+                value={urlDiseno}
+                onChange={(e) => setUrlDiseno(e.target.value)}
+                placeholder="https://ejemplo.com/diseno.png"
+                className="flex-1 rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => { const u = urlDiseno.trim(); if (u) onCambio({ ...draft, imagenUrl: u }); }}
+                className="shrink-0 rounded-lg border border-ink-200 px-4 text-sm font-medium text-ink-700 transition-colors hover:bg-surface-muted"
+              >
+                Vista previa
+              </button>
+            </div>
+          </>
+        )}
 
         {/* Posición */}
         <div className="mb-4 grid grid-cols-2 gap-3">
