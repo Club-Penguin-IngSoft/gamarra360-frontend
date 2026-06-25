@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Upload, X, CheckCircle } from 'lucide-react';
+import { Search, Upload, X, CheckCircle, Link2 } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
 import { RUTAS } from '../constants/rutas';
@@ -563,6 +563,7 @@ function ProductoForm({
 }: ProductoFormProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [urlImagen, setUrlImagen] = useState('');
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -725,6 +726,34 @@ function ProductoForm({
             className="hidden"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) onImagenManual(f); }}
           />
+
+          {/* Alternativa: URL de imagen (sin S3) */}
+          <div className="my-3 flex items-center gap-3">
+            <div className="h-px flex-1 bg-ink-100" />
+            <span className="flex items-center gap-1.5 whitespace-nowrap text-xs text-ink-400">
+              o usa una URL de imagen
+              <span className="flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-600">
+                <Link2 className="h-3 w-3" /> alternativa sin S3
+              </span>
+            </span>
+            <div className="h-px flex-1 bg-ink-100" />
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={urlImagen}
+              onChange={(e) => setUrlImagen(e.target.value)}
+              placeholder="https://ejemplo.com/imagen-producto.jpg"
+              className="flex-1 rounded-lg border border-ink-200 px-4 py-3 text-sm focus:border-brand-500 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => { const u = urlImagen.trim(); if (u) onCambio({ imagenManualUrl: u }); }}
+              className="shrink-0 rounded-lg border border-ink-200 px-4 text-sm font-medium text-ink-700 transition-colors hover:bg-surface-muted"
+            >
+              Vista previa
+            </button>
+          </div>
         </div>
       )}
 
