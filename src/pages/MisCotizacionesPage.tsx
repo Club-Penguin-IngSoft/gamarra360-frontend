@@ -6,7 +6,8 @@ import Footer from '../components/Footer';
 import CuentaSidebar from '../components/cuenta/CuentaSidebar';
 import { cotizacionService } from '../services/cotizacionService';
 import { RUTAS } from '../constants/rutas';
-import type { ICotizacionResumen } from '../types/IPedido';
+import { ESTADO_PEDIDO_INFO } from '../utils/pedidoUi';
+import type { ICotizacionResumen, EstadoPedido } from '../types/IPedido';
 
 const ESTADO_LABELS: Record<string, string> = {
   PENDIENTE:   'Pendiente',
@@ -148,6 +149,11 @@ export default function MisCotizacionesPage() {
                           <p className="mt-1 text-sm font-medium text-ink-700">
                             Propuesta: S/.{c.precioPropuesto.toFixed(2)}
                           </p>
+                        )}
+                        {c.pedidoEstado != null && ESTADO_PEDIDO_INFO[c.pedidoEstado as EstadoPedido] && (
+                          <span className={`mt-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${ESTADO_PEDIDO_INFO[c.pedidoEstado as EstadoPedido].className}`}>
+                            Pedido: {ESTADO_PEDIDO_INFO[c.pedidoEstado as EstadoPedido].label}
+                          </span>
                         )}
                       </div>
                       <span className={`flex-shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${ESTADO_CLASES[c.estado] ?? 'bg-ink-100 text-ink-600'}`}>

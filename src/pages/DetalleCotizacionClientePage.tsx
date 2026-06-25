@@ -6,7 +6,8 @@ import Footer from '../components/Footer';
 import { cotizacionService } from '../services/cotizacionService';
 import apiClient from '../services/apiClient';
 import { RUTAS } from '../constants/rutas';
-import type { ICotizacionDetalle, IPedido } from '../types/IPedido';
+import { ESTADO_PEDIDO_INFO } from '../utils/pedidoUi';
+import type { ICotizacionDetalle, IPedido, EstadoPedido } from '../types/IPedido';
 
 const ESTADO_LABELS: Record<string, string> = {
   PENDIENTE:  'Pendiente',
@@ -388,16 +389,23 @@ export default function DetalleCotizacionClientePage() {
           {/* ACEPTADA: pagar o ver pedido si ya fue pagada */}
           {cotizacion.estado === 'ACEPTADA' && (
             cotizacion.pedidoId != null ? (
-              <div className="rounded-2xl border border-green-200 bg-green-50 p-5 text-center">
-                <p className="mb-3 text-sm font-medium text-green-800">
-                  ¡Cotización pagada! Tu pedido fue creado.
-                </p>
+              <div className="rounded-2xl border border-green-200 bg-green-50 p-5">
+                <div className="mb-3 flex items-center justify-between flex-wrap gap-2">
+                  <p className="text-sm font-medium text-green-800">
+                    ¡Cotización pagada! Tu pedido fue creado.
+                  </p>
+                  {cotizacion.pedidoEstado != null && ESTADO_PEDIDO_INFO[cotizacion.pedidoEstado as EstadoPedido] && (
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${ESTADO_PEDIDO_INFO[cotizacion.pedidoEstado as EstadoPedido].className}`}>
+                      {ESTADO_PEDIDO_INFO[cotizacion.pedidoEstado as EstadoPedido].label}
+                    </span>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={handleVerPedido}
-                  className="rounded-xl bg-green-600 px-6 py-3 text-sm font-semibold text-white hover:bg-green-700"
+                  className="w-full rounded-xl bg-green-600 px-6 py-3 text-sm font-semibold text-white hover:bg-green-700"
                 >
-                  Ver mi pedido
+                  Ver seguimiento del pedido
                 </button>
               </div>
             ) : (

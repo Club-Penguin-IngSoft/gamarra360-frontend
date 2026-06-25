@@ -244,7 +244,7 @@ useEffect(() => {
                           <div className="flex flex-1 items-center justify-between gap-4 min-w-0">
                             <div className="flex flex-col gap-0.5 min-w-0">
                               <span className="text-[14px] font-medium text-ink-900 line-clamp-1">
-                                {d.nombreProducto ?? `Variante #${d.idVarianteProducto}`}
+                                {d.nombreProducto ?? (d.idVarianteProducto != null ? `Variante #${d.idVarianteProducto}` : 'Producto')}
                               </span>
                               <div className="flex flex-wrap items-center gap-2 text-[12px] text-ink-400">
                                 {d.talla && <span>Talla: {d.talla}</span>}
@@ -252,6 +252,24 @@ useEffect(() => {
                                 {d.sku && <span className="font-mono">SKU: {d.sku}</span>}
                                 <span>Cant. {d.cantidad}</span>
                               </div>
+                              {d.cotizacionId != null && (
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(RUTAS.DETALLE_COTIZACION(d.cotizacionId!))}
+                                  className="mt-1 self-start rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700 hover:bg-blue-200"
+                                >
+                                  Ver cotización #{d.cotizacionId}
+                                </button>
+                              )}
+                              {d.personalizacionId != null && (
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(RUTAS.PERSONALIZACION_DETALLE(d.personalizacionId!))}
+                                  className="mt-1 self-start rounded-full bg-purple-100 px-2 py-0.5 text-[11px] font-semibold text-purple-700 hover:bg-purple-200"
+                                >
+                                  Ver personalización #{d.personalizacionId}
+                                </button>
+                              )}
                             </div>
                             <div className="shrink-0 text-right">
                               <p className="text-[14px] font-bold text-ink-900">

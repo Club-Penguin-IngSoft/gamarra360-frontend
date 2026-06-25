@@ -37,6 +37,8 @@ export interface IDetallePedidoResponse {
   talla: string | null;
   color: string | null;
   sku: string | null;
+  cotizacionId?: number | null;
+  personalizacionId?: number | null;
 }
 
 /** Respuesta del backend al obtener un pedido (campos no @JsonIgnore de Pedido.java) */
@@ -208,6 +210,8 @@ export interface ICotizacionResumen {
   cantidadProductos: number;
   precioPropuesto?: number;
   nombreCliente?: string;
+  pedidoId?: number | null;
+  pedidoEstado?: string | null;
 }
 
 export interface ICotizacionDetalleProducto {
@@ -242,7 +246,8 @@ export interface ICotizacionDetalle {
   productos: ICotizacionDetalleProducto[];
   respuesta?: ICotizacionRespuesta;
   precioDeseado?: number;
-  pedidoId?: number;
+  pedidoId?: number | null;
+  pedidoEstado?: string | null;
 }
 
 export interface ICotizacionRequest {
