@@ -26,6 +26,7 @@ export interface IGrupoTienda {
   vendedorId: number;
   tipoEntrega: 'DELIVERY' | 'RECOJO_TIENDA';
   direccionEntrega?: string;
+  idDistrito?: number | null;
   total: number;
   items: IItemParaDetalle[];
 }

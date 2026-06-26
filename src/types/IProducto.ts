@@ -12,9 +12,14 @@ export interface IVarianteProducto {
   id: string;
   talla?: string;
   color?: string;
-  /** Hex del color, para mostrarse como swatch */
   colorHex?: string;
   stock: number;
+  idColor?: number;
+  idTalla?: number;
+  /** Precio final con ofertas/descuentos para esta combinación talla+color */
+  precioEfectivo?: number | null;
+  /** Precio ajustado por regla de descuento (antes de ofertas) */
+  precioAjustado?: number | null;
 }
 
 export interface IProducto {

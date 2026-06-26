@@ -22,12 +22,14 @@ export const pagoService = {
     clienteId: number,
     total: number,
     grupos: unknown[]
-  ): Promise<number> {
-    const { data } = await apiClient.post<{ carritoPendienteId: number }>(
-      '/pagos/preparar',
-      { clienteId, total, grupos }
-    );
-    return data.carritoPendienteId;
+  ): Promise<{ carritoPendienteId: number; subtotalItems: number; costoEntregaTotal: number; total: number }> {
+    const { data } = await apiClient.post<{
+      carritoPendienteId: number;
+      subtotalItems: number;
+      costoEntregaTotal: number;
+      total: number;
+    }>('/pagos/preparar', { clienteId, total, grupos });
+    return data;
   },
 
   async buscarOrdenPorPaymentIntent(paymentIntentId: string): Promise<number | null> {

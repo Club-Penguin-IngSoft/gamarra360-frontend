@@ -162,16 +162,19 @@ export default function CheckoutEntregaPage() {
   const todasRecojoTienda = !hayDelivery;
 
   const todosLosItems = tiendas.flatMap(([, g]) => g.items);
-  const subtotal = todosLosItems.reduce((acc, i) => acc + i.precioBase * i.cantidad, 0);
+  // Total real = precios efectivos (precioUnitario ya refleja precioEfectivo de variante)
+  const totalItems = todosLosItems.reduce((acc, i) => acc + i.precioUnitario * i.cantidad, 0);
+  // Ahorros por ofertas (solo cuando precioBase > precioUnitario)
   const descuentos = todosLosItems.reduce((acc, i) => {
-    const ahorro = i.precioBase > i.precioUnitario ? i.precioBase - i.precioUnitario : 0;
-    return acc + ahorro * i.cantidad;
+    return acc + Math.max(0, (i.precioBase - i.precioUnitario) * i.cantidad);
   }, 0);
+  // "Subtotal" mostrado = precios base = efectivos + ahorros
+  const subtotal = totalItems + descuentos;
   const costoEnvioTotal = Object.values(entregasPorTienda).reduce(
     (acc, e) => acc + (e.tipoEntrega === 'DELIVERY' ? costoDistrito : 0),
     0,
   );
-  const total = subtotal - descuentos + costoEnvioTotal;
+  const total = totalItems + costoEnvioTotal;
 
   /* Carrito vacío */
   if (tiendas.length === 0) {
@@ -223,6 +226,7 @@ export default function CheckoutEntregaPage() {
         entregasPorTienda: entregasParaPago,
         direccionEntrega: direccionCompleta,
         idDistrito,
+        costoEnvioEstimado: costoEnvioTotal,
         ...(cotizacion
           ? {
               cotizacionId: cotizacion.cotizacionId,
