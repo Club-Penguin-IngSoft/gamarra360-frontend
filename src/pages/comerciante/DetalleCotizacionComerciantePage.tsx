@@ -181,7 +181,7 @@ export default function DetalleCotizacionComerciantePage() {
                         <Package className="h-7 w-7 text-ink-300" />
                       </div>
                     )}
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <p className="font-medium text-ink-900">{p.nombre ?? `Producto ${i + 1}`}</p>
                       <p className="mt-0.5 text-xs text-ink-400">{p.tipo === 'CATALOGO' ? 'Del catálogo' : 'Ingresado manualmente'}</p>
                       {p.precio != null && (
