@@ -95,6 +95,22 @@ export function pasosSeguimiento(tipoEntrega: string | null | undefined): PasoSe
   ];
 }
 
+/**
+ * Etiqueta del botón del comerciante para avanzar al siguiente estado, con
+ * texto coherente al tipo de entrega. Devuelve null si el pedido ya está en
+ * estado final (ENTREGADO) o desconocido (p.ej. CANCELADO).
+ */
+export function etiquetaAvanzarEstado(
+  estadoActual: EstadoPedido,
+  tipoEntrega: string | null | undefined,
+): string | null {
+  const idx = ORDEN_ESTADOS.indexOf(estadoActual);
+  if (idx < 0 || idx >= ORDEN_ESTADOS.length - 1) return null;
+  const siguiente = ORDEN_ESTADOS[idx + 1];
+  const paso = pasosSeguimiento(tipoEntrega).find((p) => p.estado === siguiente);
+  return paso ? `Marcar ${paso.titulo}` : null;
+}
+
 /** Grupos de CTA del componente "Order CTAs, Type=Pedido" de Figma. */
 export type CtaGroupPedido = 'PENDIENTE_CONFIRMACION' | 'EN_PROGRESO' | 'FINALIZADO';
 

@@ -5,7 +5,7 @@ import ComercianteSidebar from '../../components/ComercianteSidebar';
 import { RUTAS } from '../../constants/rutas';
 import { pedidoService } from '../../services/pedidoService';
 import type { IPedidoComercianteDetalle } from '../../types/IPedido';
-import { formatearFecha, generarCodigoPedido, ESTADO_PEDIDO_INFO } from '../../utils/pedidoUi';
+import { formatearFecha, generarCodigoPedido, ESTADO_PEDIDO_INFO, etiquetaAvanzarEstado } from '../../utils/pedidoUi';
 import { TIPO_TRABAJO_LABEL } from '../../utils/personalizacionUi';
 import { formatearPrecio } from '../../utils';
 
@@ -15,13 +15,6 @@ function obtenerIniciales(nombre: string | null): string {
   if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
   return (partes[0][0] + partes[1][0]).toUpperCase();
 }
-
-const SIGUIENTE_ESTADO_LABEL: Partial<Record<string, string>> = {
-  RECIBIDO:           'Marcar En preparación',
-  EN_PREPARACION:     'Marcar En camino',
-  EN_CAMINO:          'Marcar Listo para entrega',
-  LISTO_PARA_ENTREGA: 'Marcar Entregado',
-};
 
 export default function DetalleDePedidoComerciantePage() {
   const { id } = useParams<{ id: string }>();
@@ -83,7 +76,7 @@ export default function DetalleDePedidoComerciantePage() {
 
   const estadoInfo = ESTADO_PEDIDO_INFO[detalle.estado];
   const totalCompras = detalle.historialCliente.length + 1;
-  const labelAvanzar = SIGUIENTE_ESTADO_LABEL[detalle.estado];
+  const labelAvanzar = etiquetaAvanzarEstado(detalle.estado, detalle.tipoEntrega);
 
   return (
     <div className="flex min-h-screen">

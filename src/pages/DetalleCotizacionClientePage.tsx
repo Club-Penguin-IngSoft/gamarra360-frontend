@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, XCircle, Package, Store } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
+import EspecificacionConLinks from '../components/EspecificacionConLinks';
 import { cotizacionService } from '../services/cotizacionService';
 import apiClient from '../services/apiClient';
 import { RUTAS } from '../constants/rutas';
@@ -208,7 +209,7 @@ export default function DetalleCotizacionClientePage() {
                         <p className="mt-0.5 text-sm text-ink-600">Precio ref.: S/.{p.precio.toFixed(2)}</p>
                       )}
                       {p.especificacion && (
-                        <p className="mt-2 whitespace-pre-wrap break-words text-sm text-ink-700">{p.especificacion}</p>
+                        <EspecificacionConLinks texto={p.especificacion} className="mt-2" />
                       )}
                     </div>
                   </div>

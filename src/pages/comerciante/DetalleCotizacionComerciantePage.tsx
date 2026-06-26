@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Package, User } from 'lucide-react';
 import ComercianteSidebar from '../../components/ComercianteSidebar';
+import EspecificacionConLinks from '../../components/EspecificacionConLinks';
 import { cotizacionService, type IRespuestaCotizacionRequest } from '../../services/cotizacionService';
 import { RUTAS } from '../../constants/rutas';
 import type { ICotizacionDetalle } from '../../types/IPedido';
@@ -188,7 +189,7 @@ export default function DetalleCotizacionComerciantePage() {
                         <p className="mt-0.5 text-sm text-ink-600">Precio base: S/.{p.precio.toFixed(2)}</p>
                       )}
                       {p.especificacion && (
-                        <p className="mt-2 whitespace-pre-wrap break-words text-sm text-ink-700">{p.especificacion}</p>
+                        <EspecificacionConLinks texto={p.especificacion} className="mt-2" />
                       )}
                     </div>
                   </div>
