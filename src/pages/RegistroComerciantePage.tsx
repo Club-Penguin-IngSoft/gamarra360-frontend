@@ -25,8 +25,6 @@ const GALERIA_OPTIONS = (Object.keys(ETIQUETA_GALERIA) as GaleriaGamarra[]).map(
 }));
 const TIPOS_DOCUMENTO = ['DNI', 'Carnet de extranjería', 'Pasaporte'];
 
-<<<<<<< HEAD
-=======
 //const rutaPorRol: Record<string, string> = {
   //CLIENTE:     RUTAS.INICIO,
   //VENDEDOR:    RUTAS.COMERCIANTE_DASHBOARD,
@@ -34,7 +32,6 @@ const TIPOS_DOCUMENTO = ['DNI', 'Carnet de extranjería', 'Pasaporte'];
   //ADMIN:       RUTAS.ADMIN_DASHBOARD,
 //};
 
->>>>>>> develop
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 
 function validarContrasena(pass: string) {
