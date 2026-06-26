@@ -354,11 +354,11 @@ function CompraDirectaInfo({ producto }: { producto: IProducto }) {
 
   const handleColorChange = (i: number) => {
     s.setColorActivo(i);
-    s.setCantidad(1);
+    s.setCantidad(0);
   };
   const handleTallaChange = (t: string) => {
     s.setTallaActiva(t);
-    s.setCantidad(1);
+    s.setCantidad(0);
   };
 
   return (
@@ -480,11 +480,11 @@ function PersonalizableInfo({ producto }: { producto: IProducto }) {
 
   const handleColorChange = (i: number) => {
     s.setColorActivo(i);
-    s.setCantidad(1);
+    s.setCantidad(0);
   };
   const handleTallaChange = (t: string) => {
     s.setTallaActiva(t);
-    s.setCantidad(1);
+    s.setCantidad(0);
   };
 
   return (
