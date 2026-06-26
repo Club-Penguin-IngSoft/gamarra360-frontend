@@ -91,7 +91,7 @@ export function CarritoProvider({ children }: { children: ReactNode }) {
           producto,
           idVariante,
           cantidad: cantidadFinal,
-          precioUnitario: producto.precioFinal ?? producto.precioBase ?? 0,
+          precioUnitario: variante?.precioEfectivo ?? producto.precioFinal ?? producto.precioBase ?? 0,
         };
         return [...actuales, nuevo];
       });

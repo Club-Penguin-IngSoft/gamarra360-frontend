@@ -171,8 +171,9 @@ export default function ModalCrearOferta({ open, ofertaEditar, onClose, onSucces
       }
       onSuccess();
       onClose();
-    } catch {
-      setError('Ocurrió un error al guardar. Intenta de nuevo.');
+    } catch (err: unknown) {
+      const respuesta = (err as { response?: { data?: { mensaje?: string } } })?.response?.data;
+      setError(respuesta?.mensaje ?? 'Ocurrió un error al guardar. Intenta de nuevo.');
     } finally {
       setGuardando(false);
     }

@@ -65,15 +65,28 @@ function Heading({ producto }: { producto: IProducto }) {
   );
 }
 
-function PrecioBlock({ producto }: { producto: IProducto }) {
-  const descuento = calcularDescuento(producto.precioBase, producto.precioFinal);
+function PrecioBlock({
+  producto,
+  precioVariante,
+  mostrarBaseTachado = false,
+}: {
+  producto: IProducto;
+  precioVariante?: number;
+  mostrarBaseTachado?: boolean;
+}) {
+  const precioActivo = precioVariante ?? producto.precioFinal ?? 0;
+  // Descuento del producto base solo cuando no hay variante activa
+  const descuento = precioVariante == null
+    ? calcularDescuento(producto.precioBase, producto.precioFinal)
+    : 0;
   const tieneDescuento = descuento > 0;
+  const mostrarTachado = tieneDescuento || mostrarBaseTachado;
 
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between gap-4">
         <span className="text-[32px] font-bold text-brand-600 md:text-[36px]">
-          {formatearPrecio(producto.precioFinal)}
+          {formatearPrecio(precioActivo)}
         </span>
 
         {tieneDescuento && (
@@ -91,7 +104,7 @@ function PrecioBlock({ producto }: { producto: IProducto }) {
         )}
       </div>
 
-      {tieneDescuento && (
+      {mostrarTachado && (
         <span className="text-[20px] font-medium text-ink-500 line-through">
           {formatearPrecio(producto.precioBase)}
         </span>
@@ -296,12 +309,24 @@ function useSeleccionVariante(producto: IProducto) {
       (v) => v.talla === tallaActiva && v.color === colores[colorActivo]?.name,
     );
   }, [producto.variantes, tallaActiva, colores, colorActivo]);
+
   const stockRestante = varianteSeleccionada?.stock ?? 0;
+
   useEffect(() => {
     if (stockRestante === 0) {
       setCantidad(0);
     }
   }, [stockRestante]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Bug 3 fix: el precio se deriva directamente de varianteSeleccionada sin flags intermedios
+  const precioVariante: number | undefined = varianteSeleccionada?.precioEfectivo ?? undefined;
+
+  // Bug 1 fix: tachado solo cuando la variante cuesta MENOS que precioBase (oferta real)
+  const mostrarBaseTachado =
+    precioVariante != null &&
+    producto.precioBase != null &&
+    precioVariante < producto.precioBase;
+
   return {
     colores,
     tallas,
@@ -313,6 +338,8 @@ function useSeleccionVariante(producto: IProducto) {
     setCantidad,
     varianteSeleccionada,
     stockRestante,
+    precioVariante,
+    mostrarBaseTachado,
   };
 }
 
@@ -327,11 +354,11 @@ function CompraDirectaInfo({ producto }: { producto: IProducto }) {
 
   const handleColorChange = (i: number) => {
     s.setColorActivo(i);
-    s.setCantidad(0);
+    s.setCantidad(1);
   };
   const handleTallaChange = (t: string) => {
     s.setTallaActiva(t);
-    s.setCantidad(0);
+    s.setCantidad(1);
   };
 
   return (
@@ -344,7 +371,11 @@ function CompraDirectaInfo({ producto }: { producto: IProducto }) {
         </div>
       )}
 
-      <PrecioBlock producto={producto} />
+      <PrecioBlock
+        producto={producto}
+        precioVariante={s.precioVariante}
+        mostrarBaseTachado={s.mostrarBaseTachado}
+      />
       <StoreCard producto={producto} />
 
       <div className="flex flex-col gap-6">
@@ -449,11 +480,11 @@ function PersonalizableInfo({ producto }: { producto: IProducto }) {
 
   const handleColorChange = (i: number) => {
     s.setColorActivo(i);
-    s.setCantidad(0);
+    s.setCantidad(1);
   };
   const handleTallaChange = (t: string) => {
     s.setTallaActiva(t);
-    s.setCantidad(0);
+    s.setCantidad(1);
   };
 
   return (
@@ -466,7 +497,11 @@ function PersonalizableInfo({ producto }: { producto: IProducto }) {
         </div>
       )}
 
-      <PrecioBlock producto={producto} />
+      <PrecioBlock
+        producto={producto}
+        precioVariante={s.precioVariante}
+        mostrarBaseTachado={s.mostrarBaseTachado}
+      />
       <StoreCard producto={producto} />
 
       <div className="flex flex-col gap-6">

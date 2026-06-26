@@ -126,21 +126,17 @@ function ResumenCompra() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
 
-  // Subtotal: precios base × cantidades (lo que pagarías sin descuentos)
-  const subtotalSinDescuento = items.reduce((acc, i) => {
-    const base = i.producto.precioBase ?? i.producto.precioFinal ?? 0;
-    return acc + base * i.cantidad;
-  }, 0);
+  // Total real = precios efectivos de variante (precioUnitario ya usa precioEfectivo)
+  const total = items.reduce((acc, i) => acc + i.precioUnitario * i.cantidad, 0);
 
-  // Descuentos: suma del ahorro por item (base - final) × cantidad
+  // Ahorro por ofertas: solo cuando precioBase > precioUnitario (descuento aplicado)
   const descuentos = items.reduce((acc, i) => {
     const base = i.producto.precioBase ?? 0;
-    const final = i.producto.precioFinal ?? 0;
-    const ahorro = base > final ? base - final : 0;
-    return acc + ahorro * i.cantidad;
+    return acc + Math.max(0, (base - i.precioUnitario) * i.cantidad);
   }, 0);
 
-  const total = subtotalSinDescuento - descuentos;
+  // "Subtotal" mostrado = lo que costaría sin ofertas (total + ahorros = precios base)
+  const subtotalSinDescuento = total + descuentos;
   
   function handleContinuar() {
     if (!usuario) {
