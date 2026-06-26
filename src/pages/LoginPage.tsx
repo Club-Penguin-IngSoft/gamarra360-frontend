@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import MaterialIcon from '../components/MaterialIcon';
 import LogoGamarra from '../components/LogoGamarra';
 import InputTexto from '../components/InputTexto';
@@ -16,13 +16,19 @@ const LoginPage = () => {
   const [form, setForm] = useState<ILoginRequest>({ email: '', contrasenha: '' });
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const { iniciarSesion, loginConGoogle, cargando, error } = useLogin();
-  const [estadoModal, setEstadoModal] = useState<'pendiente' | 'rechazado' | null>(null);
+  const [estadoModal, setEstadoModal] = useState<'pendiente' | 'rechazado' | 'desactivado' | null>(null);
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('cuentaDesactivada') === 'true') {
+      setEstadoModal('desactivado');
+    }
+  }, [searchParams]);
 
   const loginGoogle = useGoogleLogin({
     flow: 'implicit',
     onSuccess: async (tokenResponse) => {
       const data = await loginConGoogle(tokenResponse.access_token);
-      // loginConGoogle debe retornar el AuthResponse completo (ver hook abajo)
 
       if (data?.estadoSolicitud === 'PENDIENTE') {
         setEstadoModal('pendiente');
@@ -30,6 +36,10 @@ const LoginPage = () => {
       }
       if (data?.estadoSolicitud === 'RECHAZADO') {
         setEstadoModal('rechazado');
+        return;
+      }
+      if (data?.estadoSolicitud === 'DESACTIVADO') {
+        setEstadoModal('desactivado');
         return;
       }
     },
@@ -44,10 +54,13 @@ const LoginPage = () => {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formularioValido && !cargando) {
-      iniciarSesion(form);
+      const data = await iniciarSesion(form);
+      if (data?.estadoSolicitud === 'DESACTIVADO') {
+        setEstadoModal('desactivado');
+      }
     }
   };
 

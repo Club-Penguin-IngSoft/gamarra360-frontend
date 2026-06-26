@@ -69,6 +69,8 @@ function Breadcrumb({ tienda }: { tienda: ITienda }) {
 /* =============================== Brand Hero ============================ */
 
 function BrandHero({ tienda }: { tienda: ITienda }) {
+  const tiendaInhabilitada = tienda.comercianteActivo === false;
+
   // Iniciales del logo (ej. "Vidal & Co." → "V&C", "Estilo Killa" → "EK")
   const iniciales = tienda.nombre
     .split(/\s+/)
@@ -113,6 +115,13 @@ function BrandHero({ tienda }: { tienda: ITienda }) {
 
         {/* Info */}
         <div className="flex flex-1 flex-col gap-3 min-w-0">
+          
+          {tiendaInhabilitada && (
+            <div className="rounded-lg border border-red-300 bg-red-500/20 px-4 py-3 text-[14px] font-medium text-red-100">
+              Esta tienda ha sido deshabilitada por un administrador.
+            </div>
+          )}
+          
           {/* Tags */}
           {tienda.tiposServicio && tienda.tiposServicio.length > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -441,7 +450,12 @@ export default function DetalleTiendaPage() {
               ))}
             </div>
           ) : (
-            <CatalogoSection productos={productosCatalogo} />
+            <CatalogoSection
+              productos={productosCatalogo.map(p => ({
+                ...p,
+                comercianteActivo: tienda.comercianteActivo, // 👈 propaga el estado a cada producto
+              }))}
+            />
           )
         )}
       </main>

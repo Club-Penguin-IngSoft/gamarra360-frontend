@@ -22,6 +22,7 @@ interface ITiendaBackend {
   piso?: string;
   stand?: string;
   ofreceEnvio?: boolean;
+  comercianteActivo?: boolean;
 }
 
 /* ── Adaptador backend → ITienda ──────────────────────────────────────── */
@@ -40,6 +41,7 @@ function adaptarTienda(t: ITiendaBackend): ITienda {
     piso: t.piso,
     stand: t.stand,
     ofreceEnvio: t.ofreceEnvio ?? false,
+    comercianteActivo: t.comercianteActivo ?? true,
   };
 }
 
@@ -164,6 +166,7 @@ export interface IPerfilComerciante {
   logoUrl?: string;
   foto?: string;
   informacion?: string;
+  ofreceEnvio?: boolean;
   verificada?: boolean;
   // Titular
   email: string;
@@ -184,6 +187,7 @@ export interface IPerfilComerciantePayload {
   logoUrl?: string;
   foto?: string;
   informacion?: string;
+  ofreceEnvio?: boolean;
   nombres: string;
   primerApellido: string;
   segundoApellido: string;

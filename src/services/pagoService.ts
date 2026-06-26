@@ -12,7 +12,8 @@ export const pagoService = {
   async crearIntent(carritoPendienteId: number): Promise<CrearIntentResponse> {
     const { data } = await apiClient.post<CrearIntentResponse>(
       '/pagos/crear-intent',
-      { carritoPendienteId }
+      { carritoPendienteId },
+      { timeout: 20000 }
     );
     return data;
   },
@@ -21,12 +22,14 @@ export const pagoService = {
     clienteId: number,
     total: number,
     grupos: unknown[]
-  ): Promise<number> {
-    const { data } = await apiClient.post<{ carritoPendienteId: number }>(
-      '/pagos/preparar',
-      { clienteId, total, grupos }
-    );
-    return data.carritoPendienteId;
+  ): Promise<{ carritoPendienteId: number; subtotalItems: number; costoEntregaTotal: number; total: number }> {
+    const { data } = await apiClient.post<{
+      carritoPendienteId: number;
+      subtotalItems: number;
+      costoEntregaTotal: number;
+      total: number;
+    }>('/pagos/preparar', { clienteId, total, grupos });
+    return data;
   },
 
   async buscarOrdenPorPaymentIntent(paymentIntentId: string): Promise<number | null> {

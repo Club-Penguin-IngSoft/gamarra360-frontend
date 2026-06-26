@@ -34,16 +34,20 @@ interface IProductoBackend {
   materiales?: string[];
   tiendaOfreceEnvio?: boolean;
   galeria?: string;
+  comercianteActivo?: boolean;
   imagenes: { idImagen: number; url: string; esPrincipal: boolean }[];
   variantes: {
     idVariante: number;
     sku?: string;
     stock?: number;
-    precioAjustado?: number;
+    precioAjustado?: number | null;
+    precioEfectivo?: number | null;
     disponible?: boolean;
     talla?: string;
     color?: string;
     colorHex?: string;
+    idColor?: number;
+    idTalla?: number;
   }[];
 }
 
@@ -163,6 +167,12 @@ function adaptarProducto(p: IProductoBackend): IProducto {
     talla: v.talla ?? undefined,
     color: v.color ?? undefined,
     colorHex: v.colorHex ?? undefined,
+    idColor: v.idColor ?? undefined,
+    idTalla: v.idTalla ?? undefined,
+    precioAjustado: v.precioAjustado ?? undefined,
+    // precioEfectivo viene del backend si ya está implementado;
+    // si no, cae a precioAjustado como precio final de variante
+    precioEfectivo: v.precioEfectivo ?? v.precioAjustado ?? undefined,
   }));
 
   return {
@@ -187,6 +197,7 @@ function adaptarProducto(p: IProductoBackend): IProducto {
     materiales: p.materiales ?? undefined,
     tiendaOfreceEnvio: p.tiendaOfreceEnvio ?? false,
     galeria: p.galeria ?? undefined,
+    comercianteActivo: p.comercianteActivo ?? true,
   };
 }
 

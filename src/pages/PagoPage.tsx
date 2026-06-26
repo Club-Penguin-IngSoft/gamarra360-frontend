@@ -23,7 +23,6 @@ import type { TipoEntrega } from '../types/IPedido';
 
 // ── Stripe init (fuera del componente para no recrear en cada render) ──
 const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
-const COSTO_DELIVERY = 12;
 
 interface EntregaTiendaState {
   tipoEntrega: TipoEntrega;
@@ -41,6 +40,8 @@ interface CotizacionGrupoState {
 interface CheckoutState {
   entregasPorTienda?: Record<string, EntregaTiendaState>;
   direccionEntrega?: string;
+  idDistrito?: number | null;
+  costoEnvioEstimado?: number;
   personalizacionId?: number;
   personalizacionGrupo?: PersonalizacionGrupoState;
   cotizacionId?: number;
@@ -126,7 +127,7 @@ export default function PagoPage() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { entregasPorTienda = {}, direccionEntrega = '', personalizacionId, personalizacionGrupo, cotizacionId, cotizacionGrupo } =
+  const { entregasPorTienda = {}, direccionEntrega = '', idDistrito = null, costoEnvioEstimado = 0, personalizacionId, personalizacionGrupo, cotizacionId, cotizacionGrupo } =
     (location.state as CheckoutState) ?? {};
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   //const [ordenId, setOrdenId] = useState<number | null>(null);
@@ -142,14 +143,8 @@ export default function PagoPage() {
 
   // Calcula el resumen al montar, antes de que se vacíe el carrito
   useEffect(() => {
-    const entregasArr = Object.values(entregasPorTienda);
-    const costoEnvio =
-      entregasArr.length > 0
-        ? entregasArr.reduce(
-            (acc, e) => acc + (e.tipoEntrega === 'DELIVERY' ? COSTO_DELIVERY : 0),
-            0
-          )
-        : COSTO_DELIVERY;
+    // costoEnvioEstimado viene de CheckoutEntregaPage con el costo real del distrito seleccionado
+    const costoEnvio = costoEnvioEstimado;
 
     if (personalizacionGrupo) {
       const subtotalSinDescuento = personalizacionGrupo.precioUnitario;
@@ -163,19 +158,11 @@ export default function PagoPage() {
       return;
     }
 
-    const subtotalSinDescuento = items.reduce((acc, i) => {
-      const base = i.producto.precioBase ?? i.producto.precioFinal ?? 0;
-      return acc + base * i.cantidad;
-    }, 0);
-    const descuentos = items.reduce((acc, i) => {
-      const base = i.producto.precioBase ?? 0;
-      const final = i.producto.precioFinal ?? 0;
-      const ahorro = base > final ? base - final : 0;
-      return acc + ahorro * i.cantidad;
-    }, 0);
-    const total = subtotalSinDescuento - descuentos + costoEnvio;
+    // Estimación inicial con precioUnitario (fuente de verdad del carrito)
+    const subtotalSinDescuento = items.reduce((acc, i) => acc + i.precioUnitario * i.cantidad, 0);
+    const total = subtotalSinDescuento + costoEnvio;
 
-    setResumen({ subtotalSinDescuento, descuentos, costoEnvio, total });
+    setResumen({ subtotalSinDescuento, descuentos: 0, costoEnvio, total });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   
 
@@ -194,13 +181,13 @@ export default function PagoPage() {
         const idComerciante = String(personalizacionGrupo.vendedorId);
         const entregaTienda = entregasPorTienda[idComerciante];
         const tipoEntrega = entregaTienda?.tipoEntrega ?? 'DELIVERY';
-        const costoEntrega = tipoEntrega === 'DELIVERY' ? COSTO_DELIVERY : 0;
 
         grupos = [{
           vendedorId: personalizacionGrupo.vendedorId,
           tipoEntrega,
           direccionEntrega: tipoEntrega === 'DELIVERY' ? direccionEntrega : undefined,
-          total: personalizacionGrupo.precioUnitario + costoEntrega,
+          idDistrito: tipoEntrega === 'DELIVERY' ? idDistrito : null,
+          total: personalizacionGrupo.precioUnitario,
           items: [{
             idVarianteProducto: personalizacionGrupo.idVarianteProducto,
             cantidad: 1,
@@ -212,13 +199,13 @@ export default function PagoPage() {
         const idComerciante = String(cotizacionGrupo.vendedorId);
         const entregaTienda = entregasPorTienda[idComerciante];
         const tipoEntrega = entregaTienda?.tipoEntrega ?? 'DELIVERY';
-        const costoEntrega = tipoEntrega === 'DELIVERY' ? COSTO_DELIVERY : 0;
 
         grupos = [{
           vendedorId: cotizacionGrupo.vendedorId,
           tipoEntrega,
           direccionEntrega: tipoEntrega === 'DELIVERY' ? direccionEntrega : undefined,
-          total: cotizacionGrupo.precioUnitario + costoEntrega,
+          idDistrito: tipoEntrega === 'DELIVERY' ? idDistrito : null,
+          total: cotizacionGrupo.precioUnitario,
           items: [{
             idVarianteProducto: null,
             cantidad: 1,
@@ -241,16 +228,16 @@ export default function PagoPage() {
           ([idComerciante, itemsGrupo]) => {
             const entregaTienda = entregasPorTienda[idComerciante];
             const tipoEntrega = entregaTienda?.tipoEntrega ?? 'DELIVERY';
-            const costoEntrega = tipoEntrega === 'DELIVERY' ? COSTO_DELIVERY : 0;
-            const subtotalGrupo = itemsGrupo.reduce((acc, i) => {
-              const precio = i.producto.precioFinal ?? i.producto.precioBase ?? 0;
-              return acc + precio * i.cantidad;
-            }, 0);
+            const subtotalGrupo = itemsGrupo.reduce(
+              (acc, i) => acc + i.precioUnitario * i.cantidad,
+              0
+            );
             return {
               vendedorId: Number(idComerciante) || 0,
               tipoEntrega,
               direccionEntrega: tipoEntrega === 'DELIVERY' ? direccionEntrega : undefined,
-              total: subtotalGrupo + costoEntrega,
+              idDistrito: tipoEntrega === 'DELIVERY' ? idDistrito : null,
+              total: subtotalGrupo,
               items: itemsGrupo.map((i) => ({
                 idVarianteProducto: i.idVariante
                   ? Number(i.idVariante)
@@ -262,16 +249,26 @@ export default function PagoPage() {
           }
         );
       }
-      const totalCalculado = grupos.reduce((acc, g) => acc + g.total, 0);
+      const subtotalItems = grupos.reduce((acc, g) => acc + g.total, 0);
+
       // 1. Prepara el carrito pendiente (NO crea pedidos aún)
-      const carritoPendienteId = await pagoService.prepararCarrito(
+      const carritoResp = await pagoService.prepararCarrito(
         Number(usuario.id),
-        totalCalculado,
+        subtotalItems,
         grupos
       );
 
+      // Actualizar resumen con los valores validados por el backend (fuente de verdad)
+      setResumen(prev => ({
+        ...prev,
+        subtotalSinDescuento: carritoResp.subtotalItems,
+        descuentos: 0,
+        costoEnvio: carritoResp.costoEntregaTotal,
+        total: carritoResp.total,
+      }));
+
       // 2. Crea el PaymentIntent vinculado al carrito pendiente
-      const { clientSecret: secret } = await pagoService.crearIntent(carritoPendienteId);
+      const { clientSecret: secret } = await pagoService.crearIntent(carritoResp.carritoPendienteId);
       setClientSecret(secret);
 
       if (personalizacionId) {

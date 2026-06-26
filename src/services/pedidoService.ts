@@ -8,6 +8,7 @@ import type {
   IPedido,
   IPedidoComercianteResumen,
   IPedidoComercianteDetalle,
+  IDistritoEnvio,
 } from '../types/IPedido';
 
 const BASE_ORDENES = '/ordenes-pago';
@@ -26,6 +27,7 @@ export interface IGrupoTienda {
   vendedorId: number;
   tipoEntrega: 'DELIVERY' | 'RECOJO_TIENDA';
   direccionEntrega?: string;
+  idDistrito?: number | null;
   total: number;
   items: IItemParaDetalle[];
 }
@@ -110,6 +112,12 @@ async function obtenerDetallePedidoComerciante(id: number): Promise<IPedidoComer
   return data;
 }
 
+/** Lista todos los distritos disponibles para envío. */
+async function listarDistritos(): Promise<IDistritoEnvio[]> {
+  const { data } = await apiClient.get<IDistritoEnvio[]>('/distritos');
+  return data;
+}
+
 export const pedidoService = {
   crearOrdenCompleta,
   obtenerMisOrdenes,
@@ -118,4 +126,5 @@ export const pedidoService = {
   listarPedidosComerciante,
   obtenerDetallePedidoComerciante,
   avanzarEstadoPedido,
+  listarDistritos,
 };
