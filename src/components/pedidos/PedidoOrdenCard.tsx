@@ -1,24 +1,20 @@
 import { formatearPrecio } from '../../utils/formatearPrecio';
 import { formatearFecha, generarCodigoPedido, pedidoCoincideConTab, type TabPedidos } from '../../utils/pedidoUi';
-import type { IDetalleOrden, IPedidoConDetalles } from '../../types/IPedido';
+import type { IDetalleOrden } from '../../types/IPedido';
 import PedidoCard from './PedidoCard';
 
 interface PedidoOrdenCardProps {
   orden: IDetalleOrden;
   tab: TabPedidos;
   onCancelar: (pedidoId: number) => void;
-  onRepetir: (pedido: IPedidoConDetalles) => void;
   cancelandoId: number | null;
-  repitiendoId: number | null;
 }
 
 export default function PedidoOrdenCard({
   orden,
   tab,
   onCancelar,
-  onRepetir,
   cancelandoId,
-  repitiendoId,
 }: PedidoOrdenCardProps) {
   const pedidos = orden.pedidos.filter((p) => pedidoCoincideConTab(p.estado, tab));
   if (pedidos.length === 0) return null;
@@ -40,9 +36,7 @@ export default function PedidoOrdenCard({
             pedido={pedido}
             ordenId={orden.id}
             onCancelar={onCancelar}
-            onRepetir={onRepetir}
             cancelando={cancelandoId === pedido.id}
-            repitiendo={repitiendoId === pedido.id}
           />
         ))}
       </div>

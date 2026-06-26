@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Package, Truck, Store as StoreIcon, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, Package, Truck, Store as StoreIcon, ShoppingBag, Check } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
 import { pedidoService } from '../services/pedidoService';
 import { personalizacionService } from '../services/personalizacionService';
 import { formatearPrecio } from '../utils/formatearPrecio';
-import { ESTADO_PEDIDO_INFO } from '../utils/pedidoUi';
+import { ESTADO_PEDIDO_INFO, ORDEN_ESTADOS, pasosSeguimiento } from '../utils/pedidoUi';
 import { RUTAS } from '../constants/rutas';
 import type { IDetalleOrden, EstadoPago } from '../types/IPedido';
 import apiClient from '../services/apiClient';
@@ -226,6 +226,51 @@ useEffect(() => {
                         </p>
                       </div>
                     )}
+
+                    {/* Seguimiento del pedido */}
+                    <div className="border-b border-ink-100 px-5 py-4">
+                      <p className="mb-3 text-[13px] font-semibold text-ink-700">Seguimiento del pedido</p>
+                      {pedido.estado === 'CANCELADO' ? (
+                        <div className="rounded-lg bg-error-claro px-3 py-2 text-[13px] text-error">
+                          Este pedido fue cancelado.
+                        </div>
+                      ) : (
+                        <ol>
+                          {pasosSeguimiento(pedido.tipoEntrega).map((paso, i, arr) => {
+                            const idxPaso = ORDEN_ESTADOS.indexOf(paso.estado);
+                            const idxActual = ORDEN_ESTADOS.indexOf(pedido.estado);
+                            const completado = idxPaso < idxActual;
+                            const actual = idxPaso === idxActual;
+                            const esUltimo = i === arr.length - 1;
+                            return (
+                              <li key={paso.estado} className="flex gap-3">
+                                <div className="flex flex-col items-center">
+                                  <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                                    completado ? 'border-exito bg-exito text-white'
+                                    : actual ? 'border-brand-500 bg-brand-500 text-white'
+                                    : 'border-ink-200 bg-white'
+                                  }`}>
+                                    {completado && <Check className="h-3 w-3" />}
+                                    {actual && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                                  </div>
+                                  {!esUltimo && (
+                                    <span className={`w-0.5 grow ${completado ? 'bg-exito' : 'bg-ink-200'}`} style={{ minHeight: '26px' }} />
+                                  )}
+                                </div>
+                                <div className="pb-4">
+                                  <p className={`text-[13px] font-semibold ${completado || actual ? 'text-ink-900' : 'text-ink-400'}`}>
+                                    {paso.titulo}
+                                  </p>
+                                  <p className={`text-[12px] ${actual ? 'text-ink-600' : 'text-ink-400'}`}>
+                                    {paso.descripcion}
+                                  </p>
+                                </div>
+                              </li>
+                            );
+                          })}
+                        </ol>
+                      )}
+                    </div>
 
                     {/* Productos */}
                     <div className="divide-y divide-ink-100">

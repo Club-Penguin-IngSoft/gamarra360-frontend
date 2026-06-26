@@ -34,6 +34,67 @@ export const ESTADO_PEDIDO_INFO: Record<EstadoPedido, { label: string; className
   CANCELADO: { label: 'Cancelado', className: 'bg-error-claro text-error' },
 };
 
+/** Orden lineal de la máquina de estados del pedido (sin contar CANCELADO). */
+export const ORDEN_ESTADOS: EstadoPedido[] = [
+  'RECIBIDO', 'EN_PREPARACION', 'EN_CAMINO', 'LISTO_PARA_ENTREGA', 'ENTREGADO',
+];
+
+export interface PasoSeguimiento {
+  estado: EstadoPedido;
+  titulo: string;
+  descripcion: string;
+}
+
+/**
+ * Pasos del seguimiento del pedido, con textos diferenciados según el tipo de
+ * entrega (envío a domicilio vs. recojo en tienda). Mismos estados de la BD,
+ * solo cambia el mensaje mostrado al cliente.
+ */
+export function pasosSeguimiento(tipoEntrega: string | null | undefined): PasoSeguimiento[] {
+  const esRecojo = tipoEntrega === 'RECOJO_TIENDA';
+  return [
+    {
+      estado: 'RECIBIDO',
+      titulo: 'Pedido recibido',
+      descripcion: 'El comerciante recibió y confirmó tu pedido.',
+    },
+    {
+      estado: 'EN_PREPARACION',
+      titulo: 'En preparación',
+      descripcion: 'Tu pedido se está preparando.',
+    },
+    esRecojo
+      ? {
+          estado: 'EN_CAMINO',
+          titulo: 'Alistando para recojo',
+          descripcion: 'Tu pedido se está empacando para que lo recojas.',
+        }
+      : {
+          estado: 'EN_CAMINO',
+          titulo: 'En camino',
+          descripcion: 'Tu pedido va en camino a tu dirección.',
+        },
+    esRecojo
+      ? {
+          estado: 'LISTO_PARA_ENTREGA',
+          titulo: 'Listo para recojo',
+          descripcion: 'Tu pedido está listo. Acércate a la tienda en Gamarra a recogerlo.',
+        }
+      : {
+          estado: 'LISTO_PARA_ENTREGA',
+          titulo: 'Listo para entrega',
+          descripcion: 'El repartidor está por llegar a tu dirección.',
+        },
+    {
+      estado: 'ENTREGADO',
+      titulo: esRecojo ? 'Recogido' : 'Entregado',
+      descripcion: esRecojo
+        ? 'Recogiste tu pedido. ¡Gracias por tu compra!'
+        : 'Tu pedido fue entregado. ¡Gracias por tu compra!',
+    },
+  ];
+}
+
 /** Grupos de CTA del componente "Order CTAs, Type=Pedido" de Figma. */
 export type CtaGroupPedido = 'PENDIENTE_CONFIRMACION' | 'EN_PROGRESO' | 'FINALIZADO';
 

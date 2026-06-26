@@ -7,18 +7,15 @@ import CuentaSidebar from '../components/cuenta/CuentaSidebar';
 import PedidoTabs from '../components/pedidos/PedidoTabs';
 import PedidoOrdenCard from '../components/pedidos/PedidoOrdenCard';
 import { pedidoService } from '../services/pedidoService';
-import { obtenerProducto } from '../services/catalogoService';
 import { useAuth } from '../hooks/useAuth';
-import { useCarrito } from '../hooks/useCarrito';
 import { RUTAS } from '../constants/rutas';
 import { pedidoCoincideConTab, type TabPedidos } from '../utils/pedidoUi';
-import type { IDetalleOrden, IPedidoConDetalles } from '../types/IPedido';
+import type { IDetalleOrden } from '../types/IPedido';
 const ORDENES_POR_PAGINA = 10;
 
 export default function MisPedidosPage() {
   const navigate = useNavigate();
   const { usuario } = useAuth();
-  const { agregarAlCarrito } = useCarrito();
   const [ordenes, setOrdenes] = useState<IDetalleOrden[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +26,6 @@ export default function MisPedidosPage() {
     setPagina(1);
   };
   const [cancelandoId, setCancelandoId] = useState<number | null>(null);
-  const [repitiendoId, setRepitiendoId] = useState<number | null>(null);
 
   
   useEffect(() => {
@@ -83,32 +79,6 @@ export default function MisPedidosPage() {
       window.alert('No se pudo cancelar el pedido. Inténtalo más tarde.');
     } finally {
       setCancelandoId(null);
-    }
-  }
-
-  async function handleRepetir(pedido: IPedidoConDetalles) {
-    setRepitiendoId(pedido.id);
-    try {
-      let agregados = 0;
-      for (const detalle of pedido.detalles) {
-        if (!detalle.idProducto) continue;
-        const producto = await obtenerProducto(String(detalle.idProducto));
-        agregarAlCarrito(
-          producto,
-          detalle.cantidad,
-          detalle.idVarianteProducto != null ? String(detalle.idVarianteProducto) : undefined,
-        );
-        agregados += 1;
-      }
-      if (agregados === 0) {
-        window.alert('Los productos de este pedido ya no están disponibles.');
-        return;
-      }
-      navigate(RUTAS.CARRITO);
-    } catch {
-      window.alert('No se pudo repetir el pedido. Inténtalo más tarde.');
-    } finally {
-      setRepitiendoId(null);
     }
   }
 
@@ -181,9 +151,7 @@ export default function MisPedidosPage() {
                       orden={orden}
                       tab={tab}
                       onCancelar={handleCancelar}
-                      onRepetir={handleRepetir}
                       cancelandoId={cancelandoId}
-                      repitiendoId={repitiendoId}
                     />
                   ))}
 
