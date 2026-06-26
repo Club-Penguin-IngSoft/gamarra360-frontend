@@ -23,29 +23,33 @@ const useLogin = () => {
       setCargando(true);
       setError(null);
 
-const response = await authService.login(credentials);
+      const response = await authService.login(credentials);
 
-const rol = (response.rol === 'VENDEDOR' ? 'COMERCIANTE' : response.rol) as RolUsuario;
+      // Cuenta desactivada por un admin — no loguear, retornar para que
+      // LoginPage muestre el modal correspondiente.
+      if (response.estadoSolicitud === 'DESACTIVADO') {
+        return response;
+      }
 
-localStorage.setItem('token', response.token);
-localStorage.setItem('nombreUsuario', response.nombres ?? response.email);
+      const rol = (response.rol === 'VENDEDOR' ? 'COMERCIANTE' : response.rol) as RolUsuario;
 
-iniciarSesion({
-  token: response.token,
-  usuario: {
-    id: String(response.usuarioId),
-    nombre: response.nombres ?? '',
-    apellido: '',
-    correo: response.email,
-    rol,
-    direccionEntrega: response.direccionEntrega ?? null,
-  }
-});
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('nombreUsuario', response.nombres ?? response.email);
 
-navigate(rutaPorRol[rol] ?? RUTAS.INICIO); // 
-// Guardar nombre para el TopBar
-//localStorage.setItem('token', response.token);
-//localStorage.setItem('nombreUsuario', response.nombres ?? response.email);
+      iniciarSesion({
+        token: response.token,
+        usuario: {
+          id: String(response.usuarioId),
+          nombre: response.nombres ?? '',
+          apellido: '',
+          correo: response.email,
+          rol,
+          direccionEntrega: response.direccionEntrega ?? null,
+        }
+      });
+
+      navigate(rutaPorRol[rol] ?? RUTAS.INICIO);
+      return response;
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { mensaje?: string } } };
       const mensaje =
@@ -64,17 +68,22 @@ navigate(rutaPorRol[rol] ?? RUTAS.INICIO); //
 
       const response = await authService.loginConGoogle(accessToken);
 
-      //Comerciante bloqueado — retornar para que LoginPage muestre el modal
-    if (response.estadoSolicitud === 'PENDIENTE' || response.estadoSolicitud === 'RECHAZADO') {
-      return response;
-    }
+      // Comerciante bloqueado o cuenta desactivada — retornar para que
+      // LoginPage muestre el modal correspondiente.
+      if (
+        response.estadoSolicitud === 'PENDIENTE' ||
+        response.estadoSolicitud === 'RECHAZADO' ||
+        response.estadoSolicitud === 'DESACTIVADO'
+      ) {
+        return response;
+      }
 
-    if (response.needsRegistration) {
-      navigate(RUTAS.REGISTRO, { state: { email: response.email } });
-      return response;
-    }
+      if (response.needsRegistration) {
+        navigate(RUTAS.REGISTRO, { state: { email: response.email } });
+        return response;
+      }
 
-    const rol = (response.rol === 'VENDEDOR' ? 'COMERCIANTE' : response.rol) as RolUsuario;
+      const rol = (response.rol === 'VENDEDOR' ? 'COMERCIANTE' : response.rol) as RolUsuario;
 
       iniciarSesion({
         token: response.token,
