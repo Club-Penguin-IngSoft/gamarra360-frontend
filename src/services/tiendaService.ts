@@ -22,6 +22,7 @@ interface ITiendaBackend {
   piso?: string;
   stand?: string;
   ofreceEnvio?: boolean;
+  comercianteActivo?: boolean;
 }
 
 /* ── Adaptador backend → ITienda ──────────────────────────────────────── */
@@ -40,6 +41,7 @@ function adaptarTienda(t: ITiendaBackend): ITienda {
     piso: t.piso,
     stand: t.stand,
     ofreceEnvio: t.ofreceEnvio ?? false,
+    comercianteActivo: t.comercianteActivo ?? true,
   };
 }
 

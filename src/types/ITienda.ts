@@ -64,6 +64,8 @@ export interface ITienda {
   ofreceEnvio?: boolean;
   /** Dirección física dentro de la galería (ej. "3er Piso, Stand 302-A") */
   direccion?: string;
+  /** Indica si el comerciante está activo */
+  comercianteActivo?: boolean;
   /**
    * Servicio destacado bajo cotización — usado en la página de detalle cuando
    * la tienda tiene tiposServicio con 'COTIZACION'.
