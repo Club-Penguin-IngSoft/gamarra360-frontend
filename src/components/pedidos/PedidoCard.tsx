@@ -9,18 +9,15 @@ const BTN_BASE =
   'block shrink-0 rounded-lg px-8 py-[18px] text-center text-label-xl font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60';
 const BTN_PRIMARY = `${BTN_BASE} bg-brand-500 text-white hover:bg-brand-600`;
 const BTN_ERROR_LIGHT = `${BTN_BASE} bg-error-claro text-error hover:bg-red-100`;
-const BTN_PRIMARY_LIGHT = `${BTN_BASE} bg-brand-50 text-brand-600 hover:bg-brand-100`;
 
 interface PedidoCardProps {
   pedido: IPedidoConDetalles;
   ordenId: number;
   onCancelar: (pedidoId: number) => void;
-  onRepetir: (pedido: IPedidoConDetalles) => void;
   cancelando?: boolean;
-  repitiendo?: boolean;
 }
 
-export default function PedidoCard({ pedido, ordenId, onCancelar, onRepetir, cancelando, repitiendo }: PedidoCardProps) {
+export default function PedidoCard({ pedido, ordenId, onCancelar, cancelando }: PedidoCardProps) {
   const estadoInfo = ESTADO_PEDIDO_INFO[pedido.estado] ?? { label: pedido.estado, className: 'bg-ink-200 text-ink-700' };
   const ctaGroup = CTA_GROUP_POR_ESTADO[pedido.estado] ?? 'EN_PROGRESO';
 
@@ -106,11 +103,6 @@ export default function PedidoCard({ pedido, ordenId, onCancelar, onRepetir, can
         {ctaGroup === 'PENDIENTE_CONFIRMACION' && (
           <button type="button" onClick={() => onCancelar(pedido.id)} disabled={cancelando} className={BTN_ERROR_LIGHT}>
             {cancelando ? 'Cancelando...' : 'Cancelar pedido'}
-          </button>
-        )}
-        {ctaGroup === 'FINALIZADO' && (
-          <button type="button" onClick={() => onRepetir(pedido)} disabled={repitiendo} className={BTN_PRIMARY_LIGHT}>
-            {repitiendo ? 'Agregando...' : 'Repetir pedido'}
           </button>
         )}
       </div>

@@ -12,7 +12,6 @@ import type { IProducto } from '../types/IProducto';
 
 /* ── Tipos locales del formulario ────────────────────────────────────── */
 
-type Categoria = 'HOMBRE' | 'MUJER' | 'NINOS' | 'UNISEX_ADULTOS' | 'UNISEX_NINOS';
 type TipoPersonalizacion = 'ESTAMPADO' | 'BORDADO' | 'IMPRESION';
 
 interface PersonalizacionDatos {
@@ -38,14 +37,6 @@ interface ProductoItem {
   especificacion: string;
   personalizacion: PersonalizacionDatos | null;
 }
-
-const CATEGORIAS_LABELS: { key: Categoria; label: string }[] = [
-  { key: 'HOMBRE',         label: 'Hombre' },
-  { key: 'MUJER',          label: 'Mujer' },
-  { key: 'NINOS',          label: 'Niños' },
-  { key: 'UNISEX_ADULTOS', label: 'Unisex Adultos' },
-  { key: 'UNISEX_NINOS',   label: 'Unisex Niños' },
-];
 
 const TIPO_TRABAJO_LABELS: Record<TipoPersonalizacion, string> = {
   ESTAMPADO: 'Estampado',
@@ -98,7 +89,6 @@ export default function SolicitarCotizacionPage() {
   // Tienda
   const [todasTiendas, setTodasTiendas]           = useState<ITienda[]>([]);
   const [cargandoTiendas, setCargandoTiendas]       = useState(true);
-  const [categoriasFiltro, setCategoriasFiltro]     = useState<Categoria[]>([]);
   const [tipoProductoFiltro, setTipoProductoFiltro] = useState('');
   const [busquedaTienda, setBusquedaTienda]         = useState('');
   const [tiendaSeleccionada, setTiendaSeleccionada] = useState<ITienda | null>(null);
@@ -155,25 +145,33 @@ export default function SolicitarCotizacionPage() {
   ).sort();
 
   const tiendasFiltradas = todasTiendas.filter((t) => {
-    if (categoriasFiltro.length > 0 && !categoriasFiltro.some((c) => t.categorias?.includes(c))) return false;
     if (tipoProductoFiltro && !(t.tiposProducto ?? []).includes(tipoProductoFiltro)) return false;
     if (busquedaTienda.trim() && !t.nombre.toLowerCase().includes(busquedaTienda.toLowerCase())) return false;
     return true;
   });
 
-  /* ── Helpers de categoría ─────────────────────────────────────────── */
-
-  function toggleCategoria(cat: Categoria) {
-    setCategoriasFiltro((prev) =>
-      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat],
-    );
-    setTiendaSeleccionada(null);
-  }
-
   /* ── Helpers de productos ─────────────────────────────────────────── */
 
   function actualizarProducto(uid: string, cambios: Partial<ProductoItem>) {
     setProductos((prev) => prev.map((p) => (p.uid === uid ? { ...p, ...cambios } : p)));
+  }
+
+  /**
+   * Cambia entre las pestañas "Buscar en catálogo" / "Ingresar manualmente".
+   * Al volver a CATÁLOGO con una tienda ya elegida, repuebla la lista con el
+   * catálogo precargado de la tienda (sin esto, la lista quedaba vacía: bug).
+   */
+  function cambiarModoProducto(uid: string, modo: 'CATALOGO' | 'MANUAL') {
+    setProductos((prev) => prev.map((p) => (p.uid === uid
+      ? {
+          ...p,
+          modo,
+          productoSeleccionado: null,
+          busquedaQuery: '',
+          resultados: modo === 'CATALOGO' && tiendaSeleccionada ? productosTienda : [],
+          dropdownAbierto: false,
+        }
+      : p)));
   }
 
   function eliminarProducto(uid: string) {
@@ -320,7 +318,7 @@ export default function SolicitarCotizacionPage() {
 
   /* ── Render ───────────────────────────────────────────────────────── */
 
-  const hayFiltros = categoriasFiltro.length > 0 || tipoProductoFiltro || busquedaTienda.trim();
+  const hayFiltros = !!tipoProductoFiltro || !!busquedaTienda.trim();
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F5F5F5]">
@@ -339,25 +337,6 @@ export default function SolicitarCotizacionPage() {
             <div className="mb-4 flex items-center gap-3">
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-500 text-sm font-bold text-white">1</span>
               <h2 className="text-lg font-semibold text-ink-900">Tienda</h2>
-            </div>
-
-            {/* Categorías */}
-            <p className="mb-2 text-sm font-medium text-ink-600">Categoría</p>
-            <div className="mb-4 flex flex-wrap gap-2">
-              {CATEGORIAS_LABELS.map(({ key, label }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => toggleCategoria(key)}
-                  className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
-                    categoriasFiltro.includes(key)
-                      ? 'border-brand-500 bg-brand-500 text-white'
-                      : 'border-ink-200 bg-white text-ink-700 hover:border-brand-400'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
             </div>
 
             {/* Tipo de producto */}
@@ -473,6 +452,7 @@ export default function SolicitarCotizacionPage() {
                 numero={idx + 1}
                 tiendaId={tiendaSeleccionada?.id}
                 onCambio={(cambios) => actualizarProducto(producto.uid, cambios)}
+                onCambiarModo={(m) => cambiarModoProducto(producto.uid, m)}
                 onEliminar={() => eliminarProducto(producto.uid)}
                 onBusqueda={(q) => handleBusquedaProducto(producto.uid, q)}
                 onSeleccionarProducto={(p) => seleccionarProducto(producto.uid, p)}
@@ -566,6 +546,7 @@ interface ProductoFormProps {
   numero: number;
   tiendaId?: string;
   onCambio: (cambios: Partial<ProductoItem>) => void;
+  onCambiarModo: (modo: 'CATALOGO' | 'MANUAL') => void;
   onEliminar: () => void;
   onBusqueda: (q: string) => void;
   onSeleccionarProducto: (p: IProducto) => void;
@@ -576,12 +557,13 @@ interface ProductoFormProps {
 }
 
 function ProductoForm({
-  producto, numero, onCambio, onEliminar, onBusqueda,
+  producto, numero, onCambio, onCambiarModo, onEliminar, onBusqueda,
   onSeleccionarProducto, onImagenManual, onAbrirPersonalizacion,
   onEliminarPersonalizacion, mostrarEliminar,
 }: ProductoFormProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [urlImagen, setUrlImagen] = useState('');
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -616,7 +598,7 @@ function ProductoForm({
           <button
             key={m}
             type="button"
-            onClick={() => onCambio({ modo: m, productoSeleccionado: null, busquedaQuery: '', resultados: [] })}
+            onClick={() => onCambiarModo(m)}
             className={`px-4 pb-2 text-sm font-medium transition-colors ${
               producto.modo === m
                 ? 'border-b-2 border-brand-500 text-brand-600'
@@ -744,6 +726,29 @@ function ProductoForm({
             className="hidden"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) onImagenManual(f); }}
           />
+
+          {/* Alternativa: URL de imagen (sin S3) */}
+          <div className="my-3 flex items-center gap-3">
+            <div className="h-px flex-1 bg-ink-100" />
+            <span className="whitespace-nowrap text-xs text-ink-400">o usa una URL de imagen</span>
+            <div className="h-px flex-1 bg-ink-100" />
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={urlImagen}
+              onChange={(e) => setUrlImagen(e.target.value)}
+              placeholder="https://ejemplo.com/imagen-producto.jpg"
+              className="flex-1 rounded-lg border border-ink-200 px-4 py-3 text-sm focus:border-brand-500 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => { const u = urlImagen.trim(); if (u) onCambio({ imagenManualUrl: u }); }}
+              className="shrink-0 rounded-lg border border-ink-200 px-4 text-sm font-medium text-ink-700 transition-colors hover:bg-surface-muted"
+            >
+              Vista previa
+            </button>
+          </div>
         </div>
       )}
 
@@ -808,6 +813,7 @@ function PersonalizacionModal({
   numerProducto, onCancelar, onGuardar,
 }: PersonalizacionModalProps) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [urlDiseno, setUrlDiseno] = useState('');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -895,6 +901,33 @@ function PersonalizacionModal({
           className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) onSubirDiseno(f); }}
         />
+
+        {/* Alternativa: URL del diseño (sin S3) */}
+        {draft.modoInfo === 'SUBIR_DISENO' && (
+          <>
+            <div className="mb-3 flex items-center gap-3">
+              <div className="h-px flex-1 bg-ink-100" />
+              <span className="whitespace-nowrap text-xs text-ink-400">o usa una URL de imagen</span>
+              <div className="h-px flex-1 bg-ink-100" />
+            </div>
+            <div className="mb-4 flex gap-2">
+              <input
+                type="url"
+                value={urlDiseno}
+                onChange={(e) => setUrlDiseno(e.target.value)}
+                placeholder="https://ejemplo.com/diseno.png"
+                className="flex-1 rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => { const u = urlDiseno.trim(); if (u) onCambio({ ...draft, imagenUrl: u }); }}
+                className="shrink-0 rounded-lg border border-ink-200 px-4 text-sm font-medium text-ink-700 transition-colors hover:bg-surface-muted"
+              >
+                Vista previa
+              </button>
+            </div>
+          </>
+        )}
 
         {/* Posición */}
         <div className="mb-4 grid grid-cols-2 gap-3">

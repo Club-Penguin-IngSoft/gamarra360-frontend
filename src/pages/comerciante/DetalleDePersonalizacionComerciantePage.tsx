@@ -278,7 +278,7 @@ export default function DetalleDePersonalizacionComerciantePage() {
                 {detalle.estado === 'RECHAZADA' ? (
                   <div>
                     <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] mb-1">Motivo de Rechazo</p>
-                    <p className="text-[13px] text-gray-700 whitespace-pre-wrap">{detalle.propuesta?.comentario || '—'}</p>
+                    <p className="text-[13px] text-gray-700 whitespace-pre-wrap break-words">{detalle.propuesta?.comentario || '—'}</p>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3">
@@ -291,13 +291,13 @@ export default function DetalleDePersonalizacionComerciantePage() {
                     {detalle.propuesta?.anotaciones && (
                       <div>
                         <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] mb-1">Anotaciones</p>
-                        <p className="text-[13px] text-gray-700 whitespace-pre-wrap">{detalle.propuesta.anotaciones}</p>
+                        <p className="text-[13px] text-gray-700 whitespace-pre-wrap break-words">{detalle.propuesta.anotaciones}</p>
                       </div>
                     )}
                     {detalle.propuesta?.condiciones && (
                       <div>
                         <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] mb-1">Condiciones Adicionales</p>
-                        <p className="text-[13px] text-gray-700 whitespace-pre-wrap">{detalle.propuesta.condiciones}</p>
+                        <p className="text-[13px] text-gray-700 whitespace-pre-wrap break-words">{detalle.propuesta.condiciones}</p>
                       </div>
                     )}
                     {detalle.estado === 'RESPONDIDA' && (
@@ -366,7 +366,7 @@ export default function DetalleDePersonalizacionComerciantePage() {
                   <div>
                     <p className="text-[12px] font-semibold text-primario">Diseño Referencial</p>
                     {detalle.descripcion && (
-                      <p className="text-[12px] text-gray-700 mt-1 whitespace-pre-wrap">{detalle.descripcion}</p>
+                      <p className="text-[12px] text-gray-700 mt-1 whitespace-pre-wrap break-words">{detalle.descripcion}</p>
                     )}
                   </div>
                 </div>

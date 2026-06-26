@@ -3,10 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, XCircle, Package, Store } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
+import EspecificacionConLinks from '../components/EspecificacionConLinks';
 import { cotizacionService } from '../services/cotizacionService';
 import apiClient from '../services/apiClient';
 import { RUTAS } from '../constants/rutas';
-import type { ICotizacionDetalle, IPedido } from '../types/IPedido';
+import { ESTADO_PEDIDO_INFO } from '../utils/pedidoUi';
+import type { ICotizacionDetalle, IPedido, EstadoPedido } from '../types/IPedido';
 
 const ESTADO_LABELS: Record<string, string> = {
   PENDIENTE:  'Pendiente',
@@ -99,6 +101,7 @@ export default function DetalleCotizacionClientePage() {
 
   function handlePagar() {
     if (!cotizacion) return;
+    const primerProducto = cotizacion.productos[0];
     navigate(RUTAS.CHECKOUT, {
       state: {
         cotizacion: {
@@ -106,6 +109,8 @@ export default function DetalleCotizacionClientePage() {
           vendedorId: cotizacion.vendedorId,
           nombreTienda: cotizacion.nombreTienda,
           precioUnitario: cotizacion.respuesta?.precioPropuesto ?? 0,
+          nombreProducto: primerProducto?.nombre ?? undefined,
+          imagenUrl: primerProducto?.imagenUrl ?? undefined,
         },
       },
     });
@@ -197,14 +202,14 @@ export default function DetalleCotizacionClientePage() {
                         <Package className="h-7 w-7 text-ink-300" />
                       </div>
                     )}
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <p className="font-medium text-ink-900">{p.nombre ?? `Producto ${i + 1}`}</p>
                       <p className="mt-0.5 text-xs text-ink-400">{p.tipo === 'CATALOGO' ? 'Del catálogo' : 'Ingresado manualmente'}</p>
                       {p.precio != null && (
                         <p className="mt-0.5 text-sm text-ink-600">Precio ref.: S/.{p.precio.toFixed(2)}</p>
                       )}
                       {p.especificacion && (
-                        <p className="mt-2 whitespace-pre-wrap text-sm text-ink-700">{p.especificacion}</p>
+                        <EspecificacionConLinks texto={p.especificacion} className="mt-2" />
                       )}
                     </div>
                   </div>
@@ -388,16 +393,23 @@ export default function DetalleCotizacionClientePage() {
           {/* ACEPTADA: pagar o ver pedido si ya fue pagada */}
           {cotizacion.estado === 'ACEPTADA' && (
             cotizacion.pedidoId != null ? (
-              <div className="rounded-2xl border border-green-200 bg-green-50 p-5 text-center">
-                <p className="mb-3 text-sm font-medium text-green-800">
-                  ¡Cotización pagada! Tu pedido fue creado.
-                </p>
+              <div className="rounded-2xl border border-green-200 bg-green-50 p-5">
+                <div className="mb-3 flex items-center justify-between flex-wrap gap-2">
+                  <p className="text-sm font-medium text-green-800">
+                    ¡Cotización pagada! Tu pedido fue creado.
+                  </p>
+                  {cotizacion.pedidoEstado != null && ESTADO_PEDIDO_INFO[cotizacion.pedidoEstado as EstadoPedido] && (
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${ESTADO_PEDIDO_INFO[cotizacion.pedidoEstado as EstadoPedido].className}`}>
+                      {ESTADO_PEDIDO_INFO[cotizacion.pedidoEstado as EstadoPedido].label}
+                    </span>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={handleVerPedido}
-                  className="rounded-xl bg-green-600 px-6 py-3 text-sm font-semibold text-white hover:bg-green-700"
+                  className="w-full rounded-xl bg-green-600 px-6 py-3 text-sm font-semibold text-white hover:bg-green-700"
                 >
-                  Ver mi pedido
+                  Ver seguimiento del pedido
                 </button>
               </div>
             ) : (

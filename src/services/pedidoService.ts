@@ -5,6 +5,7 @@ import type {
   ICrearDetallePedidoRequest,
   IOrdenPago,
   IDetalleOrden,
+  IPedido,
   IPedidoComercianteResumen,
   IPedidoComercianteDetalle,
   IDistritoEnvio,
@@ -99,6 +100,12 @@ async function listarPedidosComerciante(): Promise<IPedidoComercianteResumen[]> 
   return data;
 }
 
+/** Avanza el pedido al siguiente estado (RECIBIDO→EN_PREPARACION→EN_CAMINO→LISTO_PARA_ENTREGA→ENTREGADO). */
+async function avanzarEstadoPedido(pedidoId: number): Promise<IPedido> {
+  const { data } = await apiClient.patch<IPedido>(`${BASE_PEDIDOS}/${pedidoId}/avanzar-estado`);
+  return data;
+}
+
 /** Detalle completo de un pedido propio del comerciante (items, envío, cliente, historial). */
 async function obtenerDetallePedidoComerciante(id: number): Promise<IPedidoComercianteDetalle> {
   const { data } = await apiClient.get<IPedidoComercianteDetalle>(`${BASE_PEDIDOS}/${id}/comerciante-detalle`);
@@ -118,5 +125,6 @@ export const pedidoService = {
   cancelarPedido,
   listarPedidosComerciante,
   obtenerDetallePedidoComerciante,
+  avanzarEstadoPedido,
   listarDistritos,
 };

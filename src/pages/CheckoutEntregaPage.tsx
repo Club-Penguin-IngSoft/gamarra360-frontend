@@ -23,6 +23,8 @@ interface ICotizacionCheckoutState {
   vendedorId: number;
   nombreTienda?: string;
   precioUnitario: number;
+  nombreProducto?: string;
+  imagenUrl?: string;
 }
 
 /* ── Helpers de fecha ─────────────────────────────────────────────────────── */
@@ -121,6 +123,21 @@ export default function CheckoutEntregaPage() {
             precioUnitario: personalizacion.precioUnitario,
             precioBase: personalizacion.precioUnitario,
             idVarianteProducto: personalizacion.detalleProductoId,
+          }],
+        },
+      }
+    : cotizacion
+    ? {
+        [String(cotizacion.vendedorId)]: {
+          nombreTienda: cotizacion.nombreTienda ?? 'Tienda',
+          items: [{
+            id: `cotizacion-${cotizacion.cotizacionId}`,
+            nombreProducto: cotizacion.nombreProducto ?? 'Cotización acordada',
+            imagenUrl: cotizacion.imagenUrl ?? undefined,
+            cantidad: 1,
+            precioUnitario: cotizacion.precioUnitario,
+            precioBase: cotizacion.precioUnitario,
+            idVarianteProducto: null,
           }],
         },
       }

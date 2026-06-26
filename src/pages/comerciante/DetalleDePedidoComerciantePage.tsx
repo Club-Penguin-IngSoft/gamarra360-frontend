@@ -5,7 +5,7 @@ import ComercianteSidebar from '../../components/ComercianteSidebar';
 import { RUTAS } from '../../constants/rutas';
 import { pedidoService } from '../../services/pedidoService';
 import type { IPedidoComercianteDetalle } from '../../types/IPedido';
-import { formatearFecha, generarCodigoPedido, ESTADO_PEDIDO_INFO } from '../../utils/pedidoUi';
+import { formatearFecha, generarCodigoPedido, ESTADO_PEDIDO_INFO, etiquetaAvanzarEstado } from '../../utils/pedidoUi';
 import { TIPO_TRABAJO_LABEL } from '../../utils/personalizacionUi';
 import { formatearPrecio } from '../../utils';
 
@@ -22,16 +22,32 @@ export default function DetalleDePedidoComerciantePage() {
 
   const [detalle, setDetalle] = useState<IPedidoComercianteDetalle | null>(null);
   const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
+  const [errorAccion, setErrorAccion] = useState<string | null>(null);
+  const [avanzando, setAvanzando] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     pedidoService
       .obtenerDetallePedidoComerciante(Number(id))
       .then(setDetalle)
-      .catch(() => setError('No se pudo cargar el pedido.'))
+      .catch(() => setErrorCarga('No se pudo cargar el pedido.'))
       .finally(() => setCargando(false));
   }, [id]);
+
+  async function handleAvanzarEstado() {
+    if (!detalle || !id) return;
+    setAvanzando(true);
+    setErrorAccion(null);
+    try {
+      const pedidoActualizado = await pedidoService.avanzarEstadoPedido(Number(id));
+      setDetalle((prev) => prev ? { ...prev, estado: pedidoActualizado.estado } : prev);
+    } catch {
+      setErrorAccion('No se pudo actualizar el estado del pedido. Inténtalo de nuevo.');
+    } finally {
+      setAvanzando(false);
+    }
+  }
 
   if (cargando) {
     return (
@@ -44,12 +60,12 @@ export default function DetalleDePedidoComerciantePage() {
     );
   }
 
-  if (error || !detalle) {
+  if (errorCarga || !detalle) {
     return (
       <div className="flex min-h-screen">
         <ComercianteSidebar />
         <main className="flex-1 flex flex-col items-center justify-center gap-4 bg-gray-100">
-          <p className="text-[13px] text-gray-500">{error ?? 'Pedido no encontrado.'}</p>
+          <p className="text-[13px] text-gray-500">{errorCarga ?? 'Pedido no encontrado.'}</p>
           <button onClick={() => navigate(RUTAS.COMERCIANTE_PEDIDOS)} className="text-[13px] text-primario underline">
             Volver a Pedidos
           </button>
@@ -60,6 +76,7 @@ export default function DetalleDePedidoComerciantePage() {
 
   const estadoInfo = ESTADO_PEDIDO_INFO[detalle.estado];
   const totalCompras = detalle.historialCliente.length + 1;
+  const labelAvanzar = etiquetaAvanzarEstado(detalle.estado, detalle.tipoEntrega);
 
   return (
     <div className="flex min-h-screen">
@@ -89,15 +106,32 @@ export default function DetalleDePedidoComerciantePage() {
               <MessageCircle size={15} />
               Contactar Cliente
             </button>
-            <button
-              className="flex items-center gap-1.5 px-[18px] py-2.5 bg-primario text-white rounded-lg text-[13px] font-semibold hover:bg-primario-hover transition-colors"
-              onClick={() => window.alert('Próximamente disponible')}
-            >
-              <FileText size={15} />
-              Generar Guía de Envío
-            </button>
+            {labelAvanzar && (
+              <button
+                disabled={avanzando}
+                onClick={handleAvanzarEstado}
+                className="flex items-center gap-1.5 px-[18px] py-2.5 bg-primario text-white rounded-lg text-[13px] font-semibold hover:bg-primario-hover transition-colors disabled:opacity-60"
+              >
+                {avanzando ? 'Actualizando...' : labelAvanzar}
+              </button>
+            )}
+            {!labelAvanzar && (
+              <button
+                className="flex items-center gap-1.5 px-[18px] py-2.5 bg-primario text-white rounded-lg text-[13px] font-semibold hover:bg-primario-hover transition-colors"
+                onClick={() => window.alert('Próximamente disponible')}
+              >
+                <FileText size={15} />
+                Generar Guía de Envío
+              </button>
+            )}
           </div>
         </div>
+
+        {errorAccion && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-[13px] text-red-600">
+            {errorAccion}
+          </div>
+        )}
 
         {/* Grid principal */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -141,7 +175,7 @@ export default function DetalleDePedidoComerciantePage() {
                               Personalización: {TIPO_TRABAJO_LABEL[item.personalizacion.tipoPersonalizacion] ?? item.personalizacion.tipoPersonalizacion}
                             </p>
                             {item.personalizacion.descripcion && (
-                              <p className="text-[12px] text-gray-700 mt-1 whitespace-pre-wrap">{item.personalizacion.descripcion}</p>
+                              <p className="text-[12px] text-gray-700 mt-1 whitespace-pre-wrap break-words">{item.personalizacion.descripcion}</p>
                             )}
                           </div>
                         </div>
