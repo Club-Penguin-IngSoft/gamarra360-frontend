@@ -34,6 +34,7 @@ interface IProductoBackend {
   materiales?: string[];
   tiendaOfreceEnvio?: boolean;
   galeria?: string;
+  comercianteActivo?: boolean;
   imagenes: { idImagen: number; url: string; esPrincipal: boolean }[];
   variantes: {
     idVariante: number;
@@ -187,6 +188,7 @@ function adaptarProducto(p: IProductoBackend): IProducto {
     materiales: p.materiales ?? undefined,
     tiendaOfreceEnvio: p.tiendaOfreceEnvio ?? false,
     galeria: p.galeria ?? undefined,
+    comercianteActivo: p.comercianteActivo ?? true,
   };
 }
 

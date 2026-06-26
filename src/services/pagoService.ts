@@ -12,7 +12,8 @@ export const pagoService = {
   async crearIntent(carritoPendienteId: number): Promise<CrearIntentResponse> {
     const { data } = await apiClient.post<CrearIntentResponse>(
       '/pagos/crear-intent',
-      { carritoPendienteId }
+      { carritoPendienteId },
+      { timeout: 20000 }
     );
     return data;
   },

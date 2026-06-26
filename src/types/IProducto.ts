@@ -45,6 +45,7 @@ export interface IProducto {
   tiendaOfreceEnvio?: boolean;
   /** Galería de Gamarra donde está físicamente la tienda (para filtro de galería) */
   galeria?: string;
+  comercianteActivo?: boolean;
 }
 
 /** Etiqueta visible del producto en cards y badges */
