@@ -31,7 +31,8 @@ export default function RegistroPage() {
   const emailGoogle = location.state?.email || '';
   /*const correoFinal = emailGoogle || correo;*/
   const [nombres, setNombres]                   = useState('');
-  const [apellidos, setApellidos]               = useState('');
+  const [primerApellido, setPrimerApellido]     = useState('');
+  const [segundoApellido, setSegundoApellido]   = useState('');
   const [tipoDoc, setTipoDoc]                   = useState('');
   const [numeroDoc, setNumeroDoc]               = useState('');
   const [celular, setCelular]                   = useState('');
@@ -44,7 +45,7 @@ export default function RegistroPage() {
   const puedeEnviar =
     (emailGoogle || correo).length > 0 &&
     nombres.length > 0 &&
-    apellidos.length > 0 &&
+    primerApellido.length > 0 &&
     tipoDoc.length > 0 &&
     numeroDoc.length > 0 &&
     celular.length > 0 &&
@@ -68,14 +69,14 @@ export default function RegistroPage() {
     try {
       await apiClient.post('/auth/google/register', {
         nombres,
-        primerApellido: apellidos.split(' ')[0] || '',
-        segundoApellido: apellidos.split(' ')[1] || '',
+        primerApellido,
+        segundoApellido,
         email: emailGoogle || correo,
         contrasenha: contrasena,
         dni: numeroDoc,
         telefono: celular,
         tipoDocumento: tipoDoc,
-        rol: "CLIENTE"
+        rol: 'CLIENTE',
       });
 
       navigate(RUTAS.LOGIN);
@@ -123,14 +124,23 @@ export default function RegistroPage() {
                 autoComplete="given-name"
               />
 
-              <Input
-                type="text"
-                name="apellidos"
-                placeholder="Apellidos"
-                value={apellidos}
-                onChange={(e) => setApellidos(e.target.value)}
-                autoComplete="family-name"
-              />
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  type="text"
+                  name="primerApellido"
+                  placeholder="Primer apellido"
+                  value={primerApellido}
+                  onChange={(e) => setPrimerApellido(e.target.value)}
+                  autoComplete="family-name"
+                />
+                <Input
+                  type="text"
+                  name="segundoApellido"
+                  placeholder="Segundo apellido"
+                  value={segundoApellido}
+                  onChange={(e) => setSegundoApellido(e.target.value)}
+                />
+              </div>
 
               {/* Tipo de documento */}
               <div className="relative">

@@ -127,8 +127,10 @@ export default function MiCuentaPage() {
   const [piso, setPiso] = useState('');
   const [stand, setStand] = useState('');
   const [informacion, setInformacion] = useState('');
+  const [ofreceEnvio, setOfreceEnvio] = useState(false);
   const [logoUrl, setLogoUrl] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [logoDragging, setLogoDragging] = useState(false);
   const [verificada, setVerificada] = useState(false);
 
@@ -159,7 +161,8 @@ export default function MiCuentaPage() {
         setPiso(p.piso ?? '');
         setStand(p.stand ?? '');
         setInformacion(p.informacion ?? '');
-        setLogoUrl(p.logoUrl ?? '');
+        setOfreceEnvio(p.ofreceEnvio ?? false);
+        setLogoUrl(p.logoUrl ?? p.foto ?? '');
         setVerificada(p.verificada ?? false);
         setEmail(p.email ?? '');
         setNombres(p.nombres ?? '');
@@ -178,6 +181,8 @@ export default function MiCuentaPage() {
     if (!file) return;
     const allowed = ['image/png', 'image/jpeg', 'image/svg+xml'];
     if (!allowed.includes(file.type) || file.size > 10 * 1024 * 1024) return;
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(URL.createObjectURL(file));
     setLogoFile(file);
   };
 
@@ -186,7 +191,9 @@ export default function MiCuentaPage() {
     const formData = new FormData();
     formData.append('archivo', logoFile);
     formData.append('carpeta', 'tiendas');
-    const { data } = await apiClient.post<{ url: string }>('/s3/upload', formData);
+    const { data } = await apiClient.post<{ url: string }>('/s3/upload', formData, {
+      headers: { 'Content-Type': undefined },
+    });
     return data.url;
   };
 
@@ -197,14 +204,17 @@ export default function MiCuentaPage() {
     setMensajeNegocio(null);
     try {
       const nuevoLogoUrl = await subirLogoSiHay();
-      await actualizarPerfilComerciante({
+      const urlFinal = nuevoLogoUrl ?? logoUrl;
+      const perfil = await actualizarPerfilComerciante({
         nombreTienda,
         razonSocial,
         galeria: galeria || undefined,
         piso: piso || undefined,
         stand: stand || undefined,
         informacion: informacion || undefined,
-        logoUrl: nuevoLogoUrl ?? logoUrl,
+        ofreceEnvio,
+        logoUrl: urlFinal,
+        foto: urlFinal,
         nombres,
         primerApellido,
         segundoApellido,
@@ -212,10 +222,11 @@ export default function MiCuentaPage() {
         dni,
         telefono,
       });
-      if (nuevoLogoUrl) {
-        setLogoUrl(nuevoLogoUrl);
-        setLogoFile(null);
-      }
+      const logoGuardado = perfil.logoUrl ?? perfil.foto ?? urlFinal ?? '';
+      setLogoUrl(logoGuardado);
+      setLogoFile(null);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
       setMensajeNegocio('Perfil del negocio actualizado.');
     } catch {
       setMensajeNegocio('Error al actualizar. Intenta de nuevo.');
@@ -237,6 +248,7 @@ export default function MiCuentaPage() {
         piso: piso || undefined,
         stand: stand || undefined,
         informacion: informacion || undefined,
+        ofreceEnvio,
         logoUrl,
         nombres,
         primerApellido,
@@ -369,6 +381,29 @@ export default function MiCuentaPage() {
                     />
                   </div>
 
+                  {/* Envío a domicilio */}
+                  <label className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 cursor-pointer select-none">
+                    <div className="flex items-center gap-2.5">
+                      <MaterialIcon name="local_shipping" style={{ fontSize: '18px', color: '#6c757d' }} />
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">Envío a domicilio</p>
+                        <p className="text-xs text-gray-500">¿Tu tienda ofrece despacho a domicilio?</p>
+                      </div>
+                    </div>
+                    <div
+                      onClick={() => setOfreceEnvio((v) => !v)}
+                      className={`relative flex h-6 w-11 flex-shrink-0 rounded-full transition-colors duration-200 cursor-pointer ${
+                        ofreceEnvio ? 'bg-primario' : 'bg-gray-200'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
+                          ofreceEnvio ? 'translate-x-5' : 'translate-x-0.5'
+                        }`}
+                      />
+                    </div>
+                  </label>
+
                   {/* Logo */}
                   <div>
                     <p className="mb-2 text-xs font-medium text-gray-600">Logo</p>
@@ -385,18 +420,24 @@ export default function MiCuentaPage() {
                         logoDragging ? 'border-pink-400 bg-pink-50' : 'border-gray-200 bg-gray-50'
                       }`}
                     >
-                      {logoFile ? (
+                      {previewUrl ? (
                         <div className="flex flex-col items-center gap-1 text-center px-4">
-                          <MaterialIcon name="check_circle" style={{ fontSize: '32px', color: COLORES.primario }} />
-                          <p className="text-sm font-medium text-gray-700">{logoFile.name}</p>
-                          <p className="text-xs text-gray-400">Haz clic para cambiar</p>
+                          <img
+                            src={previewUrl}
+                            alt="Vista previa"
+                            className="max-h-24 max-w-[220px] object-contain"
+                          />
+                          <p className="text-xs text-gray-400 mt-1">Haz clic para cambiar</p>
                         </div>
                       ) : logoUrl ? (
-                        <img
-                          src={logoUrl}
-                          alt="Logo actual"
-                          className="max-h-28 max-w-[240px] object-contain"
-                        />
+                        <div className="flex flex-col items-center gap-1 text-center px-4">
+                          <img
+                            src={logoUrl}
+                            alt="Logo actual"
+                            className="max-h-24 max-w-[220px] object-contain"
+                          />
+                          <p className="text-xs text-gray-400 mt-1">Logo actual · Haz clic para cambiar</p>
+                        </div>
                       ) : (
                         <div className="flex flex-col items-center gap-1 text-center px-4">
                           <MaterialIcon name="cloud_upload" style={{ fontSize: '32px', color: '#0aa2c0' }} />
