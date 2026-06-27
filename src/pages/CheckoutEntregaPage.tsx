@@ -97,69 +97,53 @@ export default function CheckoutEntregaPage() {
 
   /* Agrupar items por comerciante — prioridad: cotizacion > personalizacion > carrito */
   const porComerciante: Record<string, ICheckoutGrupo> = cotizacion
-    ? {
-        [String(cotizacion.vendedorId)]: {
-          nombreTienda: cotizacion.nombreTienda ?? 'Tienda',
-          items: [{
-            id: `cotizacion-${cotizacion.cotizacionId}`,
-            nombreProducto: 'Cotización acordada',
-            imagenUrl: undefined,
-            cantidad: 1,
-            precioUnitario: cotizacion.precioUnitario,
-            precioBase: cotizacion.precioUnitario,
-            idVarianteProducto: null,
-          }],
-        },
+  ? {
+      [String(cotizacion.vendedorId)]: {
+        nombreTienda: cotizacion.nombreTienda ?? 'Tienda',
+        items: [{
+          id: `cotizacion-${cotizacion.cotizacionId}`,
+          nombreProducto: cotizacion.nombreProducto ?? 'Cotización acordada',
+          imagenUrl: cotizacion.imagenUrl ?? undefined,
+          cantidad: 1,
+          precioUnitario: cotizacion.precioUnitario,
+          precioBase: cotizacion.precioUnitario,
+          idVarianteProducto: null,
+        }],
+      },
+    }
+  : personalizacion
+  ? {
+      [String(personalizacion.vendedorId)]: {
+        nombreTienda: personalizacion.nombreTienda ?? 'Tienda',
+        items: [{
+          id: `personalizacion-${personalizacion.personalizacionId}`,
+          nombreProducto: personalizacion.nombreProducto ?? 'Producto personalizado',
+          imagenUrl: personalizacion.imagenUrl ?? undefined,
+          cantidad: 1,
+          precioUnitario: personalizacion.precioUnitario,
+          precioBase: personalizacion.precioUnitario,
+          idVarianteProducto: personalizacion.detalleProductoId,
+        }],
+      },
+    }
+  : items.reduce<Record<string, ICheckoutGrupo>>((acc, item) => {
+      const id = item.producto.idComerciante || 'default';
+      if (!acc[id]) {
+        acc[id] = { nombreTienda: item.producto.nombreTienda ?? 'Tienda', items: [] };
       }
-    : personalizacion
-    ? {
-        [String(personalizacion.vendedorId)]: {
-          nombreTienda: personalizacion.nombreTienda ?? 'Tienda',
-          items: [{
-            id: `personalizacion-${personalizacion.personalizacionId}`,
-            nombreProducto: personalizacion.nombreProducto ?? 'Producto personalizado',
-            imagenUrl: personalizacion.imagenUrl ?? undefined,
-            cantidad: 1,
-            precioUnitario: personalizacion.precioUnitario,
-            precioBase: personalizacion.precioUnitario,
-            idVarianteProducto: personalizacion.detalleProductoId,
-          }],
-        },
-      }
-    : cotizacion
-    ? {
-        [String(cotizacion.vendedorId)]: {
-          nombreTienda: cotizacion.nombreTienda ?? 'Tienda',
-          items: [{
-            id: `cotizacion-${cotizacion.cotizacionId}`,
-            nombreProducto: cotizacion.nombreProducto ?? 'Cotización acordada',
-            imagenUrl: cotizacion.imagenUrl ?? undefined,
-            cantidad: 1,
-            precioUnitario: cotizacion.precioUnitario,
-            precioBase: cotizacion.precioUnitario,
-            idVarianteProducto: null,
-          }],
-        },
-      }
-    : items.reduce<Record<string, ICheckoutGrupo>>((acc, item) => {
-        const id = item.producto.idComerciante || 'default';
-        if (!acc[id]) {
-          acc[id] = { nombreTienda: item.producto.nombreTienda ?? 'Tienda', items: [] };
-        }
-        acc[id].items.push({
-          id: item.id,
-          nombreProducto: item.producto.titulo,
-          imagenUrl: item.producto.imagenes?.[0],
-          cantidad: item.cantidad,
-          precioUnitario: item.precioUnitario,
-          precioBase: item.producto.precioBase ?? item.producto.precioFinal ?? 0,
-          idVarianteProducto: item.idVariante
-            ? Number(item.idVariante)
-            : Number(item.producto.variantes?.[0]?.id) || null,
-        });
-        return acc;
-      }, {});
-
+      acc[id].items.push({
+        id: item.id,
+        nombreProducto: item.producto.titulo,
+        imagenUrl: item.producto.imagenes?.[0],
+        cantidad: item.cantidad,
+        precioUnitario: item.precioUnitario,
+        precioBase: item.producto.precioBase ?? item.producto.precioFinal ?? 0,
+        idVarianteProducto: item.idVariante
+          ? Number(item.idVariante)
+          : Number(item.producto.variantes?.[0]?.id) || null,
+      });
+      return acc;
+    }, {});
   const tiendas = Object.entries(porComerciante);
 
   /* Estado de entrega independiente por tienda */
