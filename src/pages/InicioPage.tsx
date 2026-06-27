@@ -235,9 +235,9 @@ function SpecialOrdersCTA() {
         </p>
 
         <div className="mt-8 flex flex-wrap items-center gap-4">
-          <button className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-8 py-4 text-[15px] font-semibold text-white transition-colors hover:bg-brand-600">
+          <Link to={RUTAS.COTIZACIONES} className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-8 py-4 text-[15px] font-semibold text-white transition-colors hover:bg-brand-600">
             Solicitar cotización
-          </button>
+          </Link>
 
           <button className="inline-flex items-center justify-center rounded-lg bg-white/10 px-8 py-4 text-[15px] font-semibold text-white ring-1 ring-white/15 transition-colors hover:bg-white/15">
             Saber más

@@ -527,7 +527,7 @@ function CotizacionInfo({ producto }: { producto: IProducto }) {
       </div>
 
       <Link
-        to={RUTAS.CARRITO}
+        to={RUTAS.COTIZACIONES}
         className="flex h-14 items-center justify-center gap-2 rounded-lg bg-sky-700 text-[16px] font-medium text-white transition-colors hover:bg-sky-800"
       >
         <FileText className="h-5 w-5" />

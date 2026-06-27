@@ -174,10 +174,10 @@ function CotizacionSection({ tienda }: { tienda: ITienda }) {
             <p className="text-[15px] leading-relaxed text-ink-700">
               {servicio.descripcion}
             </p>
-            <button className="mt-2 inline-flex w-fit items-center justify-center gap-2 rounded-lg bg-brand-500 px-5 py-3 text-[15px] font-medium text-white transition-colors hover:bg-brand-600">
+            <Link to={RUTAS.COTIZACIONES} className="mt-2 inline-flex w-fit items-center justify-center gap-2 rounded-lg bg-brand-500 px-5 py-3 text-[15px] font-medium text-white transition-colors hover:bg-brand-600">
               Solicitar cotización
               <ArrowRight className="h-4 w-4" />
-            </button>
+            </Link>
           </div>
 
           {/* Lado derecho: imagen */}
