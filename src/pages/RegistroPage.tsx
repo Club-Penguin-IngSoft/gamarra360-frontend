@@ -10,6 +10,9 @@ import { useLocation } from 'react-router-dom';
 import { RUTAS } from '../constants/rutas';
 import { COLORES } from '../styles/tokens';
 import apiClient from '../services/apiClient';
+import { useGoogleLogin } from '@react-oauth/google';
+import useLogin from '../hooks/useLogin';
+import BotonGoogle from '../components/BotonGoogle';
 //import axios from 'axios';
 
 const TIPOS_DOCUMENTO = ['DNI', 'Carnet de extranjería', 'Pasaporte'];
@@ -41,6 +44,15 @@ export default function RegistroPage() {
   const [mostrarPass, setMostrarPass]           = useState(false);
   const [mostrarConfirmar, setMostrarConfirmar] = useState(false);
   const [errorForm, setErrorForm]               = useState<string | null>(null);
+
+  const { loginConGoogle } = useLogin();
+  const loginGoogle = useGoogleLogin({
+    flow: 'implicit',
+    onSuccess: async (tokenResponse) => {
+      await loginConGoogle(tokenResponse.access_token);
+    },
+    onError: () => setErrorForm('No se pudo conectar con Google'),
+  });
 
   const puedeEnviar =
     (emailGoogle || correo).length > 0 &&
@@ -103,6 +115,24 @@ export default function RegistroPage() {
             <p className="text-gray-500 text-sm mb-6">
               Empieza tu experiencia.
             </p>
+
+            {emailGoogle ? (
+              <div className="mb-6 flex items-center gap-2 rounded-xl bg-pink-50 border border-pink-200 px-4 py-3 text-sm text-pink-700">
+                <MaterialIcon name="check_circle" style={{ fontSize: '20px' }} />
+                <span>Vinculado con Google: <strong>{emailGoogle}</strong></span>
+              </div>
+            ) : (
+              <div className="mb-6 space-y-4">
+                <BotonGoogle onClick={() => loginGoogle()} />
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-px bg-gray-200" />
+                  <span className="text-xs text-gray-400 uppercase tracking-widest font-medium whitespace-nowrap">
+                    O regístrate con correo
+                  </span>
+                  <div className="flex-1 h-px bg-gray-200" />
+                </div>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} noValidate className="space-y-3">
               <Input
