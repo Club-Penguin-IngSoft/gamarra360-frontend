@@ -127,8 +127,8 @@ const LoginPage = () => {
             <h2 className="text-3xl font-extrabold text-neutro-900 mb-1">
               Bienvenido de nuevo
             </h2>
-            <p className="text-neutro-400 text-sm mb-8">
-              Ingresa tus credenciales para acceder.
+            <p className="text-neutro-400 text-sm mb-6">
+              Selecciona tu método de acceso para continuar.
             </p>
 
             {error && (
@@ -137,6 +137,16 @@ const LoginPage = () => {
                 <span>{error}</span>
               </div>
             )}
+
+            <BotonGoogle onClick={() => loginGoogle()} />
+
+            <div className="flex items-center gap-3 my-6">
+              <div className="flex-1 h-px bg-neutro-400" />
+              <span className="text-xs text-neutro-500 uppercase tracking-widest font-medium whitespace-nowrap">
+                O con tu correo
+              </span>
+              <div className="flex-1 h-px bg-neutro-400" />
+            </div>
 
             <form onSubmit={handleSubmit} noValidate className="space-y-4">
               <InputTexto
@@ -190,16 +200,6 @@ const LoginPage = () => {
                 Haz clic aquí
               </button>
             </p>
-
-            <div className="flex items-center gap-3 my-6">
-              <div className="flex-1 h-px bg-neutro-400" />
-              <span className="text-xs text-neutro-500 uppercase tracking-widest font-medium whitespace-nowrap">
-                O continúa con
-              </span>
-              <div className="flex-1 h-px bg-neutro-400" />
-            </div>
-
-            <BotonGoogle onClick={() => loginGoogle()} />
 
             <p className="text-center text-sm text-neutro-400 mt-6">
               ¿No tienes una cuenta?{' '}
