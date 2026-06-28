@@ -92,7 +92,7 @@ const LoginPage = () => {
         >
           <div
             className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: "url('/login-bg.jpg')" }}
+            style={{ backgroundImage: "url('https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1600&q=80')" }}
           />
           <div
             className="absolute inset-0"
