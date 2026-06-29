@@ -17,7 +17,7 @@ export const TOKEN_KEY = 'gamarra_token';
 export const USUARIO_KEY = 'gamarra_usuario';
 
 /** Timeout por defecto para peticiones HTTP (ms) */
-export const HTTP_TIMEOUT_MS = 15000;
+export const HTTP_TIMEOUT_MS = 30000;
 
 /** Cantidad de productos por página en el catálogo */
 export const PAGINA_TAMANO_CATALOGO = 12;
