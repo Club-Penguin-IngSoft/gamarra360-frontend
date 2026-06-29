@@ -230,6 +230,7 @@ export default function RegistroComerciantePage() {
         const { data: s3Data } = await apiClient.post<{ url: string }>(
           '/s3/upload',
           formData,
+          { headers: { 'Content-Type': 'multipart/form-data' } },
         );
         logoUrl = s3Data.url;
       }
