@@ -116,6 +116,8 @@ export interface IPersonalizacionComercianteDetalle {
   urlLogo: string | null;
   tipoPersonalizacion: string | null;
   descripcion: string | null;
+  precioBase: number | null;
+  descuentos: number | null;
   propuesta: IPropuestaComercianteInfo | null;
   precioDeseado: number | null;
 }

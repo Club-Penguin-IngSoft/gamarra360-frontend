@@ -49,10 +49,7 @@ export default function PersonalizacionDetallePage() {
 
   function handleAceptarYPagar() {
     if (!personalizacion) return;
-    // precioPropuesto es el precio TOTAL que cobra el vendedor, no un costo adicional.
-    const precioFinal = personalizacion.propuesta != null
-      ? personalizacion.propuesta.precioPropuesto
-      : personalizacion.total;
+    // total = precio base (siempre presente) + costo de personalización negociado.
     navigate(RUTAS.CHECKOUT, {
       state: {
         personalizacion: {
@@ -65,7 +62,7 @@ export default function PersonalizacionDetallePage() {
           talla: personalizacion.talla,
           color: personalizacion.color,
           sku: personalizacion.sku,
-          precioUnitario: precioFinal,
+          precioUnitario: personalizacion.total,
         },
       },
     });
@@ -257,6 +254,9 @@ export default function PersonalizacionDetallePage() {
                       {/* Resumen de Costos */}
                       <div className="flex flex-col gap-3 rounded-xl border border-ink-100 bg-white p-6">
                         <h3 className="text-title1 font-semibold text-ink-900">Resumen de Costos</h3>
+                        <p className="text-label-md text-ink-500">
+                          El precio base se mantiene fijo; la negociación solo afecta el costo de personalización.
+                        </p>
                         {personalizacion.precioBase != null && (
                           <div className="flex items-center justify-between text-body-xl text-ink-700">
                             <span>Precio base</span>
@@ -272,29 +272,24 @@ export default function PersonalizacionDetallePage() {
                         {personalizacion.costoPersonalizacion != null && (
                           <div className="flex items-center justify-between text-body-xl text-ink-700">
                             <span>Costo de personalización</span>
-                            <span>{formatearPrecio(
-                              personalizacion.propuesta != null
-                                ? personalizacion.propuesta.precioPropuesto - (personalizacion.precioBase ?? 0)
-                                : personalizacion.costoPersonalizacion
-                            )}</span>
+                            <span>{formatearPrecio(personalizacion.costoPersonalizacion)}</span>
                           </div>
                         )}
                         <div className="my-1 border-t border-ink-100" />
                         <div className="flex items-center justify-between">
                           <span className="text-title2 font-semibold text-ink-900">Total</span>
-                          <span className="text-h6 font-bold text-brand-600">{formatearPrecio(
-                            personalizacion.propuesta != null
-                              ? personalizacion.propuesta.precioPropuesto
-                              : personalizacion.total
-                          )}</span>
+                          <span className="text-h6 font-bold text-brand-600">{formatearPrecio(personalizacion.total)}</span>
                         </div>
                       </div>
 
-                      {/* Tu precio propuesto (contrapropuesta enviada) */}
+                      {/* Tu costo de personalización propuesto (contrapropuesta enviada) */}
                       {personalizacion.precioDeseado != null && (
                         <div className="rounded-xl border border-brand-200 bg-brand-50 p-5">
-                          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-500">Tu precio propuesto</p>
+                          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-500">Tu costo de personalización propuesto</p>
                           <p className="text-2xl font-bold text-brand-700">{formatearPrecio(personalizacion.precioDeseado)}</p>
+                          <p className="mt-1 text-xs text-ink-500">
+                            + Precio base {formatearPrecio(personalizacion.precioBase ?? 0)} = Total {formatearPrecio((personalizacion.precioBase ?? 0) + personalizacion.precioDeseado)}
+                          </p>
                         </div>
                       )}
 
@@ -333,7 +328,7 @@ export default function PersonalizacionDetallePage() {
                             </div>
                           )}
                           <div className="flex items-center justify-between border-t border-ink-100 pt-3">
-                            <span className="text-title3 font-semibold text-ink-900">Costo propuesto</span>
+                            <span className="text-title3 font-semibold text-ink-900">Costo de personalización propuesto</span>
                             <span className="text-title1 font-bold text-brand-600">
                               {formatearPrecio(personalizacion.propuesta.precioPropuesto)}
                             </span>
@@ -377,9 +372,12 @@ export default function PersonalizacionDetallePage() {
                             ) : (
                               <div className="flex flex-col gap-3">
                                 <p className="text-label-md font-semibold text-ink-700">Enviar contrapropuesta</p>
+                                <p className="text-xs text-ink-500">
+                                  Precio base (fijo): {formatearPrecio(personalizacion.precioBase ?? 0)} — esto no se negocia, solo el costo de personalización.
+                                </p>
                                 <div>
                                   <label className="mb-1 block text-xs font-medium text-ink-600">
-                                    Precio deseado (S/.) (opcional)
+                                    Costo de personalización deseado (S/.) <span className="text-error">*</span>
                                   </label>
                                   <input
                                     type="number"
@@ -427,7 +425,7 @@ export default function PersonalizacionDetallePage() {
                                   <button
                                     type="button"
                                     onClick={handleNegociar}
-                                    disabled={enviandoNeg || (!especNeg.trim() && !comentNeg.trim())}
+                                    disabled={enviandoNeg || !precioNeg.trim() || isNaN(Number(precioNeg)) || Number(precioNeg) <= 0}
                                     className="flex-1 rounded-lg bg-brand-500 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
                                   >
                                     {enviandoNeg ? 'Enviando...' : 'Enviar'}

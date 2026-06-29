@@ -21,6 +21,7 @@ import {
   Brush,
   Info,
   CheckCircle2,
+  X,
 } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
@@ -218,32 +219,72 @@ const PATRON_HEXAGONAL =
 
 function UploadDropzone({
   onFileChange,
-  fileName,
+  archivo,
 }: {
   onFileChange: (file: File | null) => void;
-  fileName: string | null;
+  archivo: File | null;
 }) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!archivo) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(archivo);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [archivo]);
+
+  const inputDisenoUpload = (
+    <input
+      id="diseno-upload"
+      type="file"
+      accept="image/png,image/jpeg,image/svg+xml"
+      className="sr-only"
+      onChange={(e) => {
+        const file = e.target.files?.[0] ?? null;
+        onFileChange(file);
+      }}
+    />
+  );
+
+  if (archivo && previewUrl) {
+    return (
+      <div className="relative flex min-h-[320px] flex-col items-center justify-center gap-3 overflow-hidden rounded-lg border border-dashed border-ink-200 bg-surface-muted px-6 py-6 text-center">
+        <button
+          type="button"
+          onClick={() => onFileChange(null)}
+          aria-label="Quitar diseño"
+          className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white text-ink-500 shadow-sm ring-1 ring-ink-100 transition-colors hover:bg-red-50 hover:text-red-600"
+        >
+          <X className="h-4 w-4" />
+        </button>
+        <img
+          src={previewUrl}
+          alt={archivo.name}
+          className="max-h-[260px] w-auto max-w-full rounded-md object-contain"
+        />
+        <label htmlFor="diseno-upload" className="cursor-pointer text-[13px] font-medium text-brand-600 hover:underline">
+          Cambiar diseño
+        </label>
+        {inputDisenoUpload}
+      </div>
+    );
+  }
+
   return (
     <label
-      className="relative flex cursor-pointer flex-col items-center justify-center gap-3 overflow-hidden rounded-lg border border-dashed border-ink-200 bg-surface-muted px-6 py-12 text-center transition-colors hover:border-brand-500 hover:bg-brand-50/30"
+      className="relative flex min-h-[320px] cursor-pointer flex-col items-center justify-center gap-3 overflow-hidden rounded-lg border border-dashed border-ink-200 bg-surface-muted px-6 py-12 text-center transition-colors hover:border-brand-500 hover:bg-brand-50/30"
       htmlFor="diseno-upload"
       style={{ backgroundImage: PATRON_HEXAGONAL, backgroundRepeat: 'repeat', backgroundSize: '56px 64px' }}
     >
-      <input
-        id="diseno-upload"
-        type="file"
-        accept="image/png,image/jpeg,image/svg+xml"
-        className="sr-only"
-        onChange={(e) => {
-          const file = e.target.files?.[0] ?? null;
-          onFileChange(file);
-        }}
-      />
+      {inputDisenoUpload}
       <span className="relative flex h-12 w-12 items-center justify-center rounded-full bg-brand-500 shadow-sm">
         <CloudUpload className="h-6 w-6 text-white" strokeWidth={2} />
       </span>
       <span className="relative text-[15px] font-medium text-ink-900">
-        {fileName ?? 'Arrastra tu diseño aquí o haz clic para subir'}
+        Haz clic para subir tu diseño
       </span>
       <span className="relative text-[12px] text-ink-500">PNG, JPG o SVG (Max 10MB)</span>
     </label>
@@ -332,7 +373,7 @@ function DetallesPersonalizacionCard({
         {tab === 'subir' ? (
           <UploadDropzone
             onFileChange={onArchivoChange}
-            fileName={archivo?.name ?? null}
+            archivo={archivo}
           />
         ) : (
           <div className="flex flex-col gap-2">
