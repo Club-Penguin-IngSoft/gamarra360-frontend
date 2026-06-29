@@ -24,7 +24,6 @@ interface IProductoFila {
   categoria: string;
   precioBase: number;
   unidades: number;
-  ganancias: number;
   estado: 'PUBLICADO' | 'AGOTADO' | 'SIN_PUBLICAR' | 'POCA_EXISTENCIA';
   imagenUrl?: string;
 }
@@ -47,7 +46,6 @@ function adaptarFila(p: IProductoBackend): IProductoFila {
     categoria: p.nombreTipoProducto ?? p.nombreCategoria ?? '—',
     precioBase: p.precioBase ?? 0,
     unidades: totalStock,
-    ganancias: (p.precioBase ?? 0) * totalStock,
     estado: computarEstado(p.activo, totalStock),
     imagenUrl: principal?.url,
   };
@@ -279,7 +277,7 @@ export default function GestionInventarioPage() {
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  {['Producto', 'Categoría', 'Precio Base', 'Unidades', 'Ganancias', 'Estado', 'Acciones'].map((col) => (
+                  {['Producto', 'Categoría', 'Precio Base', 'Unidades', 'Estado', 'Acciones'].map((col) => (
                     <th
                       key={col}
                       className="text-left text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] px-4 py-3 bg-gray-100 border-b border-gray-200"
@@ -317,9 +315,6 @@ export default function GestionInventarioPage() {
                     </td>
                     <td className="px-4 py-3.5 text-[13px] text-gray-900 border-b border-gray-100 align-middle">
                       {p.unidades}
-                    </td>
-                    <td className="px-4 py-3.5 text-[13px] text-gray-900 border-b border-gray-100 align-middle">
-                      S/ {p.ganancias.toLocaleString()}
                     </td>
                     <td className="px-4 py-3.5 border-b border-gray-100 align-middle">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${estadoBadgeClasses[p.estado]}`}>
