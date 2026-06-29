@@ -283,8 +283,8 @@ export async function listarTiposPorCategoria(idCategoria: number): Promise<ITip
 }
 
 /** Devuelve los materiales disponibles para los selects del formulario. */
-export async function listarMateriales(): Promise<{ id: number; nombre: string }[]> {
-  const { data } = await apiClient.get<{ id: number; nombre: string }[]>('/materiales');
+export async function listarMateriales(): Promise<{ idMaterial: number; nombre: string }[]> {
+  const { data } = await apiClient.get<{ idMaterial: number; nombre: string }[]>('/materiales');
   return data;
 }
 

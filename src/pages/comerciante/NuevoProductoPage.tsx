@@ -94,7 +94,7 @@ export default function NuevoProductoPage() {
   const [idTipoProducto, setIdTipoProducto] = useState<number | ''>('');
   const [categorias, setCategorias] = useState<ICategoriaOpcion[]>([]);
   const [tipos, setTipos] = useState<ITipoProductoOpcion[]>([]);
-  const [materialesBackend, setMaterialesBackend] = useState<{ id: number; nombre: string }[]>([]);
+  const [materialesBackend, setMaterialesBackend] = useState<{ idMaterial: number; nombre: string }[]>([]);
   const [idMaterial, setIdMaterial] = useState<number | ''>('');
   const [correlativo] = useState(1);
   const [skuInterno, setSkuInterno] = useState('');
@@ -462,7 +462,7 @@ export default function NuevoProductoPage() {
               >
                 <option value="">Sin especificar</option>
                 {materialesBackend.map((m) => (
-                  <option key={m.id} value={m.id}>{m.nombre}</option>
+                  <option key={m.idMaterial} value={m.idMaterial}>{m.nombre}</option>
                 ))}
               </select>
             </div>
