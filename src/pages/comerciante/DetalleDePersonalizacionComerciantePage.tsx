@@ -160,8 +160,11 @@ export default function DetalleDePersonalizacionComerciantePage() {
           <div className="lg:col-span-2 flex flex-col gap-5">
             {detalle.precioDeseado != null && detalle.estado === 'PENDIENTE' && (
               <div className="bg-primario-claro border border-primario/20 rounded-xl p-5">
-                <p className="text-[11px] font-semibold text-primario uppercase tracking-[0.4px] mb-1">Precio propuesto por el cliente</p>
-                <p className="text-[22px] font-bold text-primario mb-3">{formatearPrecio(detalle.precioDeseado)}</p>
+                <p className="text-[11px] font-semibold text-primario uppercase tracking-[0.4px] mb-1">Costo de personalización propuesto por el cliente</p>
+                <p className="text-[22px] font-bold text-primario mb-1">{formatearPrecio(detalle.precioDeseado)}</p>
+                <p className="text-[12px] text-gray-600 mb-3">
+                  + Precio base {formatearPrecio(detalle.precioBase ?? 0)} = Total a cobrar {formatearPrecio((detalle.precioBase ?? 0) + detalle.precioDeseado)}
+                </p>
                 <button
                   type="button"
                   onClick={handleAceptarPrecioCliente}
@@ -206,7 +209,10 @@ export default function DetalleDePersonalizacionComerciantePage() {
                 {decision === 'ACEPTAR' ? (
                   <div className="flex flex-col gap-4">
                     <div>
-                      <label className="block text-[12px] font-semibold text-gray-700 mb-1.5">Precio Final (S/)</label>
+                      <label className="block text-[12px] font-semibold text-gray-700 mb-1.5">Costo de personalización (S/)</label>
+                      <p className="text-[12px] text-gray-500 mb-1.5">
+                        Precio base del producto: {formatearPrecio(detalle.precioBase ?? 0)} (se suma automáticamente, no lo incluyas aquí).
+                      </p>
                       <input
                         type="number"
                         min="0"
@@ -216,6 +222,11 @@ export default function DetalleDePersonalizacionComerciantePage() {
                         placeholder="0.00"
                         className="w-full h-10 border border-gray-300 rounded-lg px-3.5 text-[13px] text-gray-900 bg-white focus:border-primario focus:outline-none"
                       />
+                      {precioFinal.trim() !== '' && !isNaN(parseFloat(precioFinal)) && (
+                        <p className="mt-1.5 text-[12px] text-gray-600">
+                          Total a cobrar al cliente: <span className="font-semibold text-gray-900">{formatearPrecio((detalle.precioBase ?? 0) + parseFloat(precioFinal))}</span>
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-[12px] font-semibold text-gray-700 mb-1.5">Anotaciones</label>
@@ -284,8 +295,11 @@ export default function DetalleDePersonalizacionComerciantePage() {
                   <div className="flex flex-col gap-3">
                     {detalle.propuesta?.precioPropuesto != null && (
                       <div>
-                        <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] mb-1">Precio Final</p>
+                        <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] mb-1">Costo de personalización</p>
                         <p className="text-[18px] font-bold text-gray-900">{formatearPrecio(detalle.propuesta.precioPropuesto)}</p>
+                        <p className="text-[12px] text-gray-500 mt-0.5">
+                          + Precio base {formatearPrecio(detalle.precioBase ?? 0)} = Total {formatearPrecio((detalle.precioBase ?? 0) + detalle.propuesta.precioPropuesto)}
+                        </p>
                       </div>
                     )}
                     {detalle.propuesta?.anotaciones && (
