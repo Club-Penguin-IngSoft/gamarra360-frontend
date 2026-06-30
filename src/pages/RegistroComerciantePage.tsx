@@ -15,6 +15,8 @@ import useLogin from '../hooks/useLogin';
 import apiClient from '../services/apiClient';
 import type { GaleriaGamarra } from '../types/ITienda';
 import { ETIQUETA_GALERIA } from '../types/ITienda';
+import { limpiarCelular, validarCelularPeru } from '../utils/validaciones';
+import { validarDocumento } from '../utils/validaciones';
 //import axios from 'axios';
 
 /* ── Datos de selects ───────────────────────────────────────────────────── */
@@ -44,6 +46,9 @@ function validarContrasena(pass: string) {
   );
 }
 
+function generarPasswordAleatoria(): string {
+  return `Gx${Math.random().toString(36).slice(-8)}!9`;
+}
 /* ── Sub-componentes ────────────────────────────────────────────────────── */
 
 function SectionBadge({ num, label }: { num: number; label: string }) {
@@ -168,7 +173,9 @@ export default function RegistroComerciantePage() {
 
   const [errorForm, setErrorForm]         = useState<string | null>(null);
   const [enviado, setEnviado]             = useState(false);
-  const [estadoModal, setEstadoModal]     = useState<'pendiente' | 'rechazado' | null>(null);
+  const [estadoModal, setEstadoModal] = useState<'pendiente' | 'rechazado' | 'desactivado' | null>(null);
+  const [errorCelularLive, setErrorCelularLive] = useState<string | null>(null);
+  const [errorDocLive, setErrorDocLive] = useState<string | null>(null);
 
   const loginGoogle = useGoogleLogin({
     flow: 'implicit',
@@ -184,6 +191,10 @@ export default function RegistroComerciantePage() {
           setEstadoModal('rechazado');
           return;
         }
+        if (data?.estadoSolicitud === 'DESACTIVADO') {
+          setEstadoModal('desactivado');
+          return;
+        }
         if (data?.needsRegistration) {
           navigate(RUTAS.REGISTRO_COMERCIANTE, { state: { email: data.email } });
           return;
@@ -197,10 +208,15 @@ export default function RegistroComerciantePage() {
     onError: () => setErrorForm('No se pudo conectar con Google'),
   });
 
+  
   const puedeEnviar =
     nombreTienda && razonSocial && ruc && galeria &&
     (emailGoogle || correo) && nombres && primerApellido && tipoDoc && numeroDoc && celular &&
-    validarContrasena(contrasena) && contrasena === confirmar;
+    validarDocumento(tipoDoc, numeroDoc) === null &&
+    validarCelularPeru(celular) === null &&
+    (emailGoogle
+      ? true
+      : validarContrasena(contrasena) && contrasena === confirmar);
 
   const handleLogoFile = (file: File | null) => {
     if (!file) return;
@@ -213,13 +229,28 @@ export default function RegistroComerciantePage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrorForm(null);
-    if (!validarContrasena(contrasena)) {
-      setErrorForm('La contraseña debe tener mínimo 8 caracteres, 1 mayúscula, 1 minúscula, 1 número y 1 carácter especial.');
+
+    const errorDoc = validarDocumento(tipoDoc, numeroDoc);
+    if (errorDoc) {
+      setErrorForm(errorDoc);
       return;
     }
-    if (contrasena !== confirmar) {
-      setErrorForm('Las contraseñas no coinciden.');
+
+    const errorCelular = validarCelularPeru(celular);
+    if (errorCelular) {
+      setErrorForm(errorCelular);
       return;
+    }
+
+    if (!emailGoogle) {
+      if (!validarContrasena(contrasena)) {
+        setErrorForm('La contraseña debe tener mínimo 8 caracteres, 1 mayúscula, 1 minúscula, 1 número y 1 carácter especial.');
+        return;
+      }
+      if (contrasena !== confirmar) {
+        setErrorForm('Las contraseñas no coinciden.');
+        return;
+      }
     }
     try {
       let logoUrl: string | null = null;
@@ -240,9 +271,9 @@ export default function RegistroComerciantePage() {
         primerApellido,
         segundoApellido,
         email: emailGoogle || correo,
-        contrasenha: contrasena,
+        contrasenha: emailGoogle ? generarPasswordAleatoria() : contrasena,
         dni: numeroDoc,
-        telefono: celular,
+        telefono: limpiarCelular(celular),
         tipoDocumento: tipoDoc,
         rol: 'VENDEDOR',
         ruc,
@@ -256,17 +287,18 @@ export default function RegistroComerciantePage() {
         logoUrl,
       };
 
-      await apiClient.post(
-        '/auth/google/register-comerciante',
-        payload
-      );
+      const endpoint = emailGoogle
+        ? '/auth/google/register-comerciante'
+        : '/auth/register-comerciante';
+      await apiClient.post(endpoint, payload);
 
       setEnviado(true);
 
     } catch (error: any) {
       console.log('ERROR COMPLETO:', error);
       console.log('RESPUESTA BACKEND:', error.response?.data);
-      setErrorForm('Error al registrar comerciante');
+      const mensaje = error.response?.data?.mensaje ?? 'Error al registrar comerciante';
+      setErrorForm(mensaje);
     }
   };
 
@@ -299,14 +331,23 @@ export default function RegistroComerciantePage() {
 
       {/* ── Google ──────────────────────────────────────────────────── */}
       <div className="mx-auto w-full max-w-[960px] px-8 flex flex-col gap-3 pb-2">
-        <GoogleButton onClick={() => loginGoogle()} />
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-gray-200" />
-          <span className="text-xs text-gray-400 uppercase tracking-widest font-medium whitespace-nowrap">
-            O continua con tus datos
-          </span>
-          <div className="flex-1 h-px bg-gray-200" />
-        </div>
+        {emailGoogle ? (
+          <div className="mb-2 flex items-center gap-2 rounded-xl bg-pink-50 border border-pink-200 px-4 py-3 text-sm text-pink-700">
+            <MaterialIcon name="check_circle" style={{ fontSize: '20px' }} />
+            <span>Vinculado con Google: <strong>{emailGoogle}</strong></span>
+          </div>
+        ) : (
+          <>
+            <GoogleButton onClick={() => loginGoogle()} />
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-xs text-gray-400 uppercase tracking-widest font-medium whitespace-nowrap">
+                O continua con tus datos
+              </span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+          </>
+        )}
       </div>
 
       {/* ── Form ────────────────────────────────────────────────────── */}
@@ -477,22 +518,46 @@ export default function RegistroComerciantePage() {
                 name="tipoDoc" value={tipoDoc} placeholder="Tipo de documento"
                 options={TIPOS_DOCUMENTO} onChange={(e) => setTipoDoc(e.target.value)}
               />
-              <Input
-                type="text" name="numeroDoc" placeholder="Número de documento"
-                value={numeroDoc} onChange={(e) => setNumeroDoc(e.target.value)}
-              />
+              <div className="space-y-1">
+                <Input
+                  type="text" name="numeroDoc" placeholder="Número de documento"
+                  value={numeroDoc}
+                  onChange={(e) => {
+                    const valor = e.target.value;
+                    setNumeroDoc(valor);
+                    setErrorDocLive(valor ? validarDocumento(tipoDoc, valor) : null);
+                  }}
+                />
+                {errorDocLive && (
+                  <p className="text-xs text-red-500 px-1">{errorDocLive}</p>
+                )}
+              </div>
             </div>
 
-            <Input
-              type="tel" name="celular" placeholder="Celular"
-              value={celular} onChange={(e) => setCelular(e.target.value)}
-              autoComplete="tel"
-            />
+            <div className="space-y-1">
+              <p className="text-xs text-gray-400 px-1">
+                Debe empezar con 9 y tener 9 dígitos.
+              </p>
+              <Input
+                type="tel" name="celular" placeholder="Celular (999 999 999)"
+                value={celular}
+                onChange={(e) => {
+                  const valor = e.target.value;
+                  setCelular(valor);
+                  setErrorCelularLive(valor ? validarCelularPeru(valor) : null);
+                }}
+                autoComplete="tel"
+              />
+              {errorCelularLive && (
+                <p className="text-xs text-red-500 px-1">{errorCelularLive}</p>
+              )}
+            </div>
           </div>
         </div>
 
         {/* ── Sección 3: Seguridad ──────────────────────────────────── */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-cardShadow">
+        {!emailGoogle && (
+          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-cardShadow">
           <SectionBadge num={3} label="Seguridad" />
 
           <div className="flex flex-col gap-3">
@@ -537,6 +602,7 @@ export default function RegistroComerciantePage() {
             </div>
           </div>
         </div>
+        )}
 
         {/* ── Error ────────────────────────────────────────────────── */}
         {errorForm && (

@@ -153,7 +153,8 @@ export default function DashboardPage() {
 const [pestanaAbierta, setPestanaAbierta] = useState<'completados' | 'recientes' | 'productos' | 'pedidosPorDia' | null>(null);
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string | null>(null);
   const navigate = useNavigate();
-  const balance = useStripeBalance();
+  const balanceRaw = useStripeBalance();
+  const balance = stripeCompletado ? balanceRaw : null;
   const { usuario } = useAuth();
   const chartRef = useRef<HTMLDivElement>(null);
 
@@ -268,8 +269,20 @@ const [pestanaAbierta, setPestanaAbierta] = useState<'completados' | 'recientes'
           {/* Balance — clickeable */}
           <button
             onClick={handleIrAStripe}
-            className="bg-white rounded-xl px-[22px] py-5 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow cursor-pointer text-left w-full"
+            className="bg-white rounded-xl px-[22px] py-5 shadow-sm flex flex-col hover:shadow-md transition-shadow cursor-pointer text-left w-full"
           >
+            {!stripeCompletado && (
+              <div className="w-full mb-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
+                <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth={2} className="flex-shrink-0">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <span className="text-[11px] font-semibold text-amber-700">
+                  No recibirás ingresos hasta que te hayas conectado con Stripe
+                </span>
+              </div>
+            )}
+            <div className="flex items-center justify-between w-full">
             <div>
               <label className="block text-[11px] font-semibold uppercase tracking-[0.5px] text-gray-500 mb-2 cursor-pointer">
                 Balance Disponible
@@ -289,6 +302,7 @@ const [pestanaAbierta, setPestanaAbierta] = useState<'completados' | 'recientes'
                 <polyline points="17 6 23 6 23 12" />
               </svg>
             </div>
+          </div>
           </button>
 
           {/* Stock */}

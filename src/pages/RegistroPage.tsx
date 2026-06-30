@@ -13,6 +13,8 @@ import apiClient from '../services/apiClient';
 import { useGoogleLogin } from '@react-oauth/google';
 import useLogin from '../hooks/useLogin';
 import BotonGoogle from '../components/BotonGoogle';
+import { limpiarCelular, validarCelularPeru, validarDocumento } from '../utils/validaciones';
+import ModalEstadoSolicitud from '../components/ModalEstadoSolicitud';
 //import axios from 'axios';
 
 const TIPOS_DOCUMENTO = ['DNI', 'Carnet de extranjería', 'Pasaporte'];
@@ -24,6 +26,42 @@ function validarContrasena(pass: string): boolean {
     /[a-z]/.test(pass) &&
     /[0-9]/.test(pass) &&
     /[^A-Za-z0-9]/.test(pass)
+  );
+}
+
+function generarPasswordAleatoria(): string {
+  // Cumple los requisitos: mayúscula, minúscula, número, especial, 8+ caracteres
+  return `Gx${Math.random().toString(36).slice(-8)}!9`;
+}
+
+function RegistroExitosoModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl flex flex-col items-center gap-4 text-center">
+        <div
+          className="flex h-16 w-16 items-center justify-center rounded-full"
+          style={{ backgroundColor: '#effff5' }}
+        >
+          <MaterialIcon
+            name="check_circle"
+            style={{ fontSize: '40px', color: '#146c43' }}
+          />
+        </div>
+        <div>
+          <p className="text-xl font-extrabold text-gray-900 mb-2">Registro Exitoso</p>
+          <p className="text-sm leading-relaxed text-gray-500">
+            Tu cuenta ha sido creada correctamente. Ya puedes iniciar sesión.
+          </p>
+        </div>
+        <button
+          onClick={onClose}
+          className="text-sm font-semibold hover:underline mt-1"
+          style={{ color: COLORES.primario }}
+        >
+          Ir a Iniciar Sesión
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -44,16 +82,39 @@ export default function RegistroPage() {
   const [mostrarPass, setMostrarPass]           = useState(false);
   const [mostrarConfirmar, setMostrarConfirmar] = useState(false);
   const [errorForm, setErrorForm]               = useState<string | null>(null);
-
+  const [errorCelularLive, setErrorCelularLive] = useState<string | null>(null);
+  const [errorDocLive, setErrorDocLive] = useState<string | null>(null);
   const { loginConGoogle } = useLogin();
+  const [registroExitoso, setRegistroExitoso] = useState(false);
+  const [estadoModal, setEstadoModal] = useState<'pendiente' | 'rechazado' | 'desactivado' | null>(null);
+
   const loginGoogle = useGoogleLogin({
     flow: 'implicit',
     onSuccess: async (tokenResponse) => {
-      await loginConGoogle(tokenResponse.access_token);
+      try {
+        const data = await loginConGoogle(tokenResponse.access_token);
+
+        if (data?.estadoSolicitud === 'PENDIENTE') {
+          setEstadoModal('pendiente');
+          return;
+        }
+        if (data?.estadoSolicitud === 'RECHAZADO') {
+          setEstadoModal('rechazado');
+          return;
+        }
+        if (data?.estadoSolicitud === 'DESACTIVADO') {
+          setEstadoModal('desactivado');
+          return;
+        }
+        // needsRegistration=true → el hook ya navega a /registro con el email
+      } catch {
+        setErrorForm('Error al autenticar con Google');
+      }
     },
     onError: () => setErrorForm('No se pudo conectar con Google'),
   });
 
+  
   const puedeEnviar =
     (emailGoogle || correo).length > 0 &&
     nombres.length > 0 &&
@@ -61,48 +122,74 @@ export default function RegistroPage() {
     tipoDoc.length > 0 &&
     numeroDoc.length > 0 &&
     celular.length > 0 &&
-    validarContrasena(contrasena) &&
-    contrasena === confirmar;
+    validarDocumento(tipoDoc, numeroDoc) === null &&
+    validarCelularPeru(celular) === null &&
+    (emailGoogle
+      ? true // viene de Google, no necesita contraseña
+      : validarContrasena(contrasena) && contrasena === confirmar);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrorForm(null);
 
-    if (!validarContrasena(contrasena)) {
-      setErrorForm('La contraseña debe tener mínimo 8 caracteres, 1 mayúscula, 1 minúscula, 1 número y 1 carácter especial.');
+    const errorDoc = validarDocumento(tipoDoc, numeroDoc);
+    if (errorDoc) {
+      setErrorForm(errorDoc);
       return;
     }
-    if (contrasena !== confirmar) {
-      setErrorForm('Las contraseñas no coinciden.');
+
+    const errorCelular = validarCelularPeru(celular);
+    if (errorCelular) {
+      setErrorForm(errorCelular);
       return;
     }
-    
-    // TODO: llamar a POST /api/v1/usuarios/registro — Responsable: equipo backend
+
+    // También ajusta la validación de contraseña en handleSubmit (antes del payload):
+    if (!emailGoogle) {
+      if (!validarContrasena(contrasena)) {
+        setErrorForm('La contraseña debe tener mínimo 8 caracteres, 1 mayúscula, 1 minúscula, 1 número y 1 carácter especial.');
+        return;
+      }
+      if (contrasena !== confirmar) {
+        setErrorForm('Las contraseñas no coinciden.');
+        return;
+      }
+    }
+
     try {
-      await apiClient.post('/auth/google/register', {
+      const payload = {
         nombres,
         primerApellido,
         segundoApellido,
         email: emailGoogle || correo,
-        contrasenha: contrasena,
+        contrasenha: emailGoogle ? generarPasswordAleatoria() : contrasena,
         dni: numeroDoc,
-        telefono: celular,
+        telefono: limpiarCelular(celular),
         tipoDocumento: tipoDoc,
         rol: 'CLIENTE',
-      });
+      };
 
-      navigate(RUTAS.LOGIN);
+      const endpoint = emailGoogle ? '/auth/google/register' : '/auth/register';
+      await apiClient.post(endpoint, payload);
 
-    } catch (error) {
+      setRegistroExitoso(true);
+
+    } catch (error: any) {
       console.error(error);
-      setErrorForm("Error al registrar usuario");
+      const mensaje = error.response?.data?.mensaje ?? 'Error al registrar usuario';
+      setErrorForm(mensaje);
     }
   };
 
   return (
     <div className="flex min-h-screen flex-col font-sans">
+      {estadoModal && (
+        <ModalEstadoSolicitud tipo={estadoModal} onClose={() => setEstadoModal(null)} />
+      )}
       <TopBar minimal />
-
+      {registroExitoso && (
+        <RegistroExitosoModal onClose={() => navigate(RUTAS.LOGIN)} />
+      )}
       <main className="flex flex-1 flex-col lg:flex-row">
         {/* Left: form */}
         <section className="flex flex-1 items-start justify-center bg-white px-8 py-10 lg:items-center">
@@ -127,7 +214,7 @@ export default function RegistroPage() {
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-px bg-gray-200" />
                   <span className="text-xs text-gray-400 uppercase tracking-widest font-medium whitespace-nowrap">
-                    O regístrate con correo
+                    O continua con tus datos
                   </span>
                   <div className="flex-1 h-px bg-gray-200" />
                 </div>
@@ -199,75 +286,98 @@ export default function RegistroPage() {
                 />
               </div>
 
-              <Input
-                type="text"
-                name="numeroDoc"
-                placeholder="Número de documento"
-                value={numeroDoc}
-                onChange={(e) => setNumeroDoc(e.target.value)}
-                autoComplete="off"
-              />
-
-              <Input
-                type="tel"
-                name="celular"
-                placeholder="Celular"
-                value={celular}
-                onChange={(e) => setCelular(e.target.value)}
-                autoComplete="tel"
-              />
-
               <div className="space-y-1">
                 <Input
-                  type={mostrarPass ? 'text' : 'password'}
-                  name="contrasena"
-                  placeholder="Contraseña"
-                  value={contrasena}
-                  onChange={(e) => setContrasena(e.target.value)}
-                  autoComplete="new-password"
-                  suffix={
-                    <button
-                      type="button"
-                      onClick={() => setMostrarPass((v) => !v)}
-                      className="text-gray-400 hover:text-gray-500 transition-colors"
-                      tabIndex={-1}
-                      aria-label={mostrarPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                    >
-                      <MaterialIcon
-                        name={mostrarPass ? 'visibility_off' : 'visibility'}
-                        style={{ fontSize: '20px' }}
-                      />
-                    </button>
-                  }
+                  type="text"
+                  name="numeroDoc"
+                  placeholder="Número de documento"
+                  value={numeroDoc}
+                  onChange={(e) => {
+                    const valor = e.target.value;
+                    setNumeroDoc(valor);
+                    setErrorDocLive(valor ? validarDocumento(tipoDoc, valor) : null);
+                  }}
+                  autoComplete="off"
                 />
-                <p className="text-xs text-gray-500 px-1">
-                  Mínimo 8 caracteres, incluyendo 1 mayúscula, 1 minúscula, 1 número y 1 carácter especial.
-                </p>
+                {errorDocLive && (
+                  <p className="text-xs text-red-500 px-1">{errorDocLive}</p>
+                )}
               </div>
 
-              <Input
-                type={mostrarConfirmar ? 'text' : 'password'}
-                name="confirmarContrasena"
-                placeholder="Confirmar contraseña"
-                value={confirmar}
-                onChange={(e) => setConfirmar(e.target.value)}
-                autoComplete="new-password"
-                suffix={
-                  <button
-                    type="button"
-                    onClick={() => setMostrarConfirmar((v) => !v)}
-                    className="text-gray-400 hover:text-gray-500 transition-colors"
-                    tabIndex={-1}
-                    aria-label={mostrarConfirmar ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                  >
-                    <MaterialIcon
-                      name={mostrarConfirmar ? 'visibility_off' : 'visibility'}
-                      style={{ fontSize: '20px' }}
+              <div className="space-y-1">
+                <p className="text-xs text-gray-400 px-1">
+                  Debe empezar con 9 y tener 9 dígitos.
+                </p>
+                <Input
+                  type="tel"
+                  name="celular"
+                  placeholder="Celular (999 999 999)"
+                  value={celular}
+                  onChange={(e) => {
+                    const valor = e.target.value;
+                    setCelular(valor);
+                    setErrorCelularLive(valor ? validarCelularPeru(valor) : null);
+                  }}
+                  autoComplete="tel"
+                />
+                {errorCelularLive && (
+                  <p className="text-xs text-red-500 px-1">{errorCelularLive}</p>
+                )}
+              </div>
+              {!emailGoogle && (
+                <>
+                  <div className="space-y-1">
+                    <Input
+                      type={mostrarPass ? 'text' : 'password'}
+                      name="contrasena"
+                      placeholder="Contraseña"
+                      value={contrasena}
+                      onChange={(e) => setContrasena(e.target.value)}
+                      autoComplete="new-password"
+                      suffix={
+                        <button
+                          type="button"
+                          onClick={() => setMostrarPass((v) => !v)}
+                          className="text-gray-400 hover:text-gray-500 transition-colors"
+                          tabIndex={-1}
+                          aria-label={mostrarPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                        >
+                          <MaterialIcon
+                            name={mostrarPass ? 'visibility_off' : 'visibility'}
+                            style={{ fontSize: '20px' }}
+                          />
+                        </button>
+                      }
                     />
-                  </button>
-                }
-              />
+                    <p className="text-xs text-gray-500 px-1">
+                      Mínimo 8 caracteres, incluyendo 1 mayúscula, 1 minúscula, 1 número y 1 carácter especial.
+                    </p>
+                  </div>
 
+                  <Input
+                    type={mostrarConfirmar ? 'text' : 'password'}
+                    name="confirmarContrasena"
+                    placeholder="Confirmar contraseña"
+                    value={confirmar}
+                    onChange={(e) => setConfirmar(e.target.value)}
+                    autoComplete="new-password"
+                    suffix={
+                      <button
+                        type="button"
+                        onClick={() => setMostrarConfirmar((v) => !v)}
+                        className="text-gray-400 hover:text-gray-500 transition-colors"
+                        tabIndex={-1}
+                        aria-label={mostrarConfirmar ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                      >
+                        <MaterialIcon
+                          name={mostrarConfirmar ? 'visibility_off' : 'visibility'}
+                          style={{ fontSize: '20px' }}
+                        />
+                      </button>
+                    }
+                  />
+                </>
+              )}
               {errorForm && (
                 <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
                   <MaterialIcon name="error_outline" style={{ fontSize: '18px', marginTop: '1px' }} />
