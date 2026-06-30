@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef,useMemo} from 'react';
 import { useStripeStatus } from '../../hooks/useStripeStatus';
 import StripeBanner from '../../components/comerciante/StripeBanner';
 import { useNavigate } from 'react-router-dom';
@@ -39,6 +39,7 @@ interface DashboardData {
   todosLosProductos: ProductoTop[];
   pedidosRecientes: PedidoResumen[];
   pedidosCompletados: PedidoResumen[];
+  pedidosDelPeriodo: PedidoResumen[];
   totalUnidades: number;
   totalIngresos: number;
 }
@@ -150,13 +151,21 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [cargando, setCargando] = useState(false);
   const [stockCritico, setStockCritico] = useState(0);
-const [pestanaAbierta, setPestanaAbierta] = useState<'completados' | 'recientes' | 'productos' | 'pedidosPorDia' | null>(null);
+  const [pestanaAbierta, setPestanaAbierta] = useState<'completados' | 'recientes' | 'productos' | 'pedidosPorDia' | null>(null);
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string | null>(null);
   const navigate = useNavigate();
-  const balanceRaw = useStripeBalance();
-  const balance = stripeCompletado ? balanceRaw : null;
+  const balance = useStripeBalance();
   const { usuario } = useAuth();
   const chartRef = useRef<HTMLDivElement>(null);
+  
+  const productosOrdenados = useMemo(() => {
+  if (!data?.todosLosProductos) return [];
+
+  return [...data.todosLosProductos].sort(
+    (a, b) => (b.unidades ?? 0) - (a.unidades ?? 0)
+  );
+}, [data?.todosLosProductos]);
+
 
   /* Cargar nombre tienda */
   useEffect(() => {
@@ -200,13 +209,16 @@ const [pestanaAbierta, setPestanaAbierta] = useState<'completados' | 'recientes'
 
   /* Filtrar pedidos por fecha seleccionada */
   const pedidosPorFecha = (fecha: string) => {
-    if (!data?.pedidosRecientes) return [];
-    return data.pedidosRecientes.filter((p) => {
-      if (!p.fecha) return false;
-      const pedidoFecha = new Date(p.fecha).toISOString().slice(0, 10);
-      return pedidoFecha === fecha;
-    });
-  };
+  if (!data?.pedidosDelPeriodo) return [];
+
+  return data.pedidosDelPeriodo.filter((p) => {
+    if (!p.fecha) return false;
+
+    const pedidoFecha = new Date(p.fecha)
+  .toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+    return pedidoFecha === fecha;
+  });
+};
 
   const handleClickBarra = (fecha: string) => {
     setFechaSeleccionada(fecha);
@@ -269,20 +281,8 @@ const [pestanaAbierta, setPestanaAbierta] = useState<'completados' | 'recientes'
           {/* Balance — clickeable */}
           <button
             onClick={handleIrAStripe}
-            className="bg-white rounded-xl px-[22px] py-5 shadow-sm flex flex-col hover:shadow-md transition-shadow cursor-pointer text-left w-full"
+            className="bg-white rounded-xl px-[22px] py-5 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow cursor-pointer text-left w-full"
           >
-            {!stripeCompletado && (
-              <div className="w-full mb-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
-                <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth={2} className="flex-shrink-0">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                </svg>
-                <span className="text-[11px] font-semibold text-amber-700">
-                  No recibirás ingresos hasta que te hayas conectado con Stripe
-                </span>
-              </div>
-            )}
-            <div className="flex items-center justify-between w-full">
             <div>
               <label className="block text-[11px] font-semibold uppercase tracking-[0.5px] text-gray-500 mb-2 cursor-pointer">
                 Balance Disponible
@@ -302,7 +302,6 @@ const [pestanaAbierta, setPestanaAbierta] = useState<'completados' | 'recientes'
                 <polyline points="17 6 23 6 23 12" />
               </svg>
             </div>
-          </div>
           </button>
 
           {/* Stock */}
@@ -478,7 +477,9 @@ const [pestanaAbierta, setPestanaAbierta] = useState<'completados' | 'recientes'
                       </div>
                       <div>
                         <span className="block text-[12px] font-semibold text-gray-900">
-                          N° PED-{p.fecha ? new Date(p.fecha).toISOString().slice(0, 10).replace(/-/g, '') : '00000000'}-{String(p.id).padStart(6, '0')}
+                          N° PED-{p.fecha ? new Date(p.fecha).toLocaleDateString('en-CA', {
+  timeZone: 'America/Lima'
+}).replace(/-/g, '') : '00000000'}-{String(p.id).padStart(6, '0')}
                         </span>
                         <span className="text-[11px] text-gray-400">{p.nombreCliente ?? p.emailCliente ?? '—'}</span>
                       </div>
@@ -640,7 +641,9 @@ const [pestanaAbierta, setPestanaAbierta] = useState<'completados' | 'recientes'
               <tbody>
                 {(data?.pedidosCompletados ?? []).map((p) => (
                   <tr key={p.id}>
-                    <td className="py-2.5 text-[12px] font-semibold text-gray-900 border-b border-gray-50">N° PED-{p.fecha ? new Date(p.fecha).toISOString().slice(0, 10).replace(/-/g, '') : '00000000'}-{String(p.id).padStart(6, '0')}</td>
+                    <td className="py-2.5 text-[12px] font-semibold text-gray-900 border-b border-gray-50">N° PED-{p.fecha ? new Date(p.fecha).toLocaleDateString('en-CA', {
+  timeZone: 'America/Lima'
+}).replace(/-/g, '') : '00000000'}-{String(p.id).padStart(6, '0')}</td>
                     <td className="py-2.5 text-[12px] text-gray-700 border-b border-gray-50">{p.nombreCliente ?? '—'}</td>
                     <td className="py-2.5 text-[12px] font-semibold text-gray-900 border-b border-gray-50">S/ {(p.total??0).toFixed(2)}</td>
                     <td className="py-2.5 text-[11px] text-gray-400 border-b border-gray-50">
@@ -663,7 +666,9 @@ const [pestanaAbierta, setPestanaAbierta] = useState<'completados' | 'recientes'
               {(data?.pedidosRecientes ?? []).map((p) => (
                 <div key={p.id} className="flex items-center justify-between py-2.5 border-b border-gray-50">
                   <div>
-                    <span className="block text-[13px] font-bold text-gray-900">N° PED-{p.fecha ? new Date(p.fecha).toISOString().slice(0, 10).replace(/-/g, '') : '00000000'}-{String(p.id).padStart(6, '0')}</span>
+                    <span className="block text-[13px] font-bold text-gray-900">N° PED-{p.fecha ? new Date(p.fecha).toLocaleDateString('en-CA', {
+  timeZone: 'America/Lima'
+}).replace(/-/g, '') : '00000000'}-{String(p.id).padStart(6, '0')}</span>
                     <span className="text-[11px] text-gray-400">{p.nombreCliente ?? p.emailCliente ?? '—'}</span>
                   </div>
                   <div className="text-right">
@@ -741,7 +746,9 @@ const [pestanaAbierta, setPestanaAbierta] = useState<'completados' | 'recientes'
                     </div>
                     <div>
                       <span className="block text-[13px] font-semibold text-gray-900">
-                        N° PED-{p.fecha ? new Date(p.fecha).toISOString().slice(0, 10).replace(/-/g, '') : '00000000'}-{String(p.id).padStart(6, '0')}
+                        N° PED-{p.fecha ? new Date(p.fecha).toLocaleDateString('en-CA', {
+  timeZone: 'America/Lima'
+}).replace(/-/g, '') : '00000000'}-{String(p.id).padStart(6, '0')}
                       </span>
                       <span className="text-[11px] text-gray-400">{p.nombreCliente ?? p.emailCliente ?? '—'}</span>
                     </div>
