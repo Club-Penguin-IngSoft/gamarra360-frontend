@@ -57,4 +57,5 @@ export const RUTAS = {
   ADMIN_APROBACIONES: '/admin/aprobaciones',
   ADMIN_APROBACION_COMERCIANTES: '/admin/aprobacion-comerciantes',
   ADMIN_NOTIFICACIONES: '/admin/notificaciones',
+  OLVIDO_PASSWORD: '/olvido-password',
 } as const;

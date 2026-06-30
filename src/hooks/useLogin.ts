@@ -27,7 +27,11 @@ const useLogin = () => {
 
       // Cuenta desactivada por un admin — no loguear, retornar para que
       // LoginPage muestre el modal correspondiente.
-      if (response.estadoSolicitud === 'DESACTIVADO') {
+      if (
+        response.estadoSolicitud === 'DESACTIVADO' ||
+        response.estadoSolicitud === 'PENDIENTE' ||
+        response.estadoSolicitud === 'RECHAZADO'
+      ) {
         return response;
       }
 

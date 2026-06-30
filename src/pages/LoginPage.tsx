@@ -60,6 +60,10 @@ const LoginPage = () => {
       const data = await iniciarSesion(form);
       if (data?.estadoSolicitud === 'DESACTIVADO') {
         setEstadoModal('desactivado');
+      } else if (data?.estadoSolicitud === 'PENDIENTE') {
+        setEstadoModal('pendiente');
+      } else if (data?.estadoSolicitud === 'RECHAZADO') {
+        setEstadoModal('rechazado');
       }
     }
   };
@@ -192,13 +196,13 @@ const LoginPage = () => {
 
             <p className="text-center text-sm text-neutro-500 mt-5">
               ¿Olvidaste tu contraseña?{' '}
-              <button
-                type="button"
+              <Link
+                to={RUTAS.OLVIDO_PASSWORD}
                 className="font-semibold hover:underline"
                 style={{ color: COLORES.primario }}
               >
                 Haz clic aquí
-              </button>
+              </Link>
             </p>
 
             <p className="text-center text-sm text-neutro-400 mt-6">
