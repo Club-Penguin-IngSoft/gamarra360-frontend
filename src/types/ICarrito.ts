@@ -17,6 +17,6 @@ export interface IItemCarrito {
 
 export interface ICarrito {
   items: IItemCarrito[];
-  /** Suma de precios * cantidades, sin descuentos por volumen aún aplicados */
+  /** Suma de precios * cantidades antes de aplicar cualquier descuento */
   subtotal: number;
 }

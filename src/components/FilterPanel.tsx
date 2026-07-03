@@ -563,10 +563,21 @@ export function aplicarFiltrosCliente(
       !p.variantes?.some((v) => v.talla != null && filtros.tallas.includes(v.talla))
     )
       return false;
-    if (filtros.precioMin != null && (p.precioFinal ?? Infinity) < filtros.precioMin)
-      return false;
-    if (filtros.precioMax != null && (p.precioFinal ?? 0) > filtros.precioMax)
-      return false;
+    if (filtros.precioMin != null || filtros.precioMax != null) {
+      const precios = (
+        p.variantes
+          ?.filter((v) => v.disponible !== false && (v.stock ?? 0) > 0)
+          .map((v) => v.precioEfectivo ?? v.precioAjustado ?? p.precioFinal ?? p.precioBase ?? 0)
+          .filter((x): x is number => x != null) ?? []
+      );
+      const candidatos = precios.length > 0 ? precios : [p.precioFinal ?? p.precioBase ?? 0];
+      const alguienCalifica = candidatos.some(
+        (precio) =>
+          (filtros.precioMin == null || precio >= filtros.precioMin) &&
+          (filtros.precioMax == null || precio <= filtros.precioMax),
+      );
+      if (!alguienCalifica) return false;
+    }
     return true;
   });
 }

@@ -5,11 +5,17 @@ import { RUTAS } from '../../constants/rutas';
 import {
   listarCategorias,
   listarTiposPorCategoria,
+  listarMateriales,
   actualizarProducto,
+  actualizarVariante,
+  eliminarVariante,
   actualizarStockVariante,
   actualizarImagenVariante,
   eliminarProducto,
   subirImagenS3,
+  resolverTalla,
+  resolverColor,
+  crearVariante,
   type ICategoriaOpcion,
   type ITipoProductoOpcion,
 } from '../../services/catalogoService';
@@ -53,6 +59,8 @@ interface IVarianteEditable {
   activo: boolean;
   imagenUrl: string;
   imagenUrlOriginal: string;
+  /** true si esta fila fue generada localmente y aún no existe en el backend */
+  esNueva?: boolean;
 }
 
 interface IEspecificacion {
@@ -96,6 +104,8 @@ export default function EditarProductoPage() {
   const [idTipoProducto, setIdTipoProducto] = useState<number | ''>('');
   const [categorias, setCategorias] = useState<ICategoriaOpcion[]>([]);
   const [tipos, setTipos] = useState<ITipoProductoOpcion[]>([]);
+  const [materialesBackend, setMaterialesBackend] = useState<{ idMaterial: number; nombre: string }[]>([]);
+  const [idMaterial, setIdMaterial] = useState<number | ''>('');
   const [correlativo] = useState(1);
   const [skuInterno, setSkuInterno] = useState('');
 
@@ -119,6 +129,8 @@ export default function EditarProductoPage() {
   const [colorHexInput, setColorHexInput] = useState('#000000');
 
   const [variantes, setVariantes] = useState<IVarianteEditable[]>([]);
+  /** IDs de variantes ya persistidas marcadas para borrar; se envían al backend recién en handleGuardar. */
+  const [variantesAEliminar, setVariantesAEliminar] = useState<number[]>([]);
 
   const [especificaciones, setEspecificaciones] = useState<IEspecificacion[]>([]);
   const [especTitulo, setEspecTitulo] = useState('');
@@ -134,6 +146,7 @@ export default function EditarProductoPage() {
 
   useEffect(() => {
     listarCategorias().then(setCategorias).catch(console.error);
+    listarMateriales().then(setMaterialesBackend).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -155,6 +168,7 @@ export default function EditarProductoPage() {
       const tipoId = data.idTipoProducto ?? '';
       setIdCategoria(catId);
       setIdTipoProducto(tipoId);
+      setIdMaterial(data.idMaterial ?? '');
 
       const variantesApi: IVarianteEditable[] = (data.variantes ?? []).map((v: any, i: number) => ({
         id: v.idVariante,
@@ -163,7 +177,7 @@ export default function EditarProductoPage() {
         colorHex: v.colorHex ?? '#888888',
         precioBase: v.precioAjustado ?? data.precioBase ?? 0,
         stock: v.stock ?? 0,
-        stockMinimo: 5,
+        stockMinimo: v.minimoStock ?? 5,
         activo: v.disponible ?? true,
         imagenUrl: v.imagenUrl ?? '',
         imagenUrlOriginal: v.imagenUrl ?? '',
@@ -177,18 +191,23 @@ export default function EditarProductoPage() {
       }));
       setEspecificaciones(especsApi);
 
-      const firstSku = data.variantes?.[0]?.sku as string | undefined;
-      if (firstSku) {
-        const parts = firstSku.split('-');
-        if (parts.length >= 5) {
-          setSkuInterno(`${parts[0]}-${parts[1]}-${parts[2]}-GEN`);
-        }
-      }
       if (catId !== '') {
         listarTiposPorCategoria(catId as number).then(setTipos).catch(console.error);
       }
     }).catch(console.error);
   }, [id]);
+
+  // Genera (o regenera) el skuInterno desde la categoría y tipo ya cargados.
+  // Se ejecuta cuando cambian los arrays o los ids; así funciona tanto al cargar
+  // el producto por primera vez como cuando el usuario cambia los dropdowns.
+  useEffect(() => {
+    if (!idCategoria || !idTipoProducto) return;
+    const cat = categorias.find((c) => c.idCategoria === Number(idCategoria));
+    const tipo = tipos.find((t) => t.idTipoProducto === Number(idTipoProducto));
+    if (cat && tipo) {
+      setSkuInterno(generarSKUBase(cat.nombre, tipo.nombre, correlativo));
+    }
+  }, [idCategoria, idTipoProducto, categorias, tipos, correlativo]);
 
   useEffect(() => {
     if (idCategoria !== '') {
@@ -248,6 +267,46 @@ export default function EditarProductoPage() {
 
   const updateVariantePrecio = (id: number, precio: number) =>
     setVariantes((p) => p.map((v) => (v.id === id ? { ...v, precioBase: precio } : v)));
+
+  const aplicarPrecioATodasLasVariantes = () =>
+    setVariantes((p) => p.map((v) => ({ ...v, precioBase })));
+
+  const puedeGenerar = tallas.length > 0 && colores.length > 0;
+
+  /** Agrega filas para las combinaciones talla x color que aún no tengan variante, sin tocar las existentes. */
+  const generarCombinaciones = () => {
+    const principalUrl = imagenesProducto.find((i) => i.esPrincipal)?.url ?? imagenesProducto[0]?.url ?? '';
+    let tempId = -1;
+    const nuevas: IVarianteEditable[] = [];
+    tallas.forEach((talla) => {
+      colores.forEach((color) => {
+        const yaExiste = variantes.some((v) => v.talla === talla && v.colorNombre === color.nombre);
+        if (yaExiste) return;
+        nuevas.push({
+          id: tempId--,
+          talla,
+          colorNombre: color.nombre,
+          colorHex: color.hex,
+          precioBase,
+          stock: 0,
+          stockMinimo: 5,
+          activo: true,
+          imagenUrl: principalUrl,
+          imagenUrlOriginal: principalUrl,
+          esNueva: true,
+        });
+      });
+    });
+    if (nuevas.length > 0) setVariantes((p) => [...p, ...nuevas]);
+  };
+
+  /** Solo actualiza el estado local; el DELETE real se dispara en handleGuardar. */
+  const handleEliminarVariante = (v: IVarianteEditable) => {
+    setVariantes((p) => p.filter((x) => x.id !== v.id));
+    if (!v.esNueva) {
+      setVariantesAEliminar((p) => [...p, v.id]);
+    }
+  };
 
   const updateVarianteStock = (id: number, stock: number) =>
     setVariantes((p) => p.map((v) => (v.id === id ? { ...v, stock } : v)));
@@ -330,7 +389,24 @@ export default function EditarProductoPage() {
     if (!id) return;
     setEnviando(true);
     setErrorApi('');
+    let huboConflicto409 = false;
     try {
+      if (variantesAEliminar.length > 0) {
+        const resultados = await Promise.allSettled(
+          variantesAEliminar.map((idVariante) => eliminarVariante(idVariante))
+        );
+        const conConflicto = resultados.filter(
+          (r) => r.status === 'rejected' && (r.reason as any)?.response?.status === 409
+        );
+        if (conConflicto.length > 0) {
+          huboConflicto409 = true;
+          setErrorApi(
+            `No se pudo eliminar ${conConflicto.length} variante(s) porque tienen pedidos asociados. Las demás variantes se guardarán igualmente.`
+          );
+        }
+        setVariantesAEliminar([]);
+      }
+
       await actualizarProducto(id, {
         nombre: nombreProducto,
         descripcion,
@@ -338,6 +414,7 @@ export default function EditarProductoPage() {
         esPersonalizable,
         idCategoria: idCategoria as number,
         idTipoProducto: idTipoProducto as number,
+        idMaterial: idMaterial !== '' ? idMaterial : undefined,
         imagenes: imagenesProducto,
         especificaciones: especificaciones.length > 0
           ? especificaciones.map((e) => ({ nombre: e.titulo, descripcion: e.descripcion }))
@@ -346,6 +423,29 @@ export default function EditarProductoPage() {
 
       await Promise.all(
         variantes.map(async (v) => {
+          if (v.esNueva) {
+            const [idTalla, idColor] = await Promise.all([
+              resolverTalla(v.talla),
+              resolverColor(v.colorNombre, v.colorHex),
+            ]);
+            await crearVariante({
+              sku: generarSKUVariante(skuInterno || 'GEN-PRD-001-GEN', v.talla, v.colorNombre),
+              stock: v.stock,
+              minimoStock: v.stockMinimo,
+              precioAjustado: v.precioBase,
+              disponible: v.activo,
+              producto: { idProducto: Number(id) },
+              color: { idColor },
+              talla: { idTalla },
+              imagenUrl: v.imagenUrl || null,
+            });
+            return;
+          }
+          await actualizarVariante(v.id, {
+            precioAjustado: v.precioBase,
+            disponible: v.activo,
+            minimoStock: v.stockMinimo,
+          });
           await actualizarStockVariante(v.id, v.stock);
           if (v.imagenUrl !== v.imagenUrlOriginal) {
             await actualizarImagenVariante(v.id, v.imagenUrl || null);
@@ -353,7 +453,9 @@ export default function EditarProductoPage() {
         })
       );
 
-      navigate(RUTAS.COMERCIANTE_CATALOGO);
+      if (!huboConflicto409) {
+        navigate(RUTAS.COMERCIANTE_CATALOGO);
+      }
     } catch (err: any) {
       setErrorApi(err.response?.data?.mensaje ?? 'Error al guardar los cambios');
     } finally {
@@ -473,6 +575,20 @@ export default function EditarProductoPage() {
               </div>
             </div>
 
+            <div className="mb-4">
+              <label className={labelClass}>Material Principal</label>
+              <select
+                className="w-full h-[42px] border border-gray-300 rounded-lg px-3.5 text-[13px] text-gray-900 bg-white focus:outline-none focus:border-primario transition-colors"
+                value={idMaterial}
+                onChange={(e) => setIdMaterial(e.target.value === '' ? '' : Number(e.target.value))}
+              >
+                <option value="">Sin especificar</option>
+                {materialesBackend.map((m) => (
+                  <option key={m.idMaterial} value={m.idMaterial}>{m.nombre}</option>
+                ))}
+              </select>
+            </div>
+
             {/* Imágenes del producto */}
             <div className="mb-2">
               <label className={labelClass}>Imágenes del Producto</label>
@@ -554,6 +670,15 @@ export default function EditarProductoPage() {
                 />
               </div>
               {errMsg('precioBase')}
+              {variantes.length > 0 && (
+                <button
+                  type="button"
+                  onClick={aplicarPrecioATodasLasVariantes}
+                  className="mt-2 text-[11px] font-semibold text-primario hover:underline"
+                >
+                  Aplicar a todas las variantes
+                </button>
+              )}
             </div>
 
             <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
@@ -583,6 +708,13 @@ export default function EditarProductoPage() {
             {errorApi && (
               <p className="text-[11px] text-red-500 mb-2 text-center">{errorApi}</p>
             )}
+            <button
+              className="w-full h-[42px] bg-white text-gray-700 rounded-lg text-[13px] font-semibold mb-2.5 border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => navigate(RUTAS.COMERCIANTE_CATALOGO)}
+              disabled={enviando}
+            >
+              Cancelar
+            </button>
             <button
               className="w-full h-[42px] bg-primario text-white rounded-lg text-[13px] font-semibold mb-2.5 hover:bg-primario-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleGuardar}
@@ -675,18 +807,46 @@ export default function EditarProductoPage() {
             </div>
           </div>
 
+          <div className={`flex items-center justify-between px-4 py-3 rounded-lg mb-4 border ${
+            puedeGenerar ? 'bg-primario-claro border-primario/20' : 'bg-gray-50 border-gray-200'
+          }`}>
+            <div>
+              <p className={`text-[13px] font-semibold ${puedeGenerar ? 'text-primario' : 'text-gray-400'}`}>
+                Generar combinaciones
+              </p>
+              <p className={`text-[11px] ${puedeGenerar ? 'text-primario/70' : 'text-gray-400'}`}>
+                {puedeGenerar
+                  ? `${tallas.length} talla${tallas.length !== 1 ? 's' : ''} × ${colores.length} color${colores.length !== 1 ? 'es' : ''}. Se agregarán solo las combinaciones que aún no existan.`
+                  : 'Agrega tallas y colores para generar variantes'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={generarCombinaciones}
+              disabled={!puedeGenerar}
+              className="h-9 px-4 bg-primario text-white rounded-lg text-[12px] font-semibold hover:bg-primario-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+            >
+              Generar
+            </button>
+          </div>
+
           {submitted && errores.variantes && (
             <p className="text-[11px] text-red-500 mb-3">{errores.variantes}</p>
           )}
+          {variantes.length === 0 ? (
+            <p className="text-[13px] text-gray-400 text-center py-8">
+              Aún no hay variantes. Agrega tallas y colores, luego genera las combinaciones.
+            </p>
+          ) : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  {['Variante', 'SKU', 'Precio Base', 'Stock', 'Stock Mín.', 'Imagen', 'Estado'].map((col, i) => (
+                  {['Variante', 'SKU', 'Precio Base', 'Stock', 'Stock Mín.', 'Imagen', 'Estado', ''].map((col, i) => (
                     <th
-                      key={col}
+                      key={col || 'acciones'}
                       className={`text-left text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] px-3 py-2 bg-gray-100 border-b border-gray-200 whitespace-nowrap ${
-                        i === 0 ? 'rounded-tl' : i === 6 ? 'rounded-tr' : ''
+                        i === 0 ? 'rounded-tl' : i === 7 ? 'rounded-tr w-8' : ''
                       }`}
                     >
                       {col}
@@ -698,7 +858,7 @@ export default function EditarProductoPage() {
                 {variantes.map((v) => {
                   const skuVariante = generarSKUVariante(skuInterno, v.talla, v.colorNombre);
                   return (
-                    <tr key={v.id}>
+                    <tr key={v.id} className="group">
                       <td className="px-3 py-3 text-[13px] text-gray-900 border-b border-gray-100 align-middle whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <div className="w-[22px] h-[22px] rounded border border-gray-300 flex-shrink-0" style={{ backgroundColor: v.colorHex }} />
@@ -750,12 +910,27 @@ export default function EditarProductoPage() {
                       <td className="px-3 py-3 border-b border-gray-100 align-middle">
                         <Toggle on={v.activo} onClick={() => toggleVariante(v.id)} />
                       </td>
+                      <td className="px-3 py-3 border-b border-gray-100 align-middle">
+                        <button
+                          type="button"
+                          onClick={() => handleEliminarVariante(v)}
+                          className="w-7 h-7 flex items-center justify-center text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                          title="Eliminar variante"
+                        >
+                          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                            <path d="M10 11v6M14 11v6" />
+                          </svg>
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
+          )}
         </div>
 
         {/* Especificaciones Técnicas */}

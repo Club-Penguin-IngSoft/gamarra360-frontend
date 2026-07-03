@@ -10,10 +10,11 @@ export type Categoria = string;
 
 export interface IVarianteProducto {
   id: string;
+  stock: number;
+  disponible?: boolean;
   talla?: string;
   color?: string;
   colorHex?: string;
-  stock: number;
   idColor?: number;
   idTalla?: number;
   /** Precio final con ofertas/descuentos para esta combinación talla+color */

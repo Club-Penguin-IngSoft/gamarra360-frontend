@@ -146,6 +146,15 @@ export default function NuevoProductoPage() {
     }
   }, [idCategoria]);
 
+  useEffect(() => {
+    if (!idCategoria || !idTipoProducto) return;
+    const cat = categorias.find((c) => c.idCategoria === Number(idCategoria));
+    const tipo = tipos.find((t) => t.idTipoProducto === Number(idTipoProducto));
+    if (cat && tipo) {
+      setSkuInterno(generarSKUBase(cat.nombre, tipo.nombre, correlativo));
+    }
+  }, [idCategoria, idTipoProducto, categorias, tipos, correlativo]);
+
   const totalStock = variantes.reduce((sum, v) => sum + v.stock, 0);
   const puedeGenerar = tallas.length > 0 && colores.length > 0;
 
@@ -219,6 +228,9 @@ export default function NuevoProductoPage() {
 
   const updateVariantePrecio = (id: number, precio: number) =>
     setVariantes((p) => p.map((v) => (v.id === id ? { ...v, precioBase: precio } : v)));
+
+  const aplicarPrecioATodasLasVariantes = () =>
+    setVariantes((p) => p.map((v) => ({ ...v, precioBase })));
 
   const updateVarianteStock = (id: number, stock: number) =>
     setVariantes((p) => p.map((v) => (v.id === id ? { ...v, stock } : v)));
@@ -328,7 +340,7 @@ export default function NuevoProductoPage() {
             resolverColor(v.colorNombre, v.colorHex),
           ]);
           await crearVariante({
-            sku: skuInterno ? generarSKUVariante(skuInterno, v.talla, v.colorNombre) : v.talla + '-' + v.colorNombre,
+            sku: generarSKUVariante(skuInterno || 'GEN-PRD-001-GEN', v.talla, v.colorNombre),
             stock: v.stock,
             minimoStock: v.stockMinimo,
             precioAjustado: v.precioBase,
@@ -549,6 +561,15 @@ export default function NuevoProductoPage() {
                 />
               </div>
               {errMsg('precioBase')}
+              {variantes.length > 0 && (
+                <button
+                  type="button"
+                  onClick={aplicarPrecioATodasLasVariantes}
+                  className="mt-2 text-[11px] font-semibold text-primario hover:underline"
+                >
+                  Aplicar a todas las variantes
+                </button>
+              )}
             </div>
 
             <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
@@ -578,6 +599,13 @@ export default function NuevoProductoPage() {
             {errorApi && (
               <p className="text-[11px] text-red-500 mb-2 text-center">{errorApi}</p>
             )}
+            <button
+              className="w-full h-[42px] bg-white text-gray-700 rounded-lg text-[13px] font-semibold mb-2.5 border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => navigate(RUTAS.COMERCIANTE_CATALOGO)}
+              disabled={enviando}
+            >
+              Cancelar
+            </button>
             <button
               className="w-full h-[42px] bg-primario text-white rounded-lg text-[13px] font-semibold hover:bg-primario-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handlePublicar}
