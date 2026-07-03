@@ -68,19 +68,25 @@ function Heading({ producto }: { producto: IProducto }) {
 function PrecioBlock({
   producto,
   precioVariante,
-  mostrarBaseTachado = false,
+  precioAjustadoVariante,
 }: {
   producto: IProducto;
   precioVariante?: number;
-  mostrarBaseTachado?: boolean;
+  precioAjustadoVariante?: number | null;
 }) {
   const precioActivo = precioVariante ?? producto.precioFinal ?? 0;
-  // Descuento del producto base solo cuando no hay variante activa
-  const descuento = precioVariante == null
-    ? calcularDescuento(producto.precioBase, producto.precioFinal)
-    : 0;
-  const tieneDescuento = descuento > 0;
-  const mostrarTachado = tieneDescuento || mostrarBaseTachado;
+
+  // Con variante activa: badge y tachado entre precioAjustado → precioEfectivo (oferta de variante)
+  // Sin variante: badge y tachado del producto (precioBase → precioFinal)
+  let precioTachado: number | undefined;
+  let descuento = 0;
+  if (precioVariante != null && precioAjustadoVariante != null && precioAjustadoVariante > precioVariante) {
+    precioTachado = precioAjustadoVariante;
+    descuento = calcularDescuento(precioAjustadoVariante, precioVariante);
+  } else if (precioVariante == null) {
+    descuento = calcularDescuento(producto.precioBase, producto.precioFinal);
+    if (descuento > 0) precioTachado = producto.precioBase;
+  }
 
   return (
     <div className="flex flex-col gap-1">
@@ -89,7 +95,7 @@ function PrecioBlock({
           {formatearPrecio(precioActivo)}
         </span>
 
-        {tieneDescuento && (
+        {descuento > 0 && (
           <div className="relative h-9 w-[80px] shrink-0">
             <img
               src={discountBadge}
@@ -104,9 +110,9 @@ function PrecioBlock({
         )}
       </div>
 
-      {mostrarTachado && (
+      {precioTachado != null && (
         <span className="text-[20px] font-medium text-ink-500 line-through">
-          {formatearPrecio(producto.precioBase)}
+          {formatearPrecio(precioTachado)}
         </span>
       )}
     </div>
@@ -222,13 +228,15 @@ function CantidadStepper({
   cantidad,
   onChange,
   stockRestante,
+  noDisponible,
 }: {
   cantidad: number;
   onChange: (n: number) => void;
   stockRestante: number;
+  noDisponible?: boolean;
 }) {
-  const stockBajo = stockRestante > 0 && stockRestante <= 5;
-  const sinStock = stockRestante === 0;
+  const stockBajo = stockRestante > 0 && stockRestante <= 5 && !noDisponible;
+  const sinStock = stockRestante === 0 && !noDisponible;
   return (
     <div className="flex flex-col gap-3">
       <span className="text-[16px] font-bold tracking-[0.08em] text-ink-900">
@@ -239,12 +247,17 @@ function CantidadStepper({
           cantidad={cantidad}
           onChange={onChange}
           min={0}
-          max={stockRestante}
+          max={noDisponible ? 0 : stockRestante}
           ariaLabel="Selector de cantidad de producto"
         />
         {sinStock && (
           <span className="text-[14px] font-semibold text-red-600">
             ¡NO QUEDAN UNIDADES!
+          </span>
+        )}
+        {noDisponible && (
+          <span className="text-[14px] font-semibold text-ink-500">
+            No disponible
           </span>
         )}
         {stockBajo && (
@@ -312,20 +325,21 @@ function useSeleccionVariante(producto: IProducto) {
 
   const stockRestante = varianteSeleccionada?.stock ?? 0;
 
+  // Variante desactivada manualmente por el comerciante (tiene stock pero disponible=false)
+  const noDisponibleManual =
+    varianteSeleccionada != null &&
+    varianteSeleccionada.disponible === false &&
+    stockRestante > 0;
+
   useEffect(() => {
-    if (stockRestante === 0) {
+    if (stockRestante === 0 || noDisponibleManual) {
       setCantidad(0);
     }
-  }, [stockRestante]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [stockRestante, noDisponibleManual]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Bug 3 fix: el precio se deriva directamente de varianteSeleccionada sin flags intermedios
   const precioVariante: number | undefined = varianteSeleccionada?.precioEfectivo ?? undefined;
-
-  // Bug 1 fix: tachado solo cuando la variante cuesta MENOS que precioBase (oferta real)
-  const mostrarBaseTachado =
-    precioVariante != null &&
-    producto.precioBase != null &&
-    precioVariante < producto.precioBase;
+  // precioAjustado = precio base de la variante antes de aplicar la oferta (para badge y tachado)
+  const precioAjustadoVariante: number | undefined = varianteSeleccionada?.precioAjustado ?? undefined;
 
   return {
     colores,
@@ -338,8 +352,9 @@ function useSeleccionVariante(producto: IProducto) {
     setCantidad,
     varianteSeleccionada,
     stockRestante,
+    noDisponibleManual,
     precioVariante,
-    mostrarBaseTachado,
+    precioAjustadoVariante,
   };
 }
 
@@ -354,11 +369,11 @@ function CompraDirectaInfo({ producto }: { producto: IProducto }) {
 
   const handleColorChange = (i: number) => {
     s.setColorActivo(i);
-    s.setCantidad(0);
+    s.setCantidad(1);
   };
   const handleTallaChange = (t: string) => {
     s.setTallaActiva(t);
-    s.setCantidad(0);
+    s.setCantidad(1);
   };
 
   return (
@@ -374,7 +389,7 @@ function CompraDirectaInfo({ producto }: { producto: IProducto }) {
       <PrecioBlock
         producto={producto}
         precioVariante={s.precioVariante}
-        mostrarBaseTachado={s.mostrarBaseTachado}
+        precioAjustadoVariante={s.precioAjustadoVariante}
       />
       <StoreCard producto={producto} />
 
@@ -393,6 +408,7 @@ function CompraDirectaInfo({ producto }: { producto: IProducto }) {
           cantidad={s.cantidad}
           onChange={tiendaInhabilitada ? () => {} : s.setCantidad}
           stockRestante={tiendaInhabilitada ? 0 : s.stockRestante}
+          noDisponible={!tiendaInhabilitada && s.noDisponibleManual}
         />
       </div>
 
@@ -400,10 +416,16 @@ function CompraDirectaInfo({ producto }: { producto: IProducto }) {
         onClick={() =>
           agregarAlCarrito(producto, s.cantidad, s.varianteSeleccionada?.id)
         }
-        disabled={tiendaInhabilitada || s.stockRestante === 0 || s.cantidad === 0}
+        disabled={tiendaInhabilitada || s.stockRestante === 0 || s.noDisponibleManual || s.cantidad === 0}
         className="h-14 rounded-lg bg-brand-500 text-[16px] font-medium text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-ink-300 disabled:hover:bg-ink-300"
       >
-        {tiendaInhabilitada ? 'Producto no disponible' : s.stockRestante === 0 ? 'Sin stock' : 'Añadir al carrito'}
+        {tiendaInhabilitada
+          ? 'Producto no disponible'
+          : s.noDisponibleManual
+          ? 'No disponible'
+          : s.stockRestante === 0
+          ? 'Sin stock'
+          : 'Añadir al carrito'}
       </button>
 
       <EntregaInfo ofreceEnvio={producto.tiendaOfreceEnvio} />
@@ -480,11 +502,11 @@ function PersonalizableInfo({ producto }: { producto: IProducto }) {
 
   const handleColorChange = (i: number) => {
     s.setColorActivo(i);
-    s.setCantidad(0);
+    s.setCantidad(1);
   };
   const handleTallaChange = (t: string) => {
     s.setTallaActiva(t);
-    s.setCantidad(0);
+    s.setCantidad(1);
   };
 
   return (
@@ -500,7 +522,7 @@ function PersonalizableInfo({ producto }: { producto: IProducto }) {
       <PrecioBlock
         producto={producto}
         precioVariante={s.precioVariante}
-        mostrarBaseTachado={s.mostrarBaseTachado}
+        precioAjustadoVariante={s.precioAjustadoVariante}
       />
       <StoreCard producto={producto} />
 
@@ -519,6 +541,7 @@ function PersonalizableInfo({ producto }: { producto: IProducto }) {
           cantidad={s.cantidad}
           onChange={tiendaInhabilitada ? () => {} : s.setCantidad}
           stockRestante={tiendaInhabilitada ? 0 : s.stockRestante}
+          noDisponible={!tiendaInhabilitada && s.noDisponibleManual}
         />
       </div>
 
@@ -529,11 +552,13 @@ function PersonalizableInfo({ producto }: { producto: IProducto }) {
         onClick={() =>
           agregarAlCarrito(producto, s.cantidad, s.varianteSeleccionada?.id)
         }
-        disabled={tiendaInhabilitada || s.stockRestante === 0 || s.cantidad === 0}
+        disabled={tiendaInhabilitada || s.stockRestante === 0 || s.noDisponibleManual || s.cantidad === 0}
         className="h-14 rounded-lg bg-brand-500 text-[16px] font-medium text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-ink-300 disabled:hover:bg-ink-300"
       >
         {tiendaInhabilitada
           ? 'Producto no disponible'
+          : s.noDisponibleManual
+          ? 'No disponible'
           : s.stockRestante === 0
           ? 'Sin stock'
           : 'Añadir al carrito'}

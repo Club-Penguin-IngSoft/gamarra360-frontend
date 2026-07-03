@@ -164,7 +164,7 @@ export default function PromocionesPage() {
     <div className="flex min-h-screen">
       <ComercianteSidebar />
 
-      <main className="ml-64 flex-1 bg-gray-100 p-7">
+      <main className="flex-1 bg-gray-100 p-7">
         {/* Notificación flotante */}
         {notif && (
           <div

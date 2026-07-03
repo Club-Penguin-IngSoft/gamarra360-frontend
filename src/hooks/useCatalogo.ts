@@ -2,11 +2,12 @@
  * Hook que encapsula la lógica de carga del catálogo con paginación.
  *
  * Estrategia:
- *  - categorias, tiposProducto, color, tallas, precioMin/Max → server-side (params al backend)
- *  - tipoServicio, material → client-side (derivados en el adaptador, el backend no los filtra)
+ *  - categorias, tiposProducto, color, tallas, precioMin/Max → server-side
+ *    (el backend usa EXISTS subquery sobre precio efectivo de variante)
+ *  - tipoServicio, material, ofreceEnvio → client-side
  *
  * Cuando hay filtros client-side activos, se pide un lote grande al backend
- * (pre-filtrado por server-side) y se pagina en memoria.
+ * (pre-filtrado por server-side, incluyendo precio) y se pagina en memoria.
  * Sin filtros client-side, se usa la paginación del backend directamente.
  */
 import { useEffect, useState } from 'react';
@@ -20,6 +21,7 @@ function tieneFiltrosClienteSide(filtros?: Partial<IFiltrosCatalogo>): boolean {
     (filtros.tipoServicio?.length ?? 0) > 0 ||
     (filtros.materiales?.length ?? 0) > 0 ||
     filtros.ofreceEnvio === true
+    // precioMin/precioMax ya son server-side (EXISTS subquery sobre precio efectivo)
   );
 }
 
@@ -44,9 +46,8 @@ export function useCatalogo(
     setError(null);
 
     if (conFiltrosCliente) {
-      // tipoServicio / material requieren filtrado en el cliente.
-      // El backend ya pre-filtra el resto (categorias, tiposProducto, etc.)
-      // así que el lote traído es más pequeño que el total.
+      // tipoServicio / material / ofreceEnvio requieren filtrado en el cliente.
+      // precioMin/precioMax se envían al backend (EXISTS subquery sobre precio efectivo).
       listarProductosPaginados(0, 500, filtros)
         .then(({ contenido }) => {
           if (cancelado) return;

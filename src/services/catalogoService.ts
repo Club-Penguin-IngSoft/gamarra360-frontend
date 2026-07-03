@@ -40,6 +40,7 @@ interface IProductoBackend {
     idVariante: number;
     sku?: string;
     stock?: number;
+    minimoStock?: number;
     precioAjustado?: number | null;
     precioEfectivo?: number | null;
     disponible?: boolean;
@@ -114,6 +115,11 @@ export async function actualizarVariante(idVariante: number, payload: Partial<IV
   await apiClient.put(`/variantes-producto/${idVariante}`, payload);
 }
 
+/** Elimina una variante existente en el backend. */
+export async function eliminarVariante(idVariante: number): Promise<void> {
+  await apiClient.delete(`/variantes-producto/${idVariante}`);
+}
+
 /** Actualiza solo el stock de una variante (PATCH /variantes-producto/{id}/stock). */
 export async function actualizarStockVariante(idVariante: number, stock: number): Promise<void> {
   await apiClient.patch(`/variantes-producto/${idVariante}/stock`, { stock });
@@ -164,6 +170,7 @@ function adaptarProducto(p: IProductoBackend): IProducto {
   const variantes: IVarianteProducto[] = (p.variantes ?? []).map((v) => ({
     id: String(v.idVariante),
     stock: v.stock ?? 0,
+    disponible: v.disponible ?? true,
     talla: v.talla ?? undefined,
     color: v.color ?? undefined,
     colorHex: v.colorHex ?? undefined,
