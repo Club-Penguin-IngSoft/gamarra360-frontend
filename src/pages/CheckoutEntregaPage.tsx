@@ -131,13 +131,21 @@ export default function CheckoutEntregaPage() {
       if (!acc[id]) {
         acc[id] = { nombreTienda: item.producto.nombreTienda ?? 'Tienda', items: [] };
       }
+      // "precioBase" aquí es el precio SIN oferta, para que el cálculo de descuentos
+      // más abajo (precioBase - precioUnitario) refleje un ahorro real. Si no hay
+      // oferta activa en el producto, se iguala a precioUnitario (0 de descuento) —
+      // una variante puede tener su propio precio distinto sin que eso sea un descuento.
+      const varianteItem = item.producto.variantes?.find((v) => v.id === item.idVariante);
+      const precioBaseSinOferta = item.producto.oferta != null
+        ? (varianteItem?.precioAjustado ?? item.producto.precioBase ?? item.precioUnitario)
+        : item.precioUnitario;
       acc[id].items.push({
         id: item.id,
         nombreProducto: item.producto.titulo,
         imagenUrl: item.producto.imagenes?.[0],
         cantidad: item.cantidad,
         precioUnitario: item.precioUnitario,
-        precioBase: item.producto.precioBase ?? item.producto.precioFinal ?? 0,
+        precioBase: precioBaseSinOferta,
         idVarianteProducto: item.idVariante
           ? Number(item.idVariante)
           : Number(item.producto.variantes?.[0]?.id) || null,

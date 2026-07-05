@@ -55,13 +55,18 @@ export default function TopBar({
       setAbierto(false);
       return;
     }
+    let cancelado = false;
     const timer = setTimeout(() => {
       buscarProductos(query.trim()).then((res) => {
+        if (cancelado) return; // respuesta de una búsqueda anterior ya obsoleta
         setResultados(res);
         setAbierto(true);
       });
     }, 300);
-    return () => clearTimeout(timer);
+    return () => {
+      cancelado = true;
+      clearTimeout(timer);
+    };
   }, [query]);
 
   useEffect(() => {

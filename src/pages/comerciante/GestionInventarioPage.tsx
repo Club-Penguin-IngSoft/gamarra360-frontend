@@ -15,7 +15,7 @@ interface IProductoBackend {
   nombreCategoria?: string;
   nombreTipoProducto?: string;
   imagenes: { url: string; esPrincipal: boolean }[] | null;
-  variantes: { stock?: number }[] | null;
+  variantes: { stock?: number; minimoStock?: number }[] | null;
 }
 
 interface IProductoFila {
@@ -28,17 +28,30 @@ interface IProductoFila {
   imagenUrl?: string;
 }
 
-const STOCK_MINIMO = 5;
+/** Umbral por defecto solo para variantes sin minimoStock propio configurado. */
+const STOCK_MINIMO_DEFAULT = 5;
 
-function computarEstado(activo: boolean, stock: number): IProductoFila['estado'] {
+function computarEstado(
+  activo: boolean,
+  totalStock: number,
+  variantes: { stock?: number; minimoStock?: number }[],
+): IProductoFila['estado'] {
   if (!activo) return 'SIN_PUBLICAR';
-  if (stock === 0) return 'AGOTADO';
-  if (stock <= STOCK_MINIMO) return 'POCA_EXISTENCIA';
-  return 'PUBLICADO';
+  if (totalStock === 0) return 'AGOTADO';
+  // "Poca existencia" es por variante, no por la suma total: si UNA variante ya
+  // llegó a su propio umbral (aunque otras variantes tengan stock de sobra), el
+  // comerciante igual necesita saberlo para reabastecerla.
+  const algunaVarianteBaja = variantes.some((v) => {
+    const stock = v.stock ?? 0;
+    const umbral = v.minimoStock ?? STOCK_MINIMO_DEFAULT;
+    return stock <= umbral;
+  });
+  return algunaVarianteBaja ? 'POCA_EXISTENCIA' : 'PUBLICADO';
 }
 
 function adaptarFila(p: IProductoBackend): IProductoFila {
-  const totalStock = (p.variantes ?? []).reduce((s, v) => s + (v.stock ?? 0), 0);
+  const variantes = p.variantes ?? [];
+  const totalStock = variantes.reduce((s, v) => s + (v.stock ?? 0), 0);
   const principal = (p.imagenes ?? []).find((i) => i.esPrincipal) ?? p.imagenes?.[0];
   return {
     idProducto: p.idProducto,
@@ -46,7 +59,7 @@ function adaptarFila(p: IProductoBackend): IProductoFila {
     categoria: p.nombreTipoProducto ?? p.nombreCategoria ?? '—',
     precioBase: p.precioBase ?? 0,
     unidades: totalStock,
-    estado: computarEstado(p.activo, totalStock),
+    estado: computarEstado(p.activo, totalStock, variantes),
     imagenUrl: principal?.url,
   };
 }

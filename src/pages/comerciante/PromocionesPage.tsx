@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import ComercianteSidebar from '../../components/ComercianteSidebar';
 import ModalCrearOferta from '../../components/comerciante/ModalCrearOferta';
+import ConfirmDialog from '../../components/comerciante/ConfirmDialog';
 import { PauseCircle, PlayCircle } from 'lucide-react';
 import { listarOfertas, eliminarOferta, toggleEstadoOferta } from '../../services/ofertaService';
 import type { IOferta, EstadoOferta } from '../../types/IOferta';
@@ -74,6 +75,8 @@ export default function PromocionesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [ofertaEditar, setOfertaEditar] = useState<IOferta | null>(null);
   const [notif, setNotif] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [ofertaAEliminar, setOfertaAEliminar] = useState<IOferta | null>(null);
+  const [eliminando, setEliminando] = useState(false);
 
   const cargarOfertas = () => {
     setCargando(true);
@@ -114,14 +117,18 @@ export default function PromocionesPage() {
     }
   };
 
-  const handleEliminar = async (id: number) => {
-    if (!window.confirm('¿Eliminar esta oferta? Esta acción no se puede deshacer.')) return;
+  const handleConfirmarEliminar = async () => {
+    if (!ofertaAEliminar) return;
+    setEliminando(true);
     try {
-      await eliminarOferta(id);
-      setOfertas((prev) => prev.filter((o) => o.idOferta !== id));
+      await eliminarOferta(ofertaAEliminar.idOferta);
+      setOfertas((prev) => prev.filter((o) => o.idOferta !== ofertaAEliminar.idOferta));
       mostrarNotif('Oferta eliminada correctamente.');
+      setOfertaAEliminar(null);
     } catch {
       mostrarNotif('No se pudo eliminar la oferta.', false);
+    } finally {
+      setEliminando(false);
     }
   };
 
@@ -430,7 +437,7 @@ export default function PromocionesPage() {
                           )}
 
                           <button
-                            onClick={() => handleEliminar(o.idOferta)}
+                            onClick={() => setOfertaAEliminar(o)}
                             title="Eliminar"
                             className="w-8 h-8 rounded flex items-center justify-center border border-gray-200 text-gray-500 hover:bg-[#FEE2E2] hover:text-red-600 hover:border-red-500 transition-colors"
                           >
@@ -497,6 +504,33 @@ export default function PromocionesPage() {
         ofertaEditar={ofertaEditar}
         onClose={() => setModalOpen(false)}
         onSuccess={handleSuccess}
+      />
+
+      <ConfirmDialog
+        open={ofertaAEliminar !== null}
+        titulo="Eliminar promoción"
+        variante="peligro"
+        confirmando={eliminando}
+        confirmarLabel="Sí, eliminar"
+        onConfirmar={handleConfirmarEliminar}
+        onCancelar={() => setOfertaAEliminar(null)}
+        mensaje={
+          ofertaAEliminar?.estado === 'ACTIVO' ? (
+            <>
+              La promoción <strong>"{ofertaAEliminar.titulo}"</strong> está{' '}
+              <strong>activa</strong> y aplica a{' '}
+              {ofertaAEliminar.idsProductos.length} producto
+              {ofertaAEliminar.idsProductos.length !== 1 ? 's' : ''}. Si la eliminas, el
+              descuento dejará de mostrarse de inmediato en {ofertaAEliminar.idsProductos.length !== 1 ? 'esos productos' : 'ese producto'}.
+              Esta acción no se puede deshacer.
+            </>
+          ) : (
+            <>
+              ¿Eliminar la promoción <strong>"{ofertaAEliminar?.titulo}"</strong>? Esta
+              acción no se puede deshacer.
+            </>
+          )
+        }
       />
     </div>
   );

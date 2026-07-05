@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { PackageX } from 'lucide-react';
 import type { IProducto } from '../../types/IProducto';
-import type { IOferta, IOfertaPayload, TipoDescuentoOferta } from '../../types/IOferta';
+import type { IOferta, IOfertaPayload, TipoDescuentoOferta, IConflictoOferta } from '../../types/IOferta';
 import { crearOferta, actualizarOferta } from '../../services/ofertaService';
 import { listarProductosDeTienda } from '../../services/catalogoService';
 import { obtenerMiTienda } from '../../services/tiendaService';
+import ConfirmDialog from './ConfirmDialog';
 
 /* ── Estilos compartidos ─────────────────────────────────────────────────── */
 
@@ -42,6 +44,8 @@ export default function ModalCrearOferta({ open, ofertaEditar, onClose, onSucces
   /* Submit */
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /* Conflicto de ofertas activas superpuestas — lo determina el backend (409) */
+  const [conflictos, setConflictos] = useState<IConflictoOferta[] | null>(null);
 
   /* Fetch de productos (una sola vez) */
   const fetchedRef = useRef(false);
@@ -57,6 +61,7 @@ export default function ModalCrearOferta({ open, ofertaEditar, onClose, onSucces
     // Siempre limpia los estados de carga/error al cambiar open o la oferta editada
     setGuardando(false);
     setError(null);
+    setConflictos(null);
 
     if (!open) return;
 
@@ -117,6 +122,15 @@ export default function ModalCrearOferta({ open, ofertaEditar, onClose, onSucces
     () => productosFiltrados.map((p) => Number(p.id)),
     [productosFiltrados],
   );
+
+  // Al crear (no al editar): mientras se cargan los productos aún no sabemos si hay
+  // publicados o no, así que se muestra un estado de carga neutro en vez del
+  // formulario completo — evita el "flash" de ver el form y que luego desaparezca.
+  const cargandoInicial = !ofertaEditar && cargandoProds;
+  // Si terminó de cargar y no hay productos, bloquea el flujo desde el inicio en vez
+  // de dejar que el comerciante llene todo el formulario para recién enterarse al guardar.
+  const sinProductosPublicados = !ofertaEditar && !cargandoProds && productos.length === 0;
+
   const todosSeleccionados =
     idsFiltrados.length > 0 && idsFiltrados.every((id) => seleccionados.has(id));
 
@@ -140,7 +154,45 @@ export default function ModalCrearOferta({ open, ofertaEditar, onClose, onSucces
     });
   };
 
-  const handleSubmit = async () => {
+  /** Envía el payload al backend. `forzar` confirma explícitamente reemplazar una oferta activa superpuesta (409 previo). */
+  const guardar = async (forzar: boolean) => {
+    setGuardando(true);
+    setError(null);
+
+    const payload: IOfertaPayload = {
+      titulo: titulo.trim(),
+      tipoDescuento,
+      valorDescuento: Number(valor),
+      fechaInicio,
+      fechaFin,
+      activa: true,
+      idsProductos: [...seleccionados],
+      forzarSobrescritura: forzar,
+    };
+
+    try {
+      if (ofertaEditar) {
+        await actualizarOferta(ofertaEditar.idOferta, payload);
+      } else {
+        await crearOferta(payload);
+      }
+      setConflictos(null);
+      onSuccess();
+      onClose();
+    } catch (err: unknown) {
+      const respuesta = (err as { response?: { status?: number; data?: { mensaje?: string; conflictos?: IConflictoOferta[] } } })?.response;
+      if (respuesta?.status === 409 && respuesta.data?.conflictos?.length) {
+        // El backend detectó producto(s) con otra oferta activa vigente — se pide confirmación explícita.
+        setConflictos(respuesta.data.conflictos);
+      } else {
+        setError(respuesta?.data?.mensaje ?? 'Ocurrió un error al guardar. Intenta de nuevo.');
+      }
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const handleSubmit = () => {
     if (!titulo.trim()) { setError('El nombre de la promoción es requerido.'); return; }
     const numValor = Number(valor);
     if (!valor || numValor <= 0) { setError('El valor del descuento debe ser mayor a 0.'); return; }
@@ -150,33 +202,7 @@ export default function ModalCrearOferta({ open, ofertaEditar, onClose, onSucces
     if (fechaFin <= fechaInicio) { setError('La fecha de fin debe ser posterior a la de inicio.'); return; }
     if (seleccionados.size === 0) { setError('Selecciona al menos un producto.'); return; }
 
-    setGuardando(true);
-    setError(null);
-
-    const payload: IOfertaPayload = {
-      titulo: titulo.trim(),
-      tipoDescuento,
-      valorDescuento: numValor,
-      fechaInicio,
-      fechaFin,
-      activa: true,
-      idsProductos: [...seleccionados],
-    };
-
-    try {
-      if (ofertaEditar) {
-        await actualizarOferta(ofertaEditar.idOferta, payload);
-      } else {
-        await crearOferta(payload);
-      }
-      onSuccess();
-      onClose();
-    } catch (err: unknown) {
-      const respuesta = (err as { response?: { data?: { mensaje?: string } } })?.response?.data;
-      setError(respuesta?.mensaje ?? 'Ocurrió un error al guardar. Intenta de nuevo.');
-    } finally {
-      setGuardando(false);
-    }
+    guardar(false);
   };
 
   if (!open) return null;
@@ -213,6 +239,30 @@ export default function ModalCrearOferta({ open, ofertaEditar, onClose, onSucces
         {/* Body (scrollable) */}
         <div className="flex-1 overflow-y-auto px-7 py-6">
 
+          {cargandoInicial ? (
+          /* Estado de carga neutro: aún no sabemos si hay productos publicados,
+             así que no mostramos el formulario ni el bloqueo todavía. */
+          <div className="flex flex-col items-center justify-center text-center py-24 gap-3">
+            <span className="w-8 h-8 border-2 border-gray-200 border-t-primario rounded-full animate-spin" />
+            <p className="text-[13px] text-gray-400">Cargando…</p>
+          </div>
+          ) : sinProductosPublicados ? (
+          /* Bloquea el flujo desde el inicio: sin productos publicados no tiene
+             sentido dejar llenar título/fechas/descuento para recién fallar al guardar. */
+          <div className="flex flex-col items-center justify-center text-center py-16 gap-3">
+            <span className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center">
+              <PackageX className="h-7 w-7 text-amber-600" />
+            </span>
+            <h3 className="text-[15px] font-bold text-gray-900">
+              Aún no tienes productos publicados
+            </h3>
+            <p className="text-[13px] text-gray-500 max-w-sm">
+              Para crear una promoción necesitas al menos un producto publicado en tu
+              tienda. Publica un producto desde Inventario y vuelve a intentarlo.
+            </p>
+          </div>
+          ) : (
+          <>
           {/* ── Sección A: Detalles ─────────────────────────────────────── */}
           <div className="mb-8">
             <div className="flex items-center gap-2.5 mb-5">
@@ -428,41 +478,94 @@ export default function ModalCrearOferta({ open, ofertaEditar, onClose, onSucces
               </div>
             </div>
           </div>
+          </>
+          )}
         </div>
 
         {/* Footer */}
         <div className="flex-shrink-0 border-t border-gray-200 px-7 py-4 flex items-center gap-3">
           {error && <p className="text-[12px] text-red-500 flex-1">{error}</p>}
           <div className="flex items-center gap-3 ml-auto">
-            <button
-              type="button"
-              onClick={onClose}
-              className="h-[42px] px-6 rounded-lg border border-gray-200 text-[13px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={guardando}
-              className="h-[42px] px-6 rounded-lg bg-primario text-white text-[13px] font-semibold hover:bg-primario-hover transition-colors disabled:opacity-50 flex items-center gap-2"
-            >
-              {guardando ? (
-                'Guardando...'
-              ) : (
-                <>
-                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                    <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
-                    <polyline points="17 21 17 13 7 13 7 21" />
-                    <polyline points="7 3 7 8 15 8" />
-                  </svg>
-                  Guardar Promoción
-                </>
-              )}
-            </button>
+            {cargandoInicial ? (
+              <button
+                type="button"
+                onClick={onClose}
+                className="h-[42px] px-6 rounded-lg border border-gray-200 text-[13px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+            ) : sinProductosPublicados ? (
+              <button
+                type="button"
+                onClick={onClose}
+                className="h-[42px] px-6 rounded-lg bg-primario text-white text-[13px] font-semibold hover:bg-primario-hover transition-colors"
+              >
+                Entendido, cerrar
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="h-[42px] px-6 rounded-lg border border-gray-200 text-[13px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={guardando}
+                  className="h-[42px] px-6 rounded-lg bg-primario text-white text-[13px] font-semibold hover:bg-primario-hover transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {guardando ? (
+                    'Guardando...'
+                  ) : (
+                    <>
+                      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                        <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+                        <polyline points="17 21 17 13 7 13 7 21" />
+                        <polyline points="7 3 7 8 15 8" />
+                      </svg>
+                      Guardar Promoción
+                    </>
+                  )}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={conflictos !== null}
+        titulo="Producto con oferta activa vigente"
+        variante="advertencia"
+        confirmando={guardando}
+        confirmarLabel="Sí, continuar y reemplazar"
+        onConfirmar={() => guardar(true)}
+        onCancelar={() => setConflictos(null)}
+        mensaje={
+          <>
+            <p>
+              {conflictos && conflictos.length > 1
+                ? 'Los siguientes productos ya tienen otra oferta activa vigente en fechas superpuestas:'
+                : 'El siguiente producto ya tiene otra oferta activa vigente en fechas superpuestas:'}
+            </p>
+            <ul className="mt-2 list-disc list-inside space-y-1">
+              {conflictos?.map((c) => (
+                <li key={c.idOferta}>
+                  <strong>{c.tituloOferta}</strong>:{' '}
+                  {c.productosEnConflicto.map((p) => p.nombre).join(', ')}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2">
+              Si continúas, esos productos se reasignarán a esta promoción y dejarán de
+              aplicar el descuento de la oferta anterior.
+            </p>
+          </>
+        }
+      />
     </div>
   );
 }

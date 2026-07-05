@@ -21,4 +21,13 @@ export interface IOfertaPayload {
   fechaFin: string;
   activa: boolean;
   idsProductos: number[];
+  /** true cuando el comerciante ya confirmó reemplazar la asignación de una oferta activa vigente sobre algún producto */
+  forzarSobrescritura?: boolean;
+}
+
+/** Detalle de una oferta activa vigente que comparte productos con la que se intenta guardar (HTTP 409). */
+export interface IConflictoOferta {
+  idOferta: number;
+  tituloOferta: string;
+  productosEnConflicto: { idProducto: number; nombre: string }[];
 }

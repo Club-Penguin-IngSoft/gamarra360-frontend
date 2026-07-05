@@ -34,10 +34,11 @@ function CartItemCard({ item }: { item: IItemCarrito }) {
   const talla = variante?.talla;
   const color = variante?.color;
 
-  const tieneDescuento =
-    item.producto.precioBase !== undefined &&
-    item.producto.precioFinal !== undefined &&
-    item.producto.precioBase > item.producto.precioFinal;
+  // El "precio sin oferta" es el propio de la variante (o el base del producto si la
+  // variante no tiene uno propio) — NUNCA el precioBase del producto a secas, porque
+  // una variante puede tener su propio precio distinto sin que eso sea un descuento.
+  const precioSinOferta = variante?.precioAjustado ?? item.producto.precioBase ?? item.precioUnitario;
+  const tieneDescuento = item.producto.oferta != null && precioSinOferta > item.precioUnitario;
 
   return (
     <article className="flex flex-col gap-4 rounded-xl bg-white p-6 sm:flex-row sm:gap-6">
@@ -109,7 +110,7 @@ function CartItemCard({ item }: { item: IItemCarrito }) {
             </span>
             {tieneDescuento && (
               <span className="text-[14px] text-ink-500 line-through">
-                {formatearPrecio((item.producto.precioBase ?? 0) * item.cantidad)}
+                {formatearPrecio(precioSinOferta * item.cantidad)}
               </span>
             )}
           </div>
@@ -129,10 +130,15 @@ function ResumenCompra() {
   // Total real = precios efectivos de variante (precioUnitario ya usa precioEfectivo)
   const total = items.reduce((acc, i) => acc + i.precioUnitario * i.cantidad, 0);
 
-  // Ahorro por ofertas: solo cuando precioBase > precioUnitario (descuento aplicado)
+  // Ahorro por ofertas: solo cuenta si el producto tiene una oferta ACTIVA vigente
+  // (producto.oferta != null). El precio "sin oferta" es el propio de la variante,
+  // no el precioBase del producto — una variante puede tener su propio precio sin
+  // que eso sea un descuento.
   const descuentos = items.reduce((acc, i) => {
-    const base = i.producto.precioBase ?? 0;
-    return acc + Math.max(0, (base - i.precioUnitario) * i.cantidad);
+    if (i.producto.oferta == null) return acc;
+    const variante = i.producto.variantes?.find((v) => v.id === i.idVariante);
+    const precioSinOferta = variante?.precioAjustado ?? i.producto.precioBase ?? i.precioUnitario;
+    return acc + Math.max(0, (precioSinOferta - i.precioUnitario) * i.cantidad);
   }, 0);
 
   // "Subtotal" mostrado = lo que costaría sin ofertas (total + ahorros = precios base)
