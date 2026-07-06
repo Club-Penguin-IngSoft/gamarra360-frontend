@@ -28,7 +28,7 @@ import DashboardPage from '../pages/comerciante/DashboardPage';
 import GestionInventarioPage from '../pages/comerciante/GestionInventarioPage';
 import EditarProductoPage from '../pages/comerciante/EditarProductoPage';
 import NuevoProductoPage from '../pages/comerciante/NuevoProductoPage';
-
+import NotificacionesPage from '../pages/comerciante/NotificacionesPage'
 import ComingSoonInternalPage from '../pages/ComingSoonInternalPage';
 import ComercianteSidebar from '../components/ComercianteSidebar';
 import CheckoutEntregaPage from '../pages/CheckoutEntregaPage';
@@ -50,7 +50,6 @@ import TableroDePersonalizacionesPage from '../pages/comerciante/TableroDePerson
 import DetalleDePersonalizacionComerciantePage from '../pages/comerciante/DetalleDePersonalizacionComerciantePage';
 import MiCuentaComerciantePage from '../pages/comerciante/MiCuentaPage';
 import PromocionesPage from '../pages/comerciante/PromocionesPage';
-import OlvidoPasswordPage from '../pages/OlvidoPasswordPage';
 import { useAuth } from '../hooks/useAuth';
 import PedidoConfirmadoPage from '../pages/PedidoConfirmadoPage';
 /**
@@ -97,7 +96,6 @@ export default function AppRouter() {
 
       <Route path={RUTAS.LOGIN} element={<LoginPage />} />
       <Route path={RUTAS.REGISTRO} element={<RegistroPage />} />
-      <Route path={RUTAS.OLVIDO_PASSWORD} element={<OlvidoPasswordPage />} />
       <Route
         path={RUTAS.PERSONALIZAR()}
         element={<PersonalizacionPage />}
@@ -129,13 +127,7 @@ export default function AppRouter() {
         <Route path={RUTAS.COMERCIANTE_CUENTA} element={<MiCuentaComerciantePage />} />
         <Route
           path={RUTAS.COMERCIANTE_NOTIFICACIONES}
-          element={
-            <ComingSoonInternalPage
-              sidebar={<ComercianteSidebar />}
-              title="Notificaciones"
-              description="Centro de notificaciones del comerciante. Disponible próximamente."
-            />
-          }
+          element={<NotificacionesPage />}
         />
       </Route>
       {/* Stripe retorno — fuera de RutaProtegida */}
