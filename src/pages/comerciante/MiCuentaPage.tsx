@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import type { ChangeEvent } from 'react';
 import ComercianteSidebar from '../../components/ComercianteSidebar';
 import MaterialIcon from '../../components/MaterialIcon';
@@ -294,277 +294,247 @@ export default function MiCuentaPage() {
             {errorCarga}
           </div>
         ) : (
-          <div className="grid gap-5" style={{ gridTemplateColumns: '1fr 280px', alignItems: 'start' }}>
-            {/* ── Columna izquierda ────────────────────────────────────── */}
-            <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-5">
 
-              {/* Bloque: Perfil del Negocio */}
-              <form
-                onSubmit={handleGuardarNegocio}
-                className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
-              >
-                <SectionTitle
-                  title="Perfil del Negocio"
-                  badge={
-                    verificada ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-3 py-1 text-[11px] font-semibold text-green-700 border border-green-200">
-                        <MaterialIcon name="verified" style={{ fontSize: '13px' }} />
-                        VERIFICADO
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-yellow-50 px-3 py-1 text-[11px] font-semibold text-yellow-700 border border-yellow-200">
-                        PENDIENTE
-                      </span>
-                    )
-                  }
+            {/* Bloque: Perfil del Negocio */}
+            <form
+              onSubmit={handleGuardarNegocio}
+              className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+            >
+              <SectionTitle
+                title="Perfil del Negocio"
+                badge={
+                  verificada ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-3 py-1 text-[11px] font-semibold text-green-700 border border-green-200">
+                      <MaterialIcon name="verified" style={{ fontSize: '13px' }} />
+                      VERIFICADO
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-yellow-50 px-3 py-1 text-[11px] font-semibold text-yellow-700 border border-yellow-200">
+                      PENDIENTE
+                    </span>
+                  )
+                }
+              />
+
+              <div className="flex flex-col gap-3">
+                <Input
+                  type="text"
+                  name="nombreTienda"
+                  placeholder="Nombre de la tienda"
+                  value={nombreTienda}
+                  onChange={(e) => setNombreTienda(e.target.value)}
                 />
 
-                <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_180px]">
                   <Input
                     type="text"
-                    name="nombreTienda"
-                    placeholder="Nombre de la tienda"
-                    value={nombreTienda}
-                    onChange={(e) => setNombreTienda(e.target.value)}
+                    name="razonSocial"
+                    placeholder="Razón social"
+                    value={razonSocial}
+                    onChange={(e) => setRazonSocial(e.target.value)}
                   />
-
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_180px]">
-                    <Input
-                      type="text"
-                      name="razonSocial"
-                      placeholder="Razón social"
-                      value={razonSocial}
-                      onChange={(e) => setRazonSocial(e.target.value)}
-                    />
-                    <Input
-                      type="text"
-                      name="ruc"
-                      placeholder="RUC"
-                      value={ruc}
-                      onChange={(e) => setRuc(e.target.value)}
-                      disabled
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <FieldSelect
-                      name="galeria"
-                      value={galeria}
-                      placeholder="Galería"
-                      optionItems={GALERIA_OPTIONS}
-                      onChange={(e) => setGaleria(e.target.value)}
-                    />
-                    <Input
-                      type="text"
-                      name="piso"
-                      placeholder="Piso (opcional)"
-                      value={piso}
-                      onChange={(e) => setPiso(e.target.value)}
-                    />
-                    <Input
-                      type="text"
-                      name="stand"
-                      placeholder="Stand (opcional)"
-                      value={stand}
-                      onChange={(e) => setStand(e.target.value)}
-                    />
-                  </div>
-
-                  {/* Descripción */}
-                  <div>
-                    <textarea
-                      placeholder="Descripción de la tienda (visible para los compradores)"
-                      value={informacion}
-                      onChange={(e) => setInformacion(e.target.value)}
-                      rows={3}
-                      className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-[11px] text-sm focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100 transition-all"
-                    />
-                  </div>
-
-                  {/* Envío a domicilio */}
-                  <label className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 cursor-pointer select-none">
-                    <div className="flex items-center gap-2.5">
-                      <MaterialIcon name="local_shipping" style={{ fontSize: '18px', color: '#6c757d' }} />
-                      <div>
-                        <p className="text-sm font-medium text-gray-800">Envío a domicilio</p>
-                        <p className="text-xs text-gray-500">¿Tu tienda ofrece despacho a domicilio?</p>
-                      </div>
-                    </div>
-                    <div
-                      onClick={() => setOfreceEnvio((v) => !v)}
-                      className={`relative flex h-6 w-11 flex-shrink-0 rounded-full transition-colors duration-200 cursor-pointer ${
-                        ofreceEnvio ? 'bg-primario' : 'bg-gray-200'
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
-                          ofreceEnvio ? 'translate-x-5' : 'translate-x-0.5'
-                        }`}
-                      />
-                    </div>
-                  </label>
-
-                  {/* Logo */}
-                  <div>
-                    <p className="mb-2 text-xs font-medium text-gray-600">Logo</p>
-                    <div
-                      onClick={() => fileInputRef.current?.click()}
-                      onDragOver={(e) => { e.preventDefault(); setLogoDragging(true); }}
-                      onDragLeave={() => setLogoDragging(false)}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        setLogoDragging(false);
-                        handleLogoFile(e.dataTransfer.files[0] ?? null);
-                      }}
-                      className={`relative flex h-36 w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed transition-colors ${
-                        logoDragging ? 'border-pink-400 bg-pink-50' : 'border-gray-200 bg-gray-50'
-                      }`}
-                    >
-                      {previewUrl ? (
-                        <div className="flex flex-col items-center gap-1 text-center px-4">
-                          <img
-                            src={previewUrl}
-                            alt="Vista previa"
-                            className="max-h-24 max-w-[220px] object-contain"
-                          />
-                          <p className="text-xs text-gray-400 mt-1">Haz clic para cambiar</p>
-                        </div>
-                      ) : logoUrl ? (
-                        <div className="flex flex-col items-center gap-1 text-center px-4">
-                          <img
-                            src={logoUrl}
-                            alt="Logo actual"
-                            className="max-h-24 max-w-[220px] object-contain"
-                          />
-                          <p className="text-xs text-gray-400 mt-1">Logo actual · Haz clic para cambiar</p>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center gap-1 text-center px-4">
-                          <MaterialIcon name="cloud_upload" style={{ fontSize: '32px', color: '#0aa2c0' }} />
-                          <p className="text-sm font-medium text-gray-700">
-                            Arrastra tu logo aquí o haz clic para subir
-                          </p>
-                          <p className="text-xs text-gray-400">PNG, JPG o SVG (Max 10MB)</p>
-                        </div>
-                      )}
-                    </div>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/png,image/jpeg,image/svg+xml"
-                      className="hidden"
-                      onChange={(e) => handleLogoFile(e.target.files?.[0] ?? null)}
-                    />
-                  </div>
-                </div>
-
-                {mensajeNegocio && (
-                  <p className={`mt-3 text-xs ${mensajeNegocio.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>
-                    {mensajeNegocio}
-                  </p>
-                )}
-                <SaveButton loading={guardandoNegocio} label="Actualizar Perfil" />
-              </form>
-
-              {/* Bloque: Información del Titular */}
-              <form
-                onSubmit={handleGuardarTitular}
-                className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
-              >
-                <SectionTitle title="Información del Titular" />
-
-                <div className="flex flex-col gap-3">
                   <Input
-                    type="email"
-                    name="correo"
-                    placeholder="Correo electrónico corporativo"
-                    value={email}
-                    onChange={() => {}}
+                    type="text"
+                    name="ruc"
+                    placeholder="RUC"
+                    value={ruc}
+                    onChange={(e) => setRuc(e.target.value)}
                     disabled
                   />
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <FieldSelect
+                    name="galeria"
+                    value={galeria}
+                    placeholder="Galería"
+                    optionItems={GALERIA_OPTIONS}
+                    onChange={(e) => setGaleria(e.target.value)}
+                  />
                   <Input
                     type="text"
-                    name="nombres"
-                    placeholder="Nombre(s)"
-                    value={nombres}
-                    onChange={(e) => setNombres(e.target.value)}
+                    name="piso"
+                    placeholder="Piso (opcional)"
+                    value={piso}
+                    onChange={(e) => setPiso(e.target.value)}
                   />
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <Input
-                      type="text"
-                      name="primerApellido"
-                      placeholder="Primer apellido"
-                      value={primerApellido}
-                      onChange={(e) => setPrimerApellido(e.target.value)}
-                    />
-                    <Input
-                      type="text"
-                      name="segundoApellido"
-                      placeholder="Segundo apellido (opcional)"
-                      value={segundoApellido}
-                      onChange={(e) => setSegundoApellido(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <FieldSelect
-                      name="tipoDocumento"
-                      value={tipoDocumento}
-                      placeholder="Tipo de documento"
-                      options={TIPOS_DOCUMENTO}
-                      onChange={(e) => setTipoDocumento(e.target.value)}
-                    />
-                    <Input
-                      type="text"
-                      name="dni"
-                      placeholder="Número de documento"
-                      value={dni}
-                      onChange={(e) => setDni(e.target.value)}
-                    />
-                  </div>
                   <Input
-                    type="tel"
-                    name="telefono"
-                    placeholder="Celular"
-                    value={telefono}
-                    onChange={(e) => setTelefono(e.target.value)}
+                    type="text"
+                    name="stand"
+                    placeholder="Stand (opcional)"
+                    value={stand}
+                    onChange={(e) => setStand(e.target.value)}
                   />
                 </div>
 
-                {mensajeTitular && (
-                  <p className={`mt-3 text-xs ${mensajeTitular.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>
-                    {mensajeTitular}
-                  </p>
-                )}
-                <SaveButton loading={guardandoTitular} label="Actualizar Datos" />
-              </form>
-            </div>
-
-            {/* ── Columna derecha: Seguridad ────────────────────────────── */}
-            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-              <div className="flex items-center gap-2 mb-5">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50">
-                  <MaterialIcon name="shield" style={{ fontSize: '18px', color: '#3b82f6' }} />
-                </span>
-                <h2 className="text-base font-semibold text-gray-800">Seguridad</h2>
-              </div>
-
-              <div className="flex items-start justify-between gap-2">
+                {/* Descripción */}
                 <div>
-                  <p className="text-sm font-medium text-gray-800">Cambiar Contraseña</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    Actualiza tu contraseña periódicamente para mantener tu cuenta segura.
-                  </p>
+                  <textarea
+                    placeholder="Descripción de la tienda (visible para los compradores)"
+                    value={informacion}
+                    onChange={(e) => setInformacion(e.target.value)}
+                    rows={3}
+                    className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-[11px] text-sm focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100 transition-all"
+                  />
                 </div>
-                <button
-                  type="button"
-                  className="text-xs font-semibold shrink-0 transition-opacity hover:opacity-70"
-                  style={{ color: COLORES.primario }}
-                  onClick={() => alert('Próximamente: formulario de cambio de contraseña')}
-                >
-                  EDITAR
-                </button>
+
+                {/* Envío a domicilio */}
+                <label className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 cursor-pointer select-none">
+                  <div className="flex items-center gap-2.5">
+                    <MaterialIcon name="local_shipping" style={{ fontSize: '18px', color: '#6c757d' }} />
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">Envío a domicilio</p>
+                      <p className="text-xs text-gray-500">¿Tu tienda ofrece despacho a domicilio?</p>
+                    </div>
+                  </div>
+                  <div
+                    onClick={() => setOfreceEnvio((v) => !v)}
+                    className={`relative flex h-6 w-11 flex-shrink-0 rounded-full transition-colors duration-200 cursor-pointer ${
+                      ofreceEnvio ? 'bg-primario' : 'bg-gray-200'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
+                        ofreceEnvio ? 'translate-x-5' : 'translate-x-0.5'
+                      }`}
+                    />
+                  </div>
+                </label>
+
+                {/* Logo */}
+                <div>
+                  <p className="mb-2 text-xs font-medium text-gray-600">Logo</p>
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => { e.preventDefault(); setLogoDragging(true); }}
+                    onDragLeave={() => setLogoDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setLogoDragging(false);
+                      handleLogoFile(e.dataTransfer.files[0] ?? null);
+                    }}
+                    className={`relative flex h-36 w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed transition-colors ${
+                      logoDragging ? 'border-pink-400 bg-pink-50' : 'border-gray-200 bg-gray-50'
+                    }`}
+                  >
+                    {previewUrl ? (
+                      <div className="flex flex-col items-center gap-1 text-center px-4">
+                        <img
+                          src={previewUrl}
+                          alt="Vista previa"
+                          className="max-h-24 max-w-[220px] object-contain"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">Haz clic para cambiar</p>
+                      </div>
+                    ) : logoUrl ? (
+                      <div className="flex flex-col items-center gap-1 text-center px-4">
+                        <img
+                          src={logoUrl}
+                          alt="Logo actual"
+                          className="max-h-24 max-w-[220px] object-contain"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">Logo actual · Haz clic para cambiar</p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1 text-center px-4">
+                        <MaterialIcon name="cloud_upload" style={{ fontSize: '32px', color: '#0aa2c0' }} />
+                        <p className="text-sm font-medium text-gray-700">
+                          Arrastra tu logo aquí o haz clic para subir
+                        </p>
+                        <p className="text-xs text-gray-400">PNG, JPG o SVG (Max 10MB)</p>
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/svg+xml"
+                    className="hidden"
+                    onChange={(e) => handleLogoFile(e.target.files?.[0] ?? null)}
+                  />
+                </div>
               </div>
-            </div>
+
+              {mensajeNegocio && (
+                <p className={`mt-3 text-xs ${mensajeNegocio.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>
+                  {mensajeNegocio}
+                </p>
+              )}
+              <SaveButton loading={guardandoNegocio} label="Actualizar Perfil" />
+            </form>
+
+            {/* Bloque: Información del Titular */}
+            <form
+              onSubmit={handleGuardarTitular}
+              className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+            >
+              <SectionTitle title="Información del Titular" />
+
+              <div className="flex flex-col gap-3">
+                <Input
+                  type="email"
+                  name="correo"
+                  placeholder="Correo electrónico corporativo"
+                  value={email}
+                  onChange={() => {}}
+                  disabled
+                />
+                <Input
+                  type="text"
+                  name="nombres"
+                  placeholder="Nombre(s)"
+                  value={nombres}
+                  onChange={(e) => setNombres(e.target.value)}
+                />
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Input
+                    type="text"
+                    name="primerApellido"
+                    placeholder="Primer apellido"
+                    value={primerApellido}
+                    onChange={(e) => setPrimerApellido(e.target.value)}
+                  />
+                  <Input
+                    type="text"
+                    name="segundoApellido"
+                    placeholder="Segundo apellido (opcional)"
+                    value={segundoApellido}
+                    onChange={(e) => setSegundoApellido(e.target.value)}
+                  />
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <FieldSelect
+                    name="tipoDocumento"
+                    value={tipoDocumento}
+                    placeholder="Tipo de documento"
+                    options={TIPOS_DOCUMENTO}
+                    onChange={(e) => setTipoDocumento(e.target.value)}
+                  />
+                  <Input
+                    type="text"
+                    name="dni"
+                    placeholder="Número de documento"
+                    value={dni}
+                    onChange={(e) => setDni(e.target.value)}
+                  />
+                </div>
+                <Input
+                  type="tel"
+                  name="telefono"
+                  placeholder="Celular"
+                  value={telefono}
+                  onChange={(e) => setTelefono(e.target.value)}
+                />
+              </div>
+
+              {mensajeTitular && (
+                <p className={`mt-3 text-xs ${mensajeTitular.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>
+                  {mensajeTitular}
+                </p>
+              )}
+              <SaveButton loading={guardandoTitular} label="Actualizar Datos" />
+            </form>
           </div>
         )}
       </main>

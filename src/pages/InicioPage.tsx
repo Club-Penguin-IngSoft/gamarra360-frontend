@@ -242,10 +242,6 @@ function SpecialOrdersCTA() {
             Solicitar cotización
           </Link>
 
-          <button className="inline-flex items-center justify-center rounded-lg bg-white/10 px-8 py-4 text-[15px] font-semibold text-white ring-1 ring-white/15 transition-colors hover:bg-white/15">
-            Saber más
-          </button>
-
           <span className="ml-2 inline-flex items-center gap-2 text-[16px] text-white/65">
             <img
               src={customBadgeIcon}

@@ -255,15 +255,6 @@ export default function DashboardPage() {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={handleIrAStripe}
-              className="flex items-center gap-1.5 px-[18px] py-2.5 border border-primario text-primario rounded-lg text-[13px] font-semibold hover:bg-primario hover:text-white transition-colors whitespace-nowrap"
-            >
-              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                <rect x="1" y="4" width="22" height="16" rx="2" ry="2" /><line x1="1" y1="10" x2="23" y2="10" />
-              </svg>
-              Gestionar pagos
-            </button>
-            <button
               className="flex items-center gap-1.5 px-[18px] py-2.5 bg-primario text-white rounded-lg text-[13px] font-semibold hover:bg-primario-hover transition-colors whitespace-nowrap"
               onClick={() => navigate(RUTAS.COMERCIANTE_NUEVO_PRODUCTO)}
             >
