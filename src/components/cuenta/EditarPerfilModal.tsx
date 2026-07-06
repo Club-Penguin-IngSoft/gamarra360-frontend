@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { Loader2 } from 'lucide-react';
 import ModalBase from './ModalBase';
 import { actualizarDatosPersonales } from '../../services/clienteService';
+import { limpiarCelular } from '../../utils/validaciones';
 import type { IPerfilCliente } from '../../types/ICliente';
 
 interface Props {
@@ -18,7 +19,9 @@ export default function EditarPerfilModal({ perfil, onCerrar, onGuardado }: Prop
   const [nombres, setNombres]                 = useState(perfil?.nombres ?? '');
   const [primerApellido, setPrimerApellido]   = useState(perfil?.primerApellido ?? '');
   const [segundoApellido, setSegundoApellido] = useState(perfil?.segundoApellido ?? '');
-  const [celular, setCelular]                 = useState(perfil?.telefono ?? '');
+  // El teléfono se guarda con el prefijo +51 incluido (ver limpiarCelular / registro);
+  // aquí se edita solo el número local para no duplicar el prefijo en el input.
+  const [celular, setCelular]                 = useState((perfil?.telefono ?? '').replace(/^\+51\s?/, ''));
   const [guardando, setGuardando]             = useState(false);
   const [error, setError]                     = useState<string | null>(null);
 
@@ -35,7 +38,7 @@ export default function EditarPerfilModal({ perfil, onCerrar, onGuardado }: Prop
         nombres: nombres.trim(),
         primerApellido: primerApellido.trim(),
         segundoApellido: segundoApellido.trim() || undefined,
-        telefono: celular.trim(),
+        telefono: limpiarCelular(celular.trim()),
       });
       onGuardado();
     } catch {
@@ -73,18 +76,13 @@ export default function EditarPerfilModal({ perfil, onCerrar, onGuardado }: Prop
 
         <label className="flex flex-col gap-1.5">
           <span className={LABEL}>Celular</span>
-          <div className="flex gap-2">
-            <span className="flex items-center justify-center rounded-input border border-neutro-200 bg-surface-muted px-4 text-body-md text-ink-700 select-none">
-              +51
-            </span>
-            <input
-              type="tel"
-              className={`${INPUT} flex-1`}
-              placeholder="999 999 999"
-              value={celular}
-              onChange={e => setCelular(e.target.value)}
-            />
-          </div>
+          <input
+            type="tel"
+            className={INPUT}
+            placeholder="999 999 999"
+            value={celular}
+            onChange={e => setCelular(e.target.value)}
+          />
         </label>
 
         {error && (

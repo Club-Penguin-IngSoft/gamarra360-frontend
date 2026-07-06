@@ -19,6 +19,8 @@ export interface IFiltrosCatalogo {
   precioMin: number | null;
   precioMax: number | null;
   ofreceEnvio: boolean;
+  /** Búsqueda por palabra clave (nombre/descripción), viene del buscador del navbar (?q=). */
+  q: string | null;
 }
 
 export const FILTROS_VACIOS: IFiltrosCatalogo = {
@@ -32,6 +34,7 @@ export const FILTROS_VACIOS: IFiltrosCatalogo = {
   precioMin: null,
   precioMax: null,
   ofreceEnvio: false,
+  q: null,
 };
 
 /**

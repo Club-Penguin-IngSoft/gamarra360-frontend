@@ -40,7 +40,9 @@ export default function PerfilHeaderCard({ perfil, cargando, onEditarPerfil }: P
         <div className="flex flex-col gap-2">
           <h2 className="text-h6 font-semibold text-ink-900">{nombreCompleto}</h2>
           {perfil?.telefono && (
-            <p className="text-body-xl text-ink-700">+51 {perfil.telefono}</p>
+            <p className="text-body-xl text-ink-700">
+              +51 {perfil.telefono.replace(/^\+51\s?/, '')}
+            </p>
           )}
           <p className="text-body-xl text-ink-700">{perfil?.email ?? usuario?.correo}</p>
         </div>

@@ -18,11 +18,14 @@ interface IProductoBackend {
   descripcion?: string;
   precioBase?: number;
   precioFinal?: number;
+  /** Solo viene poblado si hay una oferta ACTIVA vigente ahora (backend: esOfertaActiva()). */
+  oferta?: { titulo: string; tipoDescuento: 'PORCENTAJE' | 'MONTO_FIJO'; valorDescuento: number } | null;
   esPersonalizable: boolean;
   activo: boolean;
   idTienda?: number;
   idComerciante?: number;
   nombreTienda?: string;
+  logoTienda?: string;
   nombreCategoria?: string;
   // Campo plano que envía ProductoResponse (formato actual del backend)
   nombreTipoProducto?: string;
@@ -189,6 +192,7 @@ function adaptarProducto(p: IProductoBackend): IProducto {
     idTienda: String(p.idTienda ?? ''),
     idComerciante: String(p.idComerciante ?? p.idTienda ?? ''),
     nombreTienda: p.nombreTienda ?? '',
+    logoTienda: p.logoTienda ?? undefined,
     imagenes: urlsImagenes,
     categoria: p.nombreCategoria ?? 'Desconocida',
     tipoServicio,
@@ -199,6 +203,7 @@ function adaptarProducto(p: IProductoBackend): IProducto {
     })),
     precioBase: p.precioBase ?? undefined,
     precioFinal: p.precioFinal ?? p.precioBase ?? undefined,
+    oferta: p.oferta ?? undefined,
     variantes: variantes.length > 0 ? variantes : undefined,
     materialPrincipal: p.materialPrincipal ?? undefined,
     materiales: p.materiales ?? undefined,
@@ -231,6 +236,7 @@ export async function listarProductosPaginados(
   filtros?.tallas?.forEach((t) => params.append('tallas', t));
   if (filtros?.precioMin != null) params.append('precioMin', String(filtros.precioMin));
   if (filtros?.precioMax != null) params.append('precioMax', String(filtros.precioMax));
+  if (filtros?.q) params.append('q', filtros.q);
 
   const { data } = await apiClient.get<IPageBackend>('/productos', { params });
 

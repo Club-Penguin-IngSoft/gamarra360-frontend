@@ -122,12 +122,16 @@ function PrecioBlock({
 function StoreCard({ producto }: { producto: IProducto }) {
   return (
     <div className="flex items-center gap-4 rounded-xl border border-ink-50 bg-white p-4">
-      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-surface-muted">
-        <img
-          src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=200&q=80"
-          alt={`Logo ${producto.nombreTienda}`}
-          className="h-full w-full object-cover"
-        />
+      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface-muted">
+        {producto.logoTienda ? (
+          <img
+            src={producto.logoTienda}
+            alt={`Logo ${producto.nombreTienda}`}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <StoreIcon className="h-6 w-6 text-ink-400" />
+        )}
       </div>
       <div className="flex flex-1 flex-col">
         <span className="text-[13px] text-ink-500">Vendido por</span>
@@ -386,6 +390,12 @@ function CompraDirectaInfo({ producto }: { producto: IProducto }) {
         </div>
       )}
 
+      {producto.descripcion && (
+        <p className="text-[16px] leading-relaxed text-ink-700">
+          {producto.descripcion}
+        </p>
+      )}
+
       <PrecioBlock
         producto={producto}
         precioVariante={s.precioVariante}
@@ -517,6 +527,12 @@ function PersonalizableInfo({ producto }: { producto: IProducto }) {
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[14px] font-medium text-red-700">
           Este producto no está disponible. La tienda ha sido inhabilitada.
         </div>
+      )}
+
+      {producto.descripcion && (
+        <p className="text-[16px] leading-relaxed text-ink-700">
+          {producto.descripcion}
+        </p>
       )}
 
       <PrecioBlock

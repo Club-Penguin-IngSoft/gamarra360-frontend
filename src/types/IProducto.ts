@@ -5,6 +5,13 @@
 
 export type TipoServicio = 'COMPRA_DIRECTA' | 'PERSONALIZABLE' | 'COTIZACION';
 
+/** Resumen de la oferta aplicada a un producto — solo viene del backend si hay una oferta ACTIVA vigente ahora mismo. */
+export interface IOfertaResumen {
+  titulo: string;
+  tipoDescuento: 'PORCENTAJE' | 'MONTO_FIJO';
+  valorDescuento: number;
+}
+
 /** Categoría de producto — valor dinámico desde la BD (no enum) */
 export type Categoria = string;
 
@@ -31,6 +38,8 @@ export interface IProducto {
   idTienda: string;
   idComerciante: string;
   nombreTienda: string;
+  /** Logo/foto de la tienda — puede no existir si el comerciante no la subió */
+  logoTienda?: string;
   imagenes: string[];
   categoria: Categoria;
   tipoServicio: TipoServicio;
@@ -40,6 +49,8 @@ export interface IProducto {
   precioBase?: number;
   /** Precio final con descuentos aplicados. Undefined cuando es COTIZACION */
   precioFinal?: number;
+  /** Presente SOLO si el producto tiene una oferta activa vigente ahora mismo (id_oferta no nulo Y dentro del rango de fechas Y activa=true). Úsalo para decidir si mostrar "Descuentos" en carrito/checkout — nunca infieras el descuento comparando precios. */
+  oferta?: IOfertaResumen | null;
   variantes?: IVarianteProducto[];
   /** Especificaciones técnicas (clave/valor) — ej. MATERIAL / Cuero Top Grain */
   especificaciones?: { etiqueta: string; valor: string }[];
