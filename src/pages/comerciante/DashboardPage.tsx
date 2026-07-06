@@ -154,7 +154,8 @@ export default function DashboardPage() {
   const [pestanaAbierta, setPestanaAbierta] = useState<'completados' | 'recientes' | 'productos' | 'pedidosPorDia' | null>(null);
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string | null>(null);
   const navigate = useNavigate();
-  const balance = useStripeBalance();
+  const balanceRaw = useStripeBalance();
+  const balance = stripeCompletado ? balanceRaw : null;
   const { usuario } = useAuth();
   const chartRef = useRef<HTMLDivElement>(null);
   
