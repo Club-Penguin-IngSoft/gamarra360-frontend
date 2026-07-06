@@ -16,6 +16,7 @@ const enlaces: { label: string; to: string }[] = [
   { label: 'Inicio', to: RUTAS.INICIO },
   { label: 'Productos', to: RUTAS.CATALOGO },
   { label: 'Tiendas', to: RUTAS.TIENDAS },
+  { label: 'Cotizaciones', to: RUTAS.COTIZACIONES },
   { label: 'Vender', to: RUTAS.VENDER },
 ];
 

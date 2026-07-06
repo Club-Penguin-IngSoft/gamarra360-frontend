@@ -15,6 +15,8 @@
 
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { RUTAS } from '../constants/rutas';
 import { useOpcionesFiltro } from '../hooks/useOpcionesFiltro';
 import {
   ChevronDown,
@@ -325,6 +327,7 @@ function TiendasFilterPanel({
    ========================================================================= */
 
 export default function TiendasPage() {
+  const navigate = useNavigate();
   const [filterOpen, setFilterOpen] = useState(false);
   const [filtros, setFiltros] = useState<IFiltrosTiendas>(FILTROS_TIENDAS_VACIOS);
   const [tiendas, setTiendas] = useState<ITienda[]>([]);
@@ -459,7 +462,10 @@ export default function TiendasPage() {
               ¡Te damos el mejor precio a medida de tus necesidades!
             </p>
 
-            <button className="mt-5 inline-flex h-11 items-center rounded-md bg-white px-5 text-[16px] font-semibold text-[#AD225E] hover:bg-white/95">
+            <button
+              onClick={() => navigate(RUTAS.COTIZACIONES)}
+              className="mt-5 inline-flex h-11 items-center rounded-md bg-white px-5 text-[16px] font-semibold text-[#AD225E] hover:bg-white/95"
+            >
               Cotiza ahora
             </button>
           </div>

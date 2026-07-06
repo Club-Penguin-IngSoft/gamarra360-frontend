@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ListFilter, X } from 'lucide-react';
 
 import TopBar from '../components/TopBar';
@@ -12,6 +12,7 @@ import { PAGINA_TAMANO_CATALOGO } from '../constants';
 import type { IFiltrosCatalogo } from '../types/IFiltro';
 import { FILTROS_VACIOS } from '../types/IFiltro';
 import { useCatalogo } from '../hooks/useCatalogo';
+import { RUTAS } from '../constants/rutas';
 
 function FilterButton({ onClick }: { onClick: () => void }) {
   return (
@@ -26,6 +27,7 @@ function FilterButton({ onClick }: { onClick: () => void }) {
 }
 
 export default function CatalogoPage() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const qUrl = searchParams.get('q');
 
@@ -170,7 +172,10 @@ export default function CatalogoPage() {
               Solicita tu cotización para productos exclusivos y personalizados.
               ¡Te damos el mejor precio a medida de tus necesidades!
             </p>
-            <button className="mt-5 inline-flex h-11 items-center rounded-md bg-white px-5 text-[16px] font-semibold text-[#AD225E] hover:bg-white/95">
+            <button
+              onClick={() => navigate(RUTAS.COTIZACIONES)}
+              className="mt-5 inline-flex h-11 items-center rounded-md bg-white px-5 text-[16px] font-semibold text-[#AD225E] hover:bg-white/95"
+            >
               Cotiza ahora
             </button>
           </div>
