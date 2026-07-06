@@ -50,6 +50,7 @@ import TableroDePersonalizacionesPage from '../pages/comerciante/TableroDePerson
 import DetalleDePersonalizacionComerciantePage from '../pages/comerciante/DetalleDePersonalizacionComerciantePage';
 import MiCuentaComerciantePage from '../pages/comerciante/MiCuentaPage';
 import PromocionesPage from '../pages/comerciante/PromocionesPage';
+import OlvidoPasswordPage from '../pages/OlvidoPasswordPage';
 import { useAuth } from '../hooks/useAuth';
 import PedidoConfirmadoPage from '../pages/PedidoConfirmadoPage';
 /**
@@ -96,6 +97,7 @@ export default function AppRouter() {
 
       <Route path={RUTAS.LOGIN} element={<LoginPage />} />
       <Route path={RUTAS.REGISTRO} element={<RegistroPage />} />
+      <Route path={RUTAS.OLVIDO_PASSWORD} element={<OlvidoPasswordPage />} />
       <Route
         path={RUTAS.PERSONALIZAR()}
         element={<PersonalizacionPage />}

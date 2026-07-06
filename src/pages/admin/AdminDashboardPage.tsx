@@ -82,7 +82,7 @@ export default function AdminDashboardPage() {
               <DollarSign className="w-6 h-6 text-primario" />
             </div>
             <p className="text-xs font-bold text-neutro-400 uppercase tracking-widest mb-1">
-              INGRESOS TOTALES (10%)
+              INGRESOS TOTALES (10% DE CADA VENTA)
             </p>
             <p className="text-4xl font-black text-neutro-900">
               {cargando ? '—' : `S/ ${resumen?.ingresosTotales.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
