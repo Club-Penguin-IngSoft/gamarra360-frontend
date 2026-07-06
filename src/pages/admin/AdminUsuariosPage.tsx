@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AdminSidebar } from "../../components/admin/AdminSidebar";
-import { Search, Download, UserPlus, MoreVertical } from "lucide-react";
+import { Search, Download, UserPlus, MoreVertical, X } from "lucide-react";
 import apiClient from '../../services/apiClient';
 //import axios from 'axios';
 
@@ -24,6 +24,25 @@ interface Usuario {
   fechaRegistro: string;
 }
 
+interface UsuarioDetalle {
+  usuarioId: number;
+  nombres: string;
+  primerApellido: string;
+  segundoApellido: string;
+  email: string;
+  dni: string;
+  telefono: string;
+  rol: string;
+  activo: boolean;
+  fechaRegistro: string;
+  actividad: {
+    totalPedidos: number;
+    totalCotizaciones: number;
+    totalSolicitudes: number;
+    ultimaConexion: string;
+  };
+}
+
 export default function AdminUsuariosPage() {
   const [users, setUsers]       = useState<Usuario[]>([]);
   const [total, setTotal]       = useState(0);
@@ -33,6 +52,8 @@ export default function AdminUsuariosPage() {
   const [page, setPage]         = useState(0);
   const [loading, setLoading]   = useState(false);
   const [menuAbierto, setMenuAbierto] = useState<number | null>(null);
+  const [detalle, setDetalle]         = useState<UsuarioDetalle | null>(null);
+  const [cargandoDetalle, setCargandoDetalle] = useState(false);
 
   const cargar = async (p = 0) => {
     setLoading(true);
@@ -69,6 +90,20 @@ export default function AdminUsuariosPage() {
       alert(e.response?.data?.message || 'Error al cambiar estado');
     }
     setMenuAbierto(null);
+  };
+
+  const verDetalle = async (usuarioId: number) => {
+    setCargandoDetalle(true);
+    setDetalle(null);
+    try {
+      const res = await apiClient.get(`/admin/usuarios/${usuarioId}`);
+      setDetalle(res.data);
+    } catch (e) {
+      console.error(e);
+      alert('No se pudo cargar el detalle del usuario.');
+    } finally {
+      setCargandoDetalle(false);
+    }
   };
 
   const limpiarFiltros = () => {
@@ -216,7 +251,11 @@ export default function AdminUsuariosPage() {
                     <td colSpan={5} className="text-center py-12 text-neutro-400 font-medium">No se encontraron usuarios</td>
                   </tr>
                 ) : users.map(user => (
-                  <tr key={user.usuarioId} className="hover:bg-neutro-50/50 transition-colors">
+                  <tr
+                    key={user.usuarioId}
+                    onClick={() => verDetalle(user.usuarioId)}
+                    className="hover:bg-neutro-50/50 transition-colors cursor-pointer"
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black border-2 border-white shadow-sm ${avatarColor(user.usuarioId)}`}>
@@ -245,7 +284,7 @@ export default function AdminUsuariosPage() {
                         {user.activo ? 'ACTIVO' : 'INACTIVO'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-center relative">
+                    <td className="px-6 py-4 text-center relative" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => setMenuAbierto(menuAbierto === user.usuarioId ? null : user.usuarioId)}
                         className="p-2 hover:bg-neutro-100 rounded-lg text-neutro-400 hover:text-neutro-600 transition-colors"
@@ -303,6 +342,86 @@ export default function AdminUsuariosPage() {
           </div>
         </div>
       </main>
+
+      {/* Modal de detalle de cuenta */}
+      {(cargandoDetalle || detalle) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setDetalle(null)} />
+          <div className="relative w-full max-w-lg bg-white rounded-tarjeta shadow-tarjeta border border-neutro-100 p-6">
+            <button
+              onClick={() => setDetalle(null)}
+              className="absolute right-4 top-4 p-1.5 rounded-lg text-neutro-400 hover:bg-neutro-100 hover:text-neutro-600 transition-colors"
+              aria-label="Cerrar"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {cargandoDetalle || !detalle ? (
+              <p className="text-center py-16 text-neutro-400 font-medium">Cargando...</p>
+            ) : (
+              <>
+                <div className="flex items-center gap-4 mb-6">
+                  <div className={`w-14 h-14 rounded-full flex items-center justify-center text-lg font-black border-2 border-white shadow-sm flex-shrink-0 ${avatarColor(detalle.usuarioId)}`}>
+                    {avatarLetras(`${detalle.nombres} ${detalle.primerApellido}`)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-black text-lg text-neutro-900 truncate">
+                      {[detalle.nombres, detalle.primerApellido, detalle.segundoApellido].filter(Boolean).join(' ')}
+                    </p>
+                    <p className="text-sm text-neutro-500 font-medium truncate">{detalle.email}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 mb-6">
+                  <span className={`inline-block px-3 py-1 rounded-lg text-[10px] font-black tracking-wider uppercase ${ROL_STYLES[detalle.rol] ?? 'bg-neutro-100 text-neutro-600'}`}>
+                    {detalle.rol}
+                  </span>
+                  <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-black text-white uppercase tracking-widest shadow-sm ${detalle.activo ? 'bg-exito' : 'bg-advertencia'}`}>
+                    {detalle.activo ? 'ACTIVO' : 'INACTIVO'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <p className="text-xs font-black text-neutro-400 uppercase tracking-wider mb-1">DNI</p>
+                    <p className="font-bold text-neutro-800 text-sm">{detalle.dni || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-neutro-400 uppercase tracking-wider mb-1">Teléfono</p>
+                    <p className="font-bold text-neutro-800 text-sm">{detalle.telefono || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-neutro-400 uppercase tracking-wider mb-1">Registro</p>
+                    <p className="font-bold text-neutro-800 text-sm">
+                      {detalle.fechaRegistro
+                        ? new Date(detalle.fechaRegistro).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })
+                        : '—'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border-t border-neutro-100 pt-4">
+                  <p className="text-xs font-black text-neutro-400 uppercase tracking-wider mb-3">Actividad</p>
+                  <div className="grid grid-cols-3 gap-3 text-center">
+                    <div className="bg-neutro-50 rounded-xl p-3">
+                      <p className="text-xl font-black text-neutro-900">{detalle.actividad?.totalPedidos ?? 0}</p>
+                      <p className="text-[10px] font-bold text-neutro-400 uppercase">Pedidos</p>
+                    </div>
+                    <div className="bg-neutro-50 rounded-xl p-3">
+                      <p className="text-xl font-black text-neutro-900">{detalle.actividad?.totalCotizaciones ?? 0}</p>
+                      <p className="text-[10px] font-bold text-neutro-400 uppercase">Cotizaciones</p>
+                    </div>
+                    <div className="bg-neutro-50 rounded-xl p-3">
+                      <p className="text-xl font-black text-neutro-900">{detalle.actividad?.totalSolicitudes ?? 0}</p>
+                      <p className="text-[10px] font-bold text-neutro-400 uppercase">Solicitudes</p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
