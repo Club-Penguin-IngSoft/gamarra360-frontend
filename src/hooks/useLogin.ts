@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import authService from '../services/authService';
 import { ILoginRequest, RolUsuario } from '../types/IAuth';
 import { RUTAS } from '../constants/rutas';
@@ -16,6 +16,7 @@ const useLogin = () => {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { iniciarSesion } = useAuth();
 
   const login = async (credentials: ILoginRequest) => {
@@ -52,7 +53,8 @@ const useLogin = () => {
         }
       });
 
-      navigate(rutaPorRol[rol] ?? RUTAS.INICIO);
+      const redirectTo = (location.state as { redirectTo?: string } | null)?.redirectTo;
+      navigate(rol === 'CLIENTE' && redirectTo ? redirectTo : (rutaPorRol[rol] ?? RUTAS.INICIO));
       return response;
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { mensaje?: string } } };
@@ -101,7 +103,8 @@ const useLogin = () => {
         },
       });
 
-      navigate(rutaPorRol[rol] ?? RUTAS.INICIO);
+      const redirectTo = (location.state as { redirectTo?: string } | null)?.redirectTo;
+      navigate(rol === 'CLIENTE' && redirectTo ? redirectTo : (rutaPorRol[rol] ?? RUTAS.INICIO));
       return response;
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { mensaje?: string } } };

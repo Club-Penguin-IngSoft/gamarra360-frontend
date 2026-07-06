@@ -7,6 +7,7 @@ import { RUTAS } from '../constants/rutas';
 import { listarTiendas } from '../services/tiendaService';
 import { buscarProductos, listarProductosDeTienda, subirImagenS3 } from '../services/catalogoService';
 import { cotizacionService } from '../services/cotizacionService';
+import { useAuth } from '../hooks/useAuth';
 import type { ITienda } from '../types/ITienda';
 import type { IProducto } from '../types/IProducto';
 
@@ -85,6 +86,7 @@ function buildEspecificacion(p: ProductoItem): string {
 
 export default function SolicitarCotizacionPage() {
   const navigate = useNavigate();
+  const { estaAutenticado } = useAuth();
 
   // Tienda
   const [todasTiendas, setTodasTiendas]           = useState<ITienda[]>([]);
@@ -280,6 +282,10 @@ export default function SolicitarCotizacionPage() {
   /* ── Enviar solicitud ─────────────────────────────────────────────── */
 
   async function handleSubmit() {
+    if (!estaAutenticado) {
+      navigate(RUTAS.LOGIN, { state: { redirectTo: RUTAS.COTIZACIONES } });
+      return;
+    }
     if (!tiendaSeleccionada) {
       setErrorEnvio('Debes seleccionar una tienda.');
       return;
