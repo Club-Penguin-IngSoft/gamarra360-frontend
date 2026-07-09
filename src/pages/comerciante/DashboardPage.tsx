@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef,useMemo} from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useStripeStatus } from '../../hooks/useStripeStatus';
 import StripeBanner from '../../components/comerciante/StripeBanner';
 import { useNavigate } from 'react-router-dom';
@@ -55,25 +55,25 @@ function fechaLocalISO(fecha: Date = new Date()): string {
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
 
 const estadoBadgeClasses: Record<string, string> = {
-  ENTREGADO:        'bg-[#D1FAE5] text-[#059669]',
-  PENDIENTE:        'bg-[#FEF3C7] text-[#D97706]',
-  EN_PROCESO:       'bg-[#DBEAFE] text-[#2563EB]',
-  RECIBIDO:         'bg-[#DBEAFE] text-[#2563EB]',
-  EN_PREPARACION:   'bg-[#EDE9FE] text-[#7C3AED]',
-  EN_CAMINO:        'bg-[#FEF3C7] text-[#D97706]',
+  ENTREGADO:         'bg-[#D1FAE5] text-[#059669]',
+  PENDIENTE:         'bg-[#FEF3C7] text-[#D97706]',
+  EN_PROCESO:        'bg-[#DBEAFE] text-[#2563EB]',
+  RECIBIDO:          'bg-[#DBEAFE] text-[#2563EB]',
+  EN_PREPARACION:    'bg-[#EDE9FE] text-[#7C3AED]',
+  EN_CAMINO:         'bg-[#FEF3C7] text-[#D97706]',
   LISTO_PARA_ENTREGA:'bg-[#D1FAE5] text-[#059669]',
-  CANCELADO:        'bg-[#FEE2E2] text-[#DC2626]',
+  CANCELADO:         'bg-[#FEE2E2] text-[#DC2626]',
 };
 
 const estadoLabel: Record<string, string> = {
-  ENTREGADO:        'Pagado',
-  PENDIENTE:        'Pendiente',
-  EN_PROCESO:       'En proceso',
-  RECIBIDO:         'Recibido',
-  EN_PREPARACION:   'En preparación',
-  EN_CAMINO:        'En camino',
+  ENTREGADO:         'Pagado',
+  PENDIENTE:         'Pendiente',
+  EN_PROCESO:        'En proceso',
+  RECIBIDO:          'Recibido',
+  EN_PREPARACION:    'En preparación',
+  EN_CAMINO:         'En camino',
   LISTO_PARA_ENTREGA:'Listo para entrega',
-  CANCELADO:        'Cancelado',
+  CANCELADO:         'Cancelado',
 };
 
 const TOP_COLORS = [
@@ -152,7 +152,7 @@ export default function DashboardPage() {
   const [cargando, setCargando] = useState(false);
   const [stockCritico, setStockCritico] = useState(0);
   const [pestanaAbierta, setPestanaAbierta] = useState<'completados' | 'recientes' | 'productos' | 'pedidosPorDia' | null>(null);
-  const [fechaSeleccionada, setFechaSeleccionada] = useState<string | null>(null);
+  const [, setFechaSeleccionada] = useState<string | null>(null);
   const navigate = useNavigate();
   const balanceRaw = useStripeBalance();
   const balance = stripeCompletado ? balanceRaw : null;
@@ -160,25 +160,23 @@ export default function DashboardPage() {
   const chartRef = useRef<HTMLDivElement>(null);
   
   const productosOrdenados = useMemo(() => {
-  if (!data?.todosLosProductos) return [];
-
-  return [...data.todosLosProductos].sort(
-    (a, b) => (b.unidades ?? 0) - (a.unidades ?? 0)
-  );
-}, [data?.todosLosProductos]);
-
+    if (!data?.todosLosProductos) return [];
+    return [...data.todosLosProductos].sort(
+      (a, b) => (b.unidades ?? 0) - (a.unidades ?? 0)
+    );
+  }, [data?.todosLosProductos]);
 
   /* Cargar nombre tienda */
   useEffect(() => {
-    obtenerMiTienda().then((t) => setNombreTienda(t.nombreComercial)).catch(() => {});
+    obtenerMiTienda()
+      .then((t) => setNombreTienda(t.nombreComercial))
+      .catch((err) => console.error("Error al obtener la tienda:", err));
   }, []);
 
   /* Cargar stock total */
   useEffect(() => {
     obtenerMiTienda()
-      .then(({ idTienda }) =>
-        apiClient.get<any[]>(`/productos/tienda/${idTienda}`)
-      )
+      .then(({ idTienda }) => apiClient.get<any[]>(`/productos/tienda/${idTienda}`))
       .then(({ data: productos }) => {
         const totalStock = productos.reduce((total: number, p: any) => {
           const stock = (p.variantes ?? []).reduce((s: number, v: any) => s + (v.stock ?? 0), 0);
@@ -186,7 +184,7 @@ export default function DashboardPage() {
         }, 0);
         setStockCritico(totalStock);
       })
-      .catch(() => {});
+      .catch((err) => console.error("Error al obtener stock:", err));
   }, []);
 
   /* Cargar dashboard data */
@@ -199,7 +197,8 @@ export default function DashboardPage() {
         `/pedidos/comerciante/dashboard?desde=${desde}&hasta=${hasta}`
       );
       setData(res);
-    } catch {
+    } catch (err) {
+      console.error("Error al cargar el dashboard:", err);
       setData(null);
     } finally {
       setCargando(false);
@@ -207,19 +206,6 @@ export default function DashboardPage() {
   }, [desde, hasta]);
 
   useEffect(() => { cargarDashboard(); }, [cargarDashboard]);
-
-  /* Filtrar pedidos por fecha seleccionada */
-  const pedidosPorFecha = (fecha: string) => {
-  if (!data?.pedidosDelPeriodo) return [];
-
-  return data.pedidosDelPeriodo.filter((p) => {
-    if (!p.fecha) return false;
-
-    const pedidoFecha = new Date(p.fecha)
-  .toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
-    return pedidoFecha === fecha;
-  });
-};
 
   const handleClickBarra = (fecha: string) => {
     setFechaSeleccionada(fecha);
@@ -231,7 +217,9 @@ export default function DashboardPage() {
     try {
       const { data: d } = await apiClient.get(`/comerciantes/${usuario?.id}/stripe/dashboard`);
       window.open(d.url, '_blank');
-    } catch { }
+    } catch (err) {
+      console.error("Error al redirigir a Stripe:", err);
+    }
   };
 
   /* Gráfica */
@@ -275,32 +263,33 @@ export default function DashboardPage() {
             onClick={handleIrAStripe}
             className="bg-white rounded-xl px-[22px] py-5 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow cursor-pointer text-left w-full"
           >
-            {!stripeCompletado && (
-              <div className="w-full mb-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
-                <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth={2} className="flex-shrink-0">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                </svg>
-                <span className="text-[11px] font-semibold text-amber-700">
-                  No recibirás ingresos hasta que te hayas conectado con Stripe
+            <div className="flex flex-col flex-1">
+              {!stripeCompletado && (
+                <div className="w-full mb-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
+                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth={2} className="flex-shrink-0">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                  </svg>
+                  <span className="text-[11px] font-semibold text-amber-700">
+                    No recibirás ingresos hasta que te hayas conectado con Stripe
+                  </span>
+                </div>
+              )}
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.5px] text-gray-500 mb-2 cursor-pointer">
+                  Balance Disponible
+                </label>
+                <span className="text-[28px] font-bold text-gray-900">
+                  {balance
+                    ? `${balance.moneda.toUpperCase()} ${(balance.disponible / 100).toFixed(2)}`
+                    : 'USD 0.00'}
+                </span>
+                <span className="block text-[11px] text-gray-400 mt-1">
+                  Pendiente: {balance ? `${(balance.pendiente / 100).toFixed(2)}` : '0.00'}
                 </span>
               </div>
-            )}
-            <div className="flex items-center justify-between w-full"></div>
-            <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-[0.5px] text-gray-500 mb-2 cursor-pointer">
-                Balance Disponible
-              </label>
-              <span className="text-[28px] font-bold text-gray-900">
-                {balance
-                  ? `${balance.moneda.toUpperCase()} ${(balance.disponible / 100).toFixed(2)}`
-                  : 'USD 0.00'}
-              </span>
-              <span className="block text-[11px] text-gray-400 mt-1">
-                Pendiente: {balance ? `${(balance.pendiente / 100).toFixed(2)}` : '0.00'}
-              </span>
             </div>
-            <div className="w-11 h-11 rounded-lg bg-primario-claro text-primario flex items-center justify-center">
+            <div className="w-11 h-11 rounded-lg bg-primario-claro text-primario flex items-center justify-center flex-shrink-0 ml-4">
               <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
                 <polyline points="17 6 23 6 23 12" />
@@ -327,6 +316,7 @@ export default function DashboardPage() {
             </div>
           </button>
         </div>
+
         {/* ── Filtro por rango de fechas ── */}
         <div className="bg-white rounded-xl px-[22px] py-4 shadow-sm mb-6 mt-1 flex flex-wrap items-end gap-3">
           <div className="flex flex-col">
@@ -390,7 +380,6 @@ export default function DashboardPage() {
               <div className="relative" ref={chartRef}>
                 {/* Gráfico */}
                 <div className="bg-gray-50 rounded-lg p-4 mb-2">
-                  {/* Eje Y labels */}
                   <div className="flex gap-[1px] items-end h-[220px] relative">
                     {chartData.map((d, i) => {
                       const heightPct = maxValor > 0 ? (d.cantidad / maxValor) * 100 : 0;
@@ -426,7 +415,6 @@ export default function DashboardPage() {
                   <div className="flex gap-[1px] mt-2">
                     {chartData.map((d, i) => {
                       const label = formatFechaLabel(d.fecha);
-                      // Mostrar solo algunos labels si hay muchos
                       const mostrar = chartData.length <= 14 || i % Math.ceil(chartData.length / 10) === 0 || i === chartData.length - 1;
                       return (
                         <span key={d.fecha} className="flex-1 text-center text-[9px] text-gray-500 font-medium">
@@ -481,9 +469,7 @@ export default function DashboardPage() {
                       </div>
                       <div>
                         <span className="block text-[12px] font-semibold text-gray-900">
-                          N° PED-{p.fecha ? new Date(p.fecha).toLocaleDateString('en-CA', {
-  timeZone: 'America/Lima'
-}).replace(/-/g, '') : '00000000'}-{String(p.id).padStart(6, '0')}
+                          N° PED-{p.fecha ? new Date(p.fecha).toLocaleDateString('en-CA', { timeZone: 'America/Lima' }).replace(/-/g, '') : '00000000'}-{String(p.id).padStart(6, '0')}
                         </span>
                         <span className="text-[11px] text-gray-400">{p.nombreCliente ?? p.emailCliente ?? '—'}</span>
                       </div>
@@ -624,8 +610,6 @@ export default function DashboardPage() {
             </>
           )}
         </div>
-
-        
       </main>
 
       {/* ── Pestañas flotantes ── */}
@@ -645,9 +629,7 @@ export default function DashboardPage() {
               <tbody>
                 {(data?.pedidosCompletados ?? []).map((p) => (
                   <tr key={p.id}>
-                    <td className="py-2.5 text-[12px] font-semibold text-gray-900 border-b border-gray-50">N° PED-{p.fecha ? new Date(p.fecha).toLocaleDateString('en-CA', {
-  timeZone: 'America/Lima'
-}).replace(/-/g, '') : '00000000'}-{String(p.id).padStart(6, '0')}</td>
+                    <td className="py-2.5 text-[12px] font-semibold text-gray-900 border-b border-gray-50">N° PED-{p.fecha ? new Date(p.fecha).toLocaleDateString('en-CA', { timeZone: 'America/Lima' }).replace(/-/g, '') : '00000000'}-{String(p.id).padStart(6, '0')}</td>
                     <td className="py-2.5 text-[12px] text-gray-700 border-b border-gray-50">{p.nombreCliente ?? '—'}</td>
                     <td className="py-2.5 text-[12px] font-semibold text-gray-900 border-b border-gray-50">S/ {(p.total??0).toFixed(2)}</td>
                     <td className="py-2.5 text-[11px] text-gray-400 border-b border-gray-50">
@@ -670,9 +652,7 @@ export default function DashboardPage() {
               {(data?.pedidosRecientes ?? []).map((p) => (
                 <div key={p.id} className="flex items-center justify-between py-2.5 border-b border-gray-50">
                   <div>
-                    <span className="block text-[13px] font-bold text-gray-900">N° PED-{p.fecha ? new Date(p.fecha).toLocaleDateString('en-CA', {
-  timeZone: 'America/Lima'
-}).replace(/-/g, '') : '00000000'}-{String(p.id).padStart(6, '0')}</span>
+                    <span className="block text-[13px] font-bold text-gray-900">N° PED-{p.fecha ? new Date(p.fecha).toLocaleDateString('en-CA', { timeZone: 'America/Lima' }).replace(/-/g, '') : '00000000'}-{String(p.id).padStart(6, '0')}</span>
                     <span className="text-[11px] text-gray-400">{p.nombreCliente ?? p.emailCliente ?? '—'}</span>
                   </div>
                   <div className="text-right">
@@ -690,17 +670,16 @@ export default function DashboardPage() {
 
       {pestanaAbierta === 'productos' && (
         <PestanaFlotante titulo="Productos más solicitados" onCerrar={() => setPestanaAbierta(null)}>
-          {(data?.todosLosProductos ?? []).length === 0 ? (
+          {productosOrdenados.length === 0 ? (
             <p className="text-[13px] text-gray-400 text-center py-8">Sin datos en este período.</p>
           ) : (
             <div className="space-y-4">
-              {(data?.todosLosProductos ?? []).map((p, i) => {
-                const maxU = data!.todosLosProductos[0]?.unidades ?? 1;
+              {productosOrdenados.map((p, i) => {
                 return (
                   <div key={p.idProducto} className="flex items-center gap-3">
                     <span className="w-5 text-[12px] text-gray-400 text-right font-semibold">{i+1}</span>
                     {p.imagenUrl ? (
-                      <img src={p.imagenUrl} className="w-9 h-9 rounded object-cover flex-shrink-0" />
+                      <img src={p.imagenUrl} alt={p.nombreProducto} className="w-9 h-9 rounded object-cover flex-shrink-0" />
                     ) : (
                       <div className="w-9 h-9 rounded bg-gray-200 flex-shrink-0" />
                     )}
@@ -709,62 +688,10 @@ export default function DashboardPage() {
                         <span className="text-[13px] font-medium text-gray-900">{p.nombreProducto}</span>
                         <span className="text-[12px] text-gray-500">{p.unidades} u.</span>
                       </div>
-                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${TOP_COLORS[i % TOP_COLORS.length] ?? 'bg-gray-400'}`}
-                          style={{ width: `${(p.unidades/maxU)*100}%` }}
-                        />
-                      </div>
                     </div>
                   </div>
                 );
               })}
-            </div>
-          )}
-        </PestanaFlotante>
-      )}
-
-      {pestanaAbierta === 'pedidosPorDia' && fechaSeleccionada && (
-        <PestanaFlotante 
-          titulo={`Pedidos - ${new Date(fechaSeleccionada + 'T00:00:00').toLocaleDateString('es-PE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`} 
-          onCerrar={() => {
-            setPestanaAbierta(null);
-            setFechaSeleccionada(null);
-          }}
-        >
-          {pedidosPorFecha(fechaSeleccionada).length === 0 ? (
-            <p className="text-[13px] text-gray-400 text-center py-8">Sin pedidos en esta fecha.</p>
-          ) : (
-            <div className="space-y-3">
-              {pedidosPorFecha(fechaSeleccionada).map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => navigate(`${RUTAS.COMERCIANTE_PEDIDOS}/${p.id}`)}
-                  className="w-full flex items-center justify-between py-3 border-b border-gray-50 hover:bg-gray-50 px-2 -mx-2 rounded transition-colors text-left"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex-shrink-0 flex items-center justify-center">
-                      <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={2}>
-                        <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <span className="block text-[13px] font-semibold text-gray-900">
-                        N° PED-{p.fecha ? new Date(p.fecha).toLocaleDateString('en-CA', {
-  timeZone: 'America/Lima'
-}).replace(/-/g, '') : '00000000'}-{String(p.id).padStart(6, '0')}
-                      </span>
-                      <span className="text-[11px] text-gray-400">{p.nombreCliente ?? p.emailCliente ?? '—'}</span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="block text-[13px] font-semibold text-gray-900">S/ {(p.total??0).toFixed(2)}</span>
-                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${estadoBadgeClasses[p.estado] ?? 'bg-gray-100 text-gray-500'}`}>
-                      {estadoLabel[p.estado] ?? p.estado}
-                    </span>
-                  </div>
-                </button>
-              ))}
             </div>
           )}
         </PestanaFlotante>

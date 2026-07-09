@@ -29,8 +29,8 @@ import GestionInventarioPage from '../pages/comerciante/GestionInventarioPage';
 import EditarProductoPage from '../pages/comerciante/EditarProductoPage';
 import NuevoProductoPage from '../pages/comerciante/NuevoProductoPage';
 import NotificacionesPage from '../pages/comerciante/NotificacionesPage'
-import ComingSoonInternalPage from '../pages/ComingSoonInternalPage';
-import ComercianteSidebar from '../components/ComercianteSidebar';
+//import ComingSoonInternalPage from '../pages/ComingSoonInternalPage';
+//import ComercianteSidebar from '../components/ComercianteSidebar';
 import CheckoutEntregaPage from '../pages/CheckoutEntregaPage';
 import PagoPage from '../pages/PagoPage';
 import MisPedidosPage from '../pages/MisPedidosPage';
