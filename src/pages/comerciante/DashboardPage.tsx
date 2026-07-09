@@ -159,14 +159,6 @@ export default function DashboardPage() {
   const { usuario } = useAuth();
   const chartRef = useRef<HTMLDivElement>(null);
   
-  const productosOrdenados = useMemo(() => {
-  if (!data?.todosLosProductos) return [];
-
-  return [...data.todosLosProductos].sort(
-    (a, b) => (b.unidades ?? 0) - (a.unidades ?? 0)
-  );
-}, [data?.todosLosProductos]);
-
 
   /* Cargar nombre tienda */
   useEffect(() => {
