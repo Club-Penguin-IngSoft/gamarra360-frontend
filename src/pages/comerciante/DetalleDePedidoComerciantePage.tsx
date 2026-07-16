@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { FileText, Mail, MapPin, MessageCircle } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import ComercianteSidebar from '../../components/ComercianteSidebar';
 import { RUTAS } from '../../constants/rutas';
 import { pedidoService } from '../../services/pedidoService';
@@ -82,7 +82,7 @@ export default function DetalleDePedidoComerciantePage() {
     <div className="flex min-h-screen">
       <ComercianteSidebar />
 
-      <main className="flex-1 bg-gray-100 p-7">
+      <main className="min-w-0 flex-1 bg-gray-100 px-4 py-16 sm:px-6 lg:p-7">
         <p className="text-[12px] text-gray-500 mb-2">
           <Link to={RUTAS.COMERCIANTE_PEDIDOS} className="hover:text-primario hover:underline">
             Pedidos
@@ -99,13 +99,6 @@ export default function DetalleDePedidoComerciantePage() {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              className="flex items-center gap-1.5 px-[18px] py-2.5 border border-gray-300 text-gray-600 rounded-lg text-[13px] font-semibold hover:bg-gray-50 transition-colors"
-              onClick={() => window.alert('Próximamente disponible')}
-            >
-              <MessageCircle size={15} />
-              Contactar Cliente
-            </button>
             {labelAvanzar && (
               <button
                 disabled={avanzando}
@@ -193,16 +186,7 @@ export default function DetalleDePedidoComerciantePage() {
                 {detalle.tipoEntrega === 'DELIVERY' ? 'Envío a domicilio' : 'Recojo en tienda'}
               </p>
               {detalle.tipoEntrega === 'DELIVERY' && detalle.direccionEntrega && (
-                <>
-                  <p className="text-[13px] text-gray-900 mb-3">{detalle.direccionEntrega}</p>
-                  <button
-                    className="flex items-center gap-1.5 px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-[13px] font-semibold hover:bg-gray-50 transition-colors"
-                    onClick={() => window.alert('Próximamente disponible')}
-                  >
-                    <MapPin size={15} />
-                    Ver en Mapa
-                  </button>
-                </>
+                <p className="text-[13px] text-gray-900">{detalle.direccionEntrega}</p>
               )}
             </div>
           </div>
@@ -232,13 +216,6 @@ export default function DetalleDePedidoComerciantePage() {
                 </div>
               </div>
 
-              <button
-                className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 border border-gray-300 text-gray-600 rounded-lg text-[13px] font-semibold hover:bg-gray-50 transition-colors"
-                onClick={() => window.alert('Próximamente disponible')}
-              >
-                <Mail size={15} />
-                Enviar Mensaje
-              </button>
             </div>
 
             {/* Historial del Cliente */}

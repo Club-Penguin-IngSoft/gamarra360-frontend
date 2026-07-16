@@ -5,7 +5,10 @@ import {
   CheckSquare,
   Bell,
   LogOut,
+  Menu,
+  X,
 } from "lucide-react"
+import { useState } from "react"
 import LogoGamarra from "../LogoGamarra"
 import { useAuth } from "../../hooks/useAuth"
 
@@ -20,9 +23,35 @@ export function AdminSidebar() {
   const location = useLocation()
   const pathname = location.pathname
   const { cerrarSesion } = useAuth()
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
-    <aside className="flex flex-col w-64 min-h-screen bg-white border-r border-neutro-200 flex-shrink-0">
+    <>
+    <button
+      type="button"
+      onClick={() => setMobileOpen(true)}
+      className="fixed left-4 top-4 z-40 flex h-11 w-11 items-center justify-center rounded-xl bg-primario text-white shadow-lg lg:hidden"
+      aria-label="Abrir menú de administración"
+    >
+      <Menu className="h-5 w-5" />
+    </button>
+    {mobileOpen && (
+      <button
+        type="button"
+        onClick={() => setMobileOpen(false)}
+        className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+        aria-label="Cerrar menú"
+      />
+    )}
+    <aside className={`fixed inset-y-0 left-0 z-50 flex min-h-screen w-[min(18rem,85vw)] flex-shrink-0 flex-col border-r border-neutro-200 bg-white transition-transform lg:static lg:w-64 lg:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <button
+        type="button"
+        onClick={() => setMobileOpen(false)}
+        className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-lg text-neutro-600 hover:bg-neutro-100 lg:hidden"
+        aria-label="Cerrar menú de administración"
+      >
+        <X className="h-5 w-5" />
+      </button>
       {/* Logo */}
       <div className="p-6 border-b border-neutro-100">
         <Link to="/" className="flex items-center justify-center">
@@ -44,6 +73,7 @@ export function AdminSidebar() {
                   ? "bg-primario text-white shadow-primario"
                   : "text-neutro-600 hover:bg-neutro-100"
               }`}
+              onClick={() => setMobileOpen(false)}
             >
               <Icon className={`w-5 h-5 ${isActive ? "text-white" : "text-neutro-50"}`} />
               <span>{item.label}</span>
@@ -72,5 +102,6 @@ export function AdminSidebar() {
         </button>
       </div>
     </aside>
+    </>
   )
 }

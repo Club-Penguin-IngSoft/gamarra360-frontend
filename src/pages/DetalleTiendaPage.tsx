@@ -98,7 +98,7 @@ function BrandHero({ tienda }: { tienda: ITienda }) {
       />
       <div className="absolute inset-0 bg-gradient-to-r from-ink-800 via-ink-800/95 to-ink-800/70" />
 
-      <div className="relative flex flex-col gap-8 p-12 md:flex-row md:items-center">
+      <div className="relative flex flex-col gap-6 p-5 sm:p-8 md:flex-row md:items-center lg:gap-8 lg:p-12">
         {/* Logo cuadrado con iniciales sobre la foto real de la tienda */}
         <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl shadow-2xl ring-1 ring-white/10 md:h-32 md:w-32">
           <img
@@ -383,7 +383,7 @@ export default function DetalleTiendaPage() {
     return (
       <div className="min-h-screen bg-surface-muted">
         <TopBar active="Tiendas" />
-        <main className="flex flex-1 items-center justify-center px-12 py-24">
+        <main className="flex flex-1 items-center justify-center px-4 py-16 sm:px-6 lg:px-12 lg:py-24">
           <span className="text-[18px] text-ink-500">Cargando tienda...</span>
         </main>
         <Footer />
@@ -395,7 +395,7 @@ export default function DetalleTiendaPage() {
     return (
       <div className="min-h-screen bg-surface-muted">
         <TopBar active="Tiendas" />
-        <main className="flex flex-col items-center justify-center gap-4 px-12 py-24 text-center">
+        <main className="flex flex-col items-center justify-center gap-4 px-4 py-16 text-center sm:px-6 lg:px-12 lg:py-24">
           <h1 className="text-3xl font-bold text-ink-900">
             Tienda no encontrada
           </h1>
@@ -436,7 +436,7 @@ export default function DetalleTiendaPage() {
   return (
     <div className="min-h-screen bg-surface-muted">
       <TopBar active="Tiendas" />
-      <main className="flex flex-col gap-10 px-12 py-12">
+      <main className="flex flex-col gap-8 px-4 py-8 sm:px-6 lg:gap-10 lg:px-12 lg:py-12">
         <Breadcrumb tienda={tienda} />
         <BrandHero tienda={tienda} />
 

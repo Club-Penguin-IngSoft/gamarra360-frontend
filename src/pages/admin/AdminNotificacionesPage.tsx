@@ -143,13 +143,13 @@ export default function AdminNotificacionesPage() {
 
       <AdminSidebar />
 
-      <main className="flex-1 p-8">
+      <main className="min-w-0 flex-1 px-4 pb-5 pt-16 sm:px-6 sm:pb-8 lg:p-8">
 
         {/* HEADER */}
-        <div className="mb-8 flex justify-between items-center">
+        <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
 
           <div>
-            <h1 className="text-3xl font-black">
+            <h1 className="text-2xl font-black sm:text-3xl">
               Notificaciones
             </h1>
             <p className="text-neutro-600">
@@ -160,7 +160,7 @@ export default function AdminNotificacionesPage() {
           {notificaciones.length > 0 && (
             <button
               onClick={marcarTodas}
-              className="bg-primario text-white px-4 py-2 rounded-lg text-sm"
+              className="w-full rounded-lg bg-primario px-4 py-2 text-sm text-white sm:w-auto"
             >
               Marcar todas como leídas
             </button>
@@ -169,7 +169,7 @@ export default function AdminNotificacionesPage() {
         </div>
 
         {/* CONTENT */}
-        <div className="bg-white rounded-tarjeta p-10 shadow-tarjeta">
+        <div className="rounded-tarjeta bg-white p-4 shadow-tarjeta sm:p-6 lg:p-10">
 
           {/* EMPTY */}
           {!loading && notificaciones.length === 0 && (
@@ -197,14 +197,14 @@ export default function AdminNotificacionesPage() {
                 <div
                   key={n.idNotificacion}
                   onClick={verDetalle}
-                  className="p-4 border rounded-lg flex justify-between items-center cursor-pointer hover:shadow-md transition"
+                  className="flex cursor-pointer flex-col gap-4 rounded-lg border p-4 transition hover:shadow-md sm:flex-row sm:items-center sm:justify-between"
                 >
 
                   {/* LEFT */}
-                  <div className="flex items-center gap-3">
+                  <div className="flex min-w-0 items-start gap-3">
 
                     {/* LOGO */}
-                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-200">
 
                       {c?.logoUrl ? (
                         <img
@@ -220,7 +220,7 @@ export default function AdminNotificacionesPage() {
                     </div>
 
                     {/* INFO */}
-                    <div>
+                    <div className="min-w-0 break-words">
 
                       {/* BADGE */}
                       <span className="text-[10px] px-2 py-1 rounded bg-blue-100 text-blue-600 font-semibold">
@@ -261,7 +261,7 @@ export default function AdminNotificacionesPage() {
                   </div>
 
                   {/* RIGHT */}
-                  <div className="flex gap-3">
+                  <div className="flex w-full flex-wrap items-center justify-between gap-3 border-t pt-3 sm:w-auto sm:flex-nowrap sm:justify-end sm:border-0 sm:pt-0">
 
                     <button
                       onClick={(e) => {

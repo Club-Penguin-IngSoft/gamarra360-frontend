@@ -125,7 +125,7 @@ export default function AdminUsuariosPage() {
     <div className="flex min-h-screen bg-neutro-50 font-sans">
       <AdminSidebar />
 
-      <main className="flex-1 p-8">
+      <main className="min-w-0 flex-1 px-4 py-16 sm:px-6 lg:p-8">
         {/* Header */}
         <div className="flex items-start justify-between mb-8">
           <div>
@@ -381,7 +381,7 @@ export default function AdminUsuariosPage() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <p className="text-xs font-black text-neutro-400 uppercase tracking-wider mb-1">DNI</p>
                     <p className="font-bold text-neutro-800 text-sm">{detalle.dni || '—'}</p>
@@ -402,7 +402,7 @@ export default function AdminUsuariosPage() {
 
                 <div className="border-t border-neutro-100 pt-4">
                   <p className="text-xs font-black text-neutro-400 uppercase tracking-wider mb-3">Actividad</p>
-                  <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="grid grid-cols-1 gap-3 text-center sm:grid-cols-3">
                     <div className="bg-neutro-50 rounded-xl p-3">
                       <p className="text-xl font-black text-neutro-900">{detalle.actividad?.totalPedidos ?? 0}</p>
                       <p className="text-[10px] font-bold text-neutro-400 uppercase">Pedidos</p>

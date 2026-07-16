@@ -463,7 +463,7 @@ function PersonalizationPromoCard({
     if (estaAutenticado) {
       navigate(destino);
     } else {
-      navigate(`${RUTAS.LOGIN}?returnTo=${encodeURIComponent(destino)}`);
+      navigate(RUTAS.LOGIN, { state: { redirectTo: destino } });
     }
   };
 
@@ -807,7 +807,7 @@ export default function DetalleProductoPage() {
     return (
       <div className="min-h-screen bg-surface-muted">
         <TopBar active="Productos" />
-        <main className="flex flex-1 items-center justify-center px-12 py-24">
+        <main className="flex flex-1 items-center justify-center px-4 py-16 sm:px-6 lg:px-12 lg:py-24">
           <span className="text-[18px] text-ink-500">Cargando producto...</span>
         </main>
         <Footer />
@@ -819,7 +819,7 @@ export default function DetalleProductoPage() {
     return (
       <div className="min-h-screen bg-surface-muted">
         <TopBar active="Productos" />
-        <main className="flex flex-col items-center justify-center gap-4 px-12 py-24 text-center">
+        <main className="flex flex-col items-center justify-center gap-4 px-4 py-16 text-center sm:px-6 lg:px-12 lg:py-24">
           <h1 className="text-3xl font-bold text-ink-900">
             Producto no encontrado
           </h1>
@@ -858,7 +858,7 @@ export default function DetalleProductoPage() {
   return (
     <div className="min-h-screen bg-surface-muted">
       <TopBar active="Productos" />
-      <main className="flex flex-col gap-16 px-12 py-12">
+      <main className="flex flex-col gap-10 px-4 py-8 sm:px-6 lg:gap-16 lg:px-12 lg:py-12">
         <Breadcrumb producto={producto} />
         <div className="flex flex-col gap-10">
           <section className="grid grid-cols-1 gap-10 lg:grid-cols-2">

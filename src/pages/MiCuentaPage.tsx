@@ -5,7 +5,7 @@ import CuentaSidebar from '../components/cuenta/CuentaSidebar';
 import PerfilHeaderCard from '../components/cuenta/PerfilHeaderCard';
 import DireccionCard from '../components/cuenta/DireccionCard';
 import PedidosRecientesCard from '../components/cuenta/PedidosRecientesCard';
-import NotificacionesCard from '../components/cuenta/NotificacionesCard';
+// import NotificacionesCard from '../components/cuenta/NotificacionesCard';
 import EditarPerfilModal from '../components/cuenta/EditarPerfilModal';
 import { useAuth } from '../hooks/useAuth';
 import { pedidoService } from '../services/pedidoService';
@@ -70,12 +70,13 @@ export default function MiCuentaPage() {
               />
               <DireccionCard perfil={perfil} onGuardado={recargarPerfil} />
               <PedidosRecientesCard orden={orden} cargando={cargandoPedidos} />
-              {/* key fuerza el remount cuando perfil carga para que useState tome los valores reales */}
+              {/* Preferencias de notificación ocultas temporalmente.
               <NotificacionesCard
                 key={perfil ? 'notif-loaded' : 'notif-loading'}
                 alertasCorreo={perfil?.alertasCorreo ?? false}
                 notificacionesPush={perfil?.notificacionesPush ?? false}
               />
+              */}
             </div>
           </div>
         </div>

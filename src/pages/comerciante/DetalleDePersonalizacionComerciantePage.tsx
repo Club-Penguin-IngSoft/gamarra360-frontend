@@ -138,7 +138,7 @@ export default function DetalleDePersonalizacionComerciantePage() {
     <div className="flex min-h-screen">
       <ComercianteSidebar />
 
-      <main className="flex-1 bg-gray-100 p-7">
+      <main className="min-w-0 flex-1 bg-gray-100 px-4 py-16 sm:px-6 lg:p-7">
         <p className="text-[12px] text-gray-500 mb-2">
           <Link to={RUTAS.COMERCIANTE_PERSONALIZACIONES} className="hover:text-primario hover:underline">
             Personalizaciones
@@ -178,17 +178,19 @@ export default function DetalleDePersonalizacionComerciantePage() {
 
             {detalle.estado === 'PENDIENTE' ? (
               <div className="bg-white rounded-xl shadow-sm p-5">
-                <h2 className="text-[15px] font-bold text-gray-900 mb-4">Responder Solicitud</h2>
+                <h2 className="text-[15px] font-bold text-gray-900">Responder solicitud</h2>
+                <p className="mb-4 mt-1 text-[12px] text-gray-500">Selecciona si aceptarás o rechazarás esta solicitud.</p>
 
-                {/* Toggle Aceptar/Rechazar */}
-                <div className="flex items-center gap-2 mb-4">
+                <div className="mb-5 grid grid-cols-2 rounded-lg bg-gray-100 p-1" role="radiogroup" aria-label="Decisión sobre la solicitud">
                   <button
                     type="button"
                     onClick={() => setDecision('ACEPTAR')}
-                    className={`px-4 py-2 rounded-lg text-[13px] font-semibold transition-colors ${
+                    role="radio"
+                    aria-checked={decision === 'ACEPTAR'}
+                    className={`rounded-md px-4 py-2.5 text-[13px] font-semibold transition-all ${
                       decision === 'ACEPTAR'
-                        ? 'bg-primario text-white'
-                        : 'border border-gray-300 text-gray-600 bg-white hover:bg-gray-50'
+                        ? 'bg-white text-primario shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
                     Aceptar
@@ -196,10 +198,12 @@ export default function DetalleDePersonalizacionComerciantePage() {
                   <button
                     type="button"
                     onClick={() => setDecision('RECHAZAR')}
-                    className={`px-4 py-2 rounded-lg text-[13px] font-semibold transition-colors ${
+                    role="radio"
+                    aria-checked={decision === 'RECHAZAR'}
+                    className={`rounded-md px-4 py-2.5 text-[13px] font-semibold transition-all ${
                       decision === 'RECHAZAR'
-                        ? 'bg-error text-white'
-                        : 'border border-gray-300 text-gray-600 bg-white hover:bg-gray-50'
+                        ? 'bg-white text-error shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
                     Rechazar
@@ -264,20 +268,20 @@ export default function DetalleDePersonalizacionComerciantePage() {
 
                 {formError && <p className="mt-3 text-[12px] text-error">{formError}</p>}
 
-                <div className="mt-4 flex items-center gap-3">
+                <div className="mt-5 flex flex-col gap-3 border-t border-gray-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
                   <button
                     type="button"
                     onClick={handleEnviar}
                     disabled={enviando}
-                    className="px-5 py-2.5 bg-primario text-white rounded-lg text-[13px] font-semibold hover:bg-primario-hover transition-colors disabled:opacity-60"
+                    className="w-full rounded-lg bg-primario px-5 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-primario-hover disabled:opacity-60 sm:w-auto"
                   >
-                    {enviando ? 'Enviando...' : 'Enviar'}
+                    {enviando ? 'Enviando respuesta...' : decision === 'ACEPTAR' ? 'Enviar aceptación' : 'Enviar rechazo'}
                   </button>
                   <button
                     type="button"
                     onClick={handleCancelar}
                     disabled={cancelando}
-                    className="px-5 py-2.5 border border-error text-error rounded-lg text-[13px] font-semibold hover:bg-error-claro transition-colors disabled:opacity-60"
+                    className="px-2 py-2 text-[12px] font-medium text-gray-500 underline-offset-2 transition-colors hover:text-error hover:underline disabled:opacity-60"
                   >
                     {cancelando ? 'Cancelando...' : 'Cancelar solicitud'}
                   </button>

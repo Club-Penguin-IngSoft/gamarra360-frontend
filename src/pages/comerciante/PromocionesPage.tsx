@@ -171,7 +171,7 @@ export default function PromocionesPage() {
     <div className="flex min-h-screen">
       <ComercianteSidebar />
 
-      <main className="flex-1 bg-gray-100 p-7">
+      <main className="min-w-0 flex-1 bg-gray-100 px-4 py-16 sm:px-6 lg:p-7">
         {/* Notificación flotante */}
         {notif && (
           <div
@@ -210,7 +210,7 @@ export default function PromocionesPage() {
         </div>
 
         {/* KPI cards */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <KpiCard
             label="Promociones Activas"
             value={stats.activas}

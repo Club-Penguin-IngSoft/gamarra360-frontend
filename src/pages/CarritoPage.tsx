@@ -218,7 +218,7 @@ export default function CarritoPage() {
   return (
     <div className="min-h-screen bg-surface-muted">
       <TopBar active="Inicio" />
-      <main className="px-12 py-12">
+      <main className="px-4 py-8 sm:px-6 lg:px-12 lg:py-12">
         {items.length === 0 ? (
           <EmptyCart />
         ) : (
