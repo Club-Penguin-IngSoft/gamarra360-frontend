@@ -45,6 +45,8 @@ const TIPO_TRABAJO_LABELS: Record<TipoPersonalizacion, string> = {
   IMPRESION: 'Impresión textil',
 };
 
+const COTIZACION_DRAFT_KEY = 'gamarra360:cotizacion:draft';
+
 let uidCounter = 0;
 function crearProductoVacio(): ProductoItem {
   return {
@@ -108,6 +110,55 @@ export default function SolicitarCotizacionPage() {
   const [enviando, setEnviando]   = useState(false);
   const [exito, setExito]         = useState(false);
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const guardado = sessionStorage.getItem(COTIZACION_DRAFT_KEY);
+      if (!guardado) return;
+      const draft = JSON.parse(guardado) as {
+        tiendaSeleccionada?: ITienda | null;
+        productos?: ProductoItem[];
+      };
+      if (draft.tiendaSeleccionada) setTiendaSeleccionada(draft.tiendaSeleccionada);
+      if (draft.productos?.length) {
+        setProductos(draft.productos.map((producto) => ({
+          ...producto,
+          resultados: [],
+          buscando: false,
+          dropdownAbierto: false,
+          subiendoImagen: false,
+        })));
+      }
+    } catch {
+      sessionStorage.removeItem(COTIZACION_DRAFT_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    const productosGuardables = productos.map((producto) => ({
+      ...producto,
+      resultados: [],
+      buscando: false,
+      dropdownAbierto: false,
+      subiendoImagen: false,
+    }));
+    sessionStorage.setItem(COTIZACION_DRAFT_KEY, JSON.stringify({
+      tiendaSeleccionada,
+      productos: productosGuardables,
+    }));
+  }, [tiendaSeleccionada, productos]);
+
+  const formularioValido = Boolean(
+    tiendaSeleccionada &&
+    productos.length > 0 &&
+    productos.every((producto) => {
+      const productoCompleto = producto.modo === 'CATALOGO'
+        ? Boolean(producto.productoSeleccionado)
+        : Boolean(producto.nombreManual.trim());
+      return productoCompleto && Boolean(producto.especificacion.trim());
+    }) &&
+    !subiendoDiseno
+  );
 
   // Timers de búsqueda por producto
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -282,8 +333,13 @@ export default function SolicitarCotizacionPage() {
   /* ── Enviar solicitud ─────────────────────────────────────────────── */
 
   async function handleSubmit() {
+    if (enviando) return;
     if (!estaAutenticado) {
       navigate(RUTAS.LOGIN, { state: { redirectTo: RUTAS.COTIZACIONES } });
+      return;
+    }
+    if (!formularioValido) {
+      setErrorEnvio('Completa todos los campos obligatorios antes de enviar.');
       return;
     }
     if (!tiendaSeleccionada) {
@@ -314,6 +370,7 @@ export default function SolicitarCotizacionPage() {
           cantidad: 1,
         })),
       });
+      sessionStorage.removeItem(COTIZACION_DRAFT_KEY);
       setExito(true);
     } catch {
       setErrorEnvio('No se pudo enviar la solicitud. Inténtalo de nuevo.');
@@ -489,8 +546,8 @@ export default function SolicitarCotizacionPage() {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={enviando}
-              className="rounded-lg bg-brand-500 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-600 disabled:opacity-60"
+              disabled={enviando || !formularioValido}
+              className="rounded-lg bg-brand-500 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {enviando ? 'Enviando...' : 'Enviar solicitud'}
             </button>
@@ -570,6 +627,11 @@ function ProductoForm({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [urlImagen, setUrlImagen] = useState('');
+  const [tocados, setTocados] = useState({ producto: false, especificacion: false });
+  const faltaProducto = producto.modo === 'CATALOGO'
+    ? !producto.productoSeleccionado
+    : !producto.nombreManual.trim();
+  const faltaEspecificacion = !producto.especificacion.trim();
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -627,8 +689,9 @@ function ProductoForm({
                 value={producto.busquedaQuery}
                 onChange={(e) => onBusqueda(e.target.value)}
                 onFocus={() => producto.resultados.length > 0 && onCambio({ dropdownAbierto: true })}
+                onBlur={() => setTocados((prev) => ({ ...prev, producto: true }))}
                 placeholder="Buscar producto..."
-                className="w-full rounded-lg border border-ink-200 py-3 pl-9 pr-4 text-sm focus:border-brand-500 focus:outline-none"
+                className={`w-full rounded-lg border py-3 pl-9 pr-4 text-sm focus:outline-none ${tocados.producto && faltaProducto ? 'border-red-400 focus:border-red-500' : 'border-ink-200 focus:border-brand-500'}`}
               />
               {producto.buscando && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -688,6 +751,9 @@ function ProductoForm({
               </button>
             </div>
           )}
+          {tocados.producto && faltaProducto && (
+            <p className="-mt-2 mb-3 text-xs text-red-600">Selecciona un producto del catálogo.</p>
+          )}
         </div>
       )}
 
@@ -698,9 +764,13 @@ function ProductoForm({
             type="text"
             value={producto.nombreManual}
             onChange={(e) => onCambio({ nombreManual: e.target.value })}
+            onBlur={() => setTocados((prev) => ({ ...prev, producto: true }))}
             placeholder="Nombre del producto"
-            className="mb-3 w-full rounded-lg border border-ink-200 px-4 py-3 text-sm focus:border-brand-500 focus:outline-none"
+            className={`w-full rounded-lg border px-4 py-3 text-sm focus:outline-none ${tocados.producto && faltaProducto ? 'border-red-400 focus:border-red-500' : 'border-ink-200 focus:border-brand-500'}`}
           />
+          {tocados.producto && faltaProducto && (
+            <p className="mb-3 mt-1 text-xs text-red-600">Ingresa el nombre del producto.</p>
+          )}
           {/* Upload imagen referencia */}
           <div
             onClick={() => !producto.subiendoImagen && fileInputRef.current?.click()}
@@ -763,10 +833,11 @@ function ProductoForm({
         <textarea
           value={producto.especificacion}
           onChange={(e) => onCambio({ especificacion: e.target.value })}
+          onBlur={() => setTocados((prev) => ({ ...prev, especificacion: true }))}
           maxLength={2000}
           rows={3}
           placeholder="Especificaciones del producto"
-          className="w-full resize-none rounded-lg border border-ink-200 px-4 py-3 text-sm focus:border-brand-500 focus:outline-none"
+          className={`w-full resize-none rounded-lg border px-4 py-3 text-sm focus:outline-none ${tocados.especificacion && faltaEspecificacion ? 'border-red-400 focus:border-red-500' : 'border-ink-200 focus:border-brand-500'}`}
         />
         <span className="absolute bottom-3 right-3 text-xs text-ink-400">
           {producto.especificacion.length}/2000
@@ -774,6 +845,9 @@ function ProductoForm({
         <p className="mt-1 text-xs text-ink-400">
           Describe los materiales, calidad, tallas, colores y cantidades que deseas.
         </p>
+        {tocados.especificacion && faltaEspecificacion && (
+          <p className="mt-1 text-xs text-red-600">Las especificaciones son obligatorias.</p>
+        )}
       </div>
 
       {/* Personalización */}
@@ -936,29 +1010,39 @@ function PersonalizacionModal({
         )}
 
         {/* Posición */}
-        <div className="mb-4 grid grid-cols-2 gap-3">
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <input
             type="number"
-            min={0.1}
-            step="any"
+            inputMode="decimal"
+            min="0"
+            step="0.01"
             value={draft.posicionAlto}
+            onKeyDown={(e) => {
+              if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+            }}
             onChange={(e) => {
-              const val = e.target.value;
-              if (val !== '' && Number(val) < 0) return;
-              onCambio({ ...draft, posicionAlto: val });
+              const valor = e.target.value;
+              if (/^\d*(\.\d{0,2})?$/.test(valor)) {
+                onCambio({ ...draft, posicionAlto: valor });
+            }
             }}
             placeholder="Alto (cm)"
             className="rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none"
           />
           <input
             type="number"
-            min={0.1}
-            step="any"
+            inputMode="decimal"
+            min="0"
+            step="0.01"
             value={draft.posicionAncho}
+            onKeyDown={(e) => {
+              if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+            }}
             onChange={(e) => {
-              const val = e.target.value;
-              if (val !== '' && Number(val) < 0) return;
-              onCambio({ ...draft, posicionAncho: val });
+              const valor = e.target.value;
+              if (/^\d*(\.\d{0,2})?$/.test(valor)) {
+                onCambio({ ...draft, posicionAncho: valor });
+            }
             }}
             placeholder="Ancho (cm)"
             className="rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none"

@@ -66,7 +66,7 @@ const estadoBadgeClasses: Record<string, string> = {
 };
 
 const estadoLabel: Record<string, string> = {
-  ENTREGADO:         'Pagado',
+  ENTREGADO:         'Completo',
   PENDIENTE:         'Pendiente',
   EN_PROCESO:        'En proceso',
   RECIBIDO:          'Recibido',
@@ -114,9 +114,9 @@ interface ModalProps {
 
 function PestanaFlotante({ titulo, onCerrar, children }: ModalProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-end p-6 pointer-events-none">
+    <div className="pointer-events-none fixed inset-0 z-50 flex items-end justify-end p-3 sm:p-6">
       <div
-        className="bg-white rounded-2xl shadow-2xl w-[520px] max-h-[80vh] flex flex-col pointer-events-auto"
+        className="pointer-events-auto flex max-h-[80vh] w-full max-w-[520px] flex-col rounded-2xl bg-white shadow-2xl"
         style={{ border: '1px solid #e5e7eb' }}
       >
         {/* Header */}
@@ -152,7 +152,7 @@ export default function DashboardPage() {
   const [cargando, setCargando] = useState(false);
   const [stockCritico, setStockCritico] = useState(0);
   const [pestanaAbierta, setPestanaAbierta] = useState<'completados' | 'recientes' | 'productos' | 'pedidosPorDia' | null>(null);
-  const [, setFechaSeleccionada] = useState<string | null>(null);
+  const [fechaSeleccionada, setFechaSeleccionada] = useState<string | null>(null);
   const navigate = useNavigate();
   const balanceRaw = useStripeBalance();
   const balance = stripeCompletado ? balanceRaw : null;
@@ -225,12 +225,23 @@ export default function DashboardPage() {
   /* Gráfica */
   const chartData = data?.pedidosPorDia ?? [];
   const maxValor = Math.max(...chartData.map((d) => d.cantidad), 1);
+  const pedidosDisponibles = data?.pedidosDelPeriodo?.length
+    ? data.pedidosDelPeriodo
+    : Array.from(
+        new Map(
+          [...(data?.pedidosRecientes ?? []), ...(data?.pedidosCompletados ?? [])]
+            .map((pedido) => [pedido.id, pedido]),
+        ).values(),
+      );
+  const pedidosFechaSeleccionada = pedidosDisponibles.filter(
+    (pedido) => pedido.fecha?.slice(0, 10) === fechaSeleccionada,
+  );
 
   return (
     <div className="flex min-h-screen">
       <ComercianteSidebar />
 
-      <main className="flex-1 bg-gray-100 min-h-screen p-7">
+      <main className="min-w-0 flex-1 bg-gray-100 min-h-screen px-4 py-16 sm:px-6 lg:p-7">
 
         {/* ── Header ── */}
         <div className="flex items-start justify-between mb-7">
@@ -257,7 +268,7 @@ export default function DashboardPage() {
         <StripeBanner yaCompletado={stripeCompletado} />
 
         {/* ── Stats: 2 cards ── */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
           {/* Balance — clickeable */}
           <button
             onClick={handleIrAStripe}
@@ -361,7 +372,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Mid row: Gráfica + Pedidos recientes ── */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
 
           {/* Gráfica de pedidos por día */}
           <div className="bg-white rounded-xl px-[22px] py-5 shadow-sm">
@@ -533,7 +544,7 @@ export default function DashboardPage() {
                     </td>
                     <td className="py-2.5 border-b border-gray-50">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#D1FAE5] text-[#059669]">
-                        Pagado
+                        Completo
                       </span>
                     </td>
                     <td className="py-2.5 text-[11px] text-gray-400 border-b border-gray-50">
@@ -692,6 +703,43 @@ export default function DashboardPage() {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </PestanaFlotante>
+      )}
+
+      {pestanaAbierta === 'pedidosPorDia' && fechaSeleccionada && (
+        <PestanaFlotante
+          titulo={`Pedidos del ${new Date(`${fechaSeleccionada}T00:00:00`).toLocaleDateString('es-PE')}`}
+          onCerrar={() => setPestanaAbierta(null)}
+        >
+          {pedidosFechaSeleccionada.length === 0 ? (
+            <p className="py-8 text-center text-[13px] text-gray-400">Sin pedidos para esta fecha.</p>
+          ) : (
+            <div className="space-y-2">
+              {pedidosFechaSeleccionada.map((pedido) => (
+                <button
+                  key={pedido.id}
+                  type="button"
+                  onClick={() => navigate(RUTAS.COMERCIANTE_PEDIDO_DETALLE(pedido.id))}
+                  className="flex w-full items-center justify-between gap-4 rounded-lg border border-gray-100 px-4 py-3 text-left transition-colors hover:border-primario/30 hover:bg-primario-claro/30"
+                >
+                  <div className="min-w-0">
+                    <span className="block truncate text-[13px] font-bold text-gray-900">
+                      N° PED-{pedido.fecha ? new Date(pedido.fecha).toLocaleDateString('en-CA', { timeZone: 'America/Lima' }).replace(/-/g, '') : '00000000'}-{String(pedido.id).padStart(6, '0')}
+                    </span>
+                    <span className="block truncate text-[11px] text-gray-400">
+                      {pedido.nombreCliente ?? pedido.emailCliente ?? '—'}
+                    </span>
+                  </div>
+                  <div className="flex-shrink-0 text-right">
+                    <span className="block text-[13px] font-semibold text-gray-900">S/ {(pedido.total ?? 0).toFixed(2)}</span>
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${estadoBadgeClasses[pedido.estado] ?? 'bg-gray-100 text-gray-500'}`}>
+                      {estadoLabel[pedido.estado] ?? pedido.estado}
+                    </span>
+                  </div>
+                </button>
+              ))}
             </div>
           )}
         </PestanaFlotante>

@@ -271,7 +271,7 @@ export default function MiCuentaPage() {
     <div className="flex min-h-screen">
       <ComercianteSidebar />
 
-      <main className="flex-1 bg-gray-100 p-7">
+      <main className="min-w-0 flex-1 bg-gray-100 px-4 py-16 sm:px-6 lg:p-7">
         {/* Header */}
         <span
           className="text-[11px] font-bold uppercase tracking-widest"

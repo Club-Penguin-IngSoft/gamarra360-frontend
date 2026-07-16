@@ -277,7 +277,7 @@ export default function RegistroPage() {
                 {errorNombresLive && <p className="text-xs text-red-500 px-1">{errorNombresLive}</p>}
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <div className="space-y-1">
                   <Input
                     type="text"

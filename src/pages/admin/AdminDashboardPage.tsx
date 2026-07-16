@@ -50,7 +50,7 @@ export default function AdminDashboardPage() {
     <div className="flex min-h-screen bg-neutro-50 font-sans">
       <AdminSidebar />
 
-      <main className="flex-1 p-8">
+      <main className="min-w-0 flex-1 px-4 py-16 sm:px-6 lg:p-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-black text-neutro-900 mb-2">

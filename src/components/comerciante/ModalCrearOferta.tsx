@@ -214,9 +214,9 @@ export default function ModalCrearOferta({ open, ofertaEditar, onClose, onSucces
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
       {/* Drawer */}
-      <div className="relative w-[700px] max-w-full bg-white flex flex-col shadow-2xl">
+      <div className="relative flex w-full max-w-[700px] flex-col bg-white shadow-2xl">
         {/* Header */}
-        <div className="flex items-start justify-between px-7 py-5 border-b border-gray-200 flex-shrink-0">
+        <div className="flex flex-shrink-0 items-start justify-between border-b border-gray-200 px-4 py-5 sm:px-7">
           <div>
             <h2 className="text-[20px] font-bold text-gray-900">
               {ofertaEditar ? 'Editar Oferta' : 'Crear Nueva Oferta'}

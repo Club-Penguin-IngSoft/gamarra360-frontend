@@ -83,7 +83,7 @@ export default function CatalogoPage() {
         onChange={handleChangeFiltros}
         onClose={() => setFilterOpen(false)}
       />
-      <main className="flex flex-col gap-12 px-12 py-20">
+      <main className="flex flex-col gap-10 px-4 py-10 sm:px-6 lg:gap-12 lg:px-12 lg:py-20">
         <section className="flex flex-col gap-12">
 
           <div className="flex flex-col gap-2 self-stretch">
@@ -162,7 +162,7 @@ export default function CatalogoPage() {
         </section>
       </main>
 
-      <section className="px-12 pb-10">
+      <section className="px-4 pb-10 sm:px-6 lg:px-12">
         <div className="overflow-hidden rounded-xl bg-gradient-to-r from-[#AD225E] to-[#CF2F77] px-6 py-8 md:px-8 md:py-10">
           <div className="max-w-none">
             <h2 className="whitespace-nowrap text-[40px] font-extrabold leading-tight text-white">

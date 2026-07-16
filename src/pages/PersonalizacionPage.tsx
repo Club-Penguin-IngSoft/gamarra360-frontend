@@ -28,6 +28,7 @@ import Footer from '../components/Footer';
 import QuantityStepper from '../components/QuantityStepper';
 import { RUTAS } from '../constants/rutas';
 import { useProducto } from '../hooks/useProducto';
+import { useAuth } from '../hooks/useAuth';
 import { formatearPrecio } from '../utils/formatearPrecio';
 import { subirImagenS3 } from '../services/catalogoService';
 import {
@@ -40,6 +41,8 @@ import type { IProducto, IVarianteProducto } from '../types/IProducto';
 
 type TipoTrabajo = 'estampado' | 'bordado' | 'impresion';
 type DesignTab = 'subir' | 'texto';
+
+const PERSONALIZACION_DRAFT_PREFIX = 'gamarra360:personalizacion:draft:';
 
 interface ITipoTrabajoOption {
   id: TipoTrabajo;
@@ -326,6 +329,8 @@ function DetallesPersonalizacionCard({
   instrucciones: string;
   setInstrucciones: (s: string) => void;
 }) {
+  const [tocados, setTocados] = useState({ texto: false, posicion: false, alto: false, ancho: false });
+
   return (
     <div className="flex flex-col gap-6 rounded-xl bg-white p-6">
       <h3 className="text-[20px] font-semibold text-ink-900">Detalles de Personalización</h3>
@@ -385,9 +390,11 @@ function DetallesPersonalizacionCard({
               type="text"
               value={texto}
               onChange={(e) => setTexto(e.target.value)}
+              onBlur={() => setTocados((prev) => ({ ...prev, texto: true }))}
               placeholder="Ej. 'Familia López', 'Equipo 2026'..."
-              className="h-12 rounded border border-ink-100 bg-white px-3 text-[15px] text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none"
+              className={`h-12 rounded border bg-white px-3 text-[15px] text-ink-900 placeholder:text-ink-400 focus:outline-none ${tocados.texto && !texto.trim() ? 'border-red-400 focus:border-red-500' : 'border-ink-100 focus:border-brand-500'}`}
             />
+            {tocados.texto && !texto.trim() && <p className="text-xs text-red-600">Ingresa el texto que deseas personalizar.</p>}
           </div>
         )}
 
@@ -400,45 +407,57 @@ function DetallesPersonalizacionCard({
             type="text"
             value={posicion}
             onChange={(e) => setPosicion(e.target.value)}
+            onBlur={() => setTocados((prev) => ({ ...prev, posicion: true }))}
             placeholder="Ej. Pecho izquierdo, espalda completa..."
-            className="h-12 rounded border border-ink-100 bg-white px-3 text-[15px] text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none"
+            className={`h-12 rounded border bg-white px-3 text-[15px] text-ink-900 placeholder:text-ink-400 focus:outline-none ${tocados.posicion && !posicion.trim() ? 'border-red-400 focus:border-red-500' : 'border-ink-100 focus:border-brand-500'}`}
           />
+          {tocados.posicion && !posicion.trim() && <p className="text-xs text-red-600">Indica dónde irá ubicado el diseño.</p>}
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
             <label htmlFor="alto" className="text-[13px] font-medium text-ink-700">Alto (cm)</label>
             <input
               id="alto"
               type="number"
-              min={0.1}
-              step="any"
+               inputMode="decimal"
+               min="0"
+               step="0.01"
               value={alto}
+              onBlur={() => setTocados((prev) => ({ ...prev, alto: true }))}
+              onKeyDown={(e) => {
+                if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+              }}
               onChange={(e) => {
-                const val = e.target.value;
-                if (val !== '' && Number(val) < 0) return;
-                setAlto(val);
+                 const valor = e.target.value;
+                 if (/^\d*(\.\d{0,2})?$/.test(valor)) setAlto(valor);
               }}
               placeholder="0"
-              className="h-12 rounded border border-ink-100 bg-white px-3 text-[15px] text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none"
+              className={`h-12 rounded border bg-white px-3 text-[15px] text-ink-900 placeholder:text-ink-400 focus:outline-none ${tocados.alto && (!alto || Number(alto) <= 0) ? 'border-red-400 focus:border-red-500' : 'border-ink-100 focus:border-brand-500'}`}
             />
+            {tocados.alto && (!alto || Number(alto) <= 0) && <p className="text-xs text-red-600">Ingresa un alto mayor a 0.</p>}
           </div>
           <div className="flex flex-col gap-2">
             <label htmlFor="ancho" className="text-[13px] font-medium text-ink-700">Ancho (cm)</label>
             <input
               id="ancho"
               type="number"
-              min={0.1}
-              step="any"
+               inputMode="decimal"
+               min="0"
+               step="0.01"
               value={ancho}
+              onBlur={() => setTocados((prev) => ({ ...prev, ancho: true }))}
+              onKeyDown={(e) => {
+                if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+              }}
               onChange={(e) => {
-                const val = e.target.value;
-                if (val !== '' && Number(val) < 0) return;
-                setAncho(val);
+                 const valor = e.target.value;
+                 if (/^\d*(\.\d{0,2})?$/.test(valor)) setAncho(valor);
               }}
               placeholder="0"
-              className="h-12 rounded border border-ink-100 bg-white px-3 text-[15px] text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none"
+              className={`h-12 rounded border bg-white px-3 text-[15px] text-ink-900 placeholder:text-ink-400 focus:outline-none ${tocados.ancho && (!ancho || Number(ancho) <= 0) ? 'border-red-400 focus:border-red-500' : 'border-ink-100 focus:border-brand-500'}`}
             />
+            {tocados.ancho && (!ancho || Number(ancho) <= 0) && <p className="text-xs text-red-600">Ingresa un ancho mayor a 0.</p>}
           </div>
         </div>
 
@@ -466,6 +485,7 @@ function ResumenCostos({
   tipoSeleccionado,
   enviando,
   errorEnvio,
+  formularioValido,
   onEnviar,
   onCancelar,
 }: {
@@ -473,6 +493,7 @@ function ResumenCostos({
   tipoSeleccionado: TipoTrabajo;
   enviando: boolean;
   errorEnvio: string;
+  formularioValido: boolean;
   onEnviar: () => void;
   onCancelar: () => void;
 }) {
@@ -523,7 +544,7 @@ function ResumenCostos({
       <div className="flex flex-col gap-2">
         <button
           onClick={onEnviar}
-          disabled={enviando}
+          disabled={enviando || !formularioValido}
           className="h-12 rounded-lg bg-brand-500 text-[15px] font-medium text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {enviando ? 'Enviando solicitud…' : 'Enviar solicitud'}
@@ -633,6 +654,7 @@ function construirDescripcion(
 export default function PersonalizacionPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { estaAutenticado } = useAuth();
   const { producto, cargando, error } = useProducto(id);
 
   /* ── Estado del formulario (levantado desde los subcomponentes) ── */
@@ -654,12 +676,60 @@ export default function PersonalizacionPage() {
   const [errorEnvio,      setErrorEnvio]      = useState('');
   const [solicitudEnviada, setSolicitudEnviada] = useState(false);
 
+  const draftKey = `${PERSONALIZACION_DRAFT_PREFIX}${id ?? 'producto'}`;
+
+  useEffect(() => {
+    try {
+      const guardado = sessionStorage.getItem(draftKey);
+      if (!guardado) return;
+      const draft = JSON.parse(guardado) as {
+        tipoSeleccionado?: TipoTrabajo;
+        tab?: DesignTab;
+        texto?: string;
+        posicion?: string;
+        alto?: string;
+        ancho?: string;
+        instrucciones?: string;
+      };
+      if (draft.tipoSeleccionado) setTipoSeleccionado(draft.tipoSeleccionado);
+      if (draft.tab) setTab(draft.tab);
+      setTexto(draft.texto ?? '');
+      setPosicion(draft.posicion ?? '');
+      setAlto(draft.alto ?? '');
+      setAncho(draft.ancho ?? '');
+      setInstrucciones(draft.instrucciones ?? '');
+    } catch {
+      sessionStorage.removeItem(draftKey);
+    }
+  }, [draftKey]);
+
+  useEffect(() => {
+    sessionStorage.setItem(draftKey, JSON.stringify({
+      tipoSeleccionado,
+      tab,
+      texto,
+      posicion,
+      alto,
+      ancho,
+      instrucciones,
+    }));
+  }, [draftKey, tipoSeleccionado, tab, texto, posicion, alto, ancho, instrucciones]);
+
+  const formularioValido = Boolean(
+    varianteId &&
+    posicion.trim() &&
+    alto && Number.isFinite(Number(alto)) && Number(alto) > 0 && Number(alto) <= 1000 &&
+    ancho && Number.isFinite(Number(ancho)) && Number(ancho) > 0 && Number(ancho) <= 1000 &&
+    cantidad > 0 &&
+    ((tab === 'subir' && archivo) || (tab === 'texto' && texto.trim()))
+  );
+
   /* ── Screens de carga / error ── */
   if (cargando) {
     return (
       <div className="min-h-screen bg-surface-muted">
         <TopBar active="Productos" />
-        <main className="flex flex-1 items-center justify-center px-12 py-24">
+        <main className="flex flex-1 items-center justify-center px-4 py-16 sm:px-6 lg:px-12 lg:py-24">
           <span className="text-[18px] text-ink-500">Cargando...</span>
         </main>
         <Footer />
@@ -671,7 +741,7 @@ export default function PersonalizacionPage() {
     return (
       <div className="min-h-screen bg-surface-muted">
         <TopBar active="Productos" />
-        <main className="flex flex-col items-center justify-center gap-4 px-12 py-24 text-center">
+        <main className="flex flex-col items-center justify-center gap-4 px-4 py-16 text-center sm:px-6 lg:px-12 lg:py-24">
           <h1 className="text-3xl font-bold text-ink-900">Producto no encontrado</h1>
           <Link to={RUTAS.CATALOGO} className="rounded-lg bg-brand-500 px-6 py-3 text-[15px] font-medium text-white hover:bg-brand-600">
             Volver al catálogo
@@ -687,7 +757,7 @@ export default function PersonalizacionPage() {
     return (
       <div className="min-h-screen bg-surface-muted">
         <TopBar active="Productos" />
-        <main className="flex flex-col items-center justify-center gap-4 px-12 py-24 text-center">
+        <main className="flex flex-col items-center justify-center gap-4 px-4 py-16 text-center sm:px-6 lg:px-12 lg:py-24">
           <h1 className="text-3xl font-bold text-ink-900">Este producto no es personalizable</h1>
           <Link to={RUTAS.DETALLE_PRODUCTO(producto.id)} className="rounded-lg bg-brand-500 px-6 py-3 text-[15px] font-medium text-white hover:bg-brand-600">
             Volver al producto
@@ -699,7 +769,20 @@ export default function PersonalizacionPage() {
   }
 
   const handleEnviar = async () => {
+    if (enviando) return;
     setErrorEnvio('');
+
+    if (!estaAutenticado) {
+      navigate(RUTAS.LOGIN, {
+        state: { redirectTo: RUTAS.PERSONALIZAR(producto.id) },
+      });
+      return;
+    }
+
+    if (!formularioValido) {
+      setErrorEnvio('Completa todos los campos obligatorios antes de enviar.');
+      return;
+    }
 
     if (!varianteId) {
       setErrorEnvio('Selecciona una talla y color antes de enviar.');
@@ -737,6 +820,7 @@ export default function PersonalizacionPage() {
         cantidad,
       });
 
+      sessionStorage.removeItem(draftKey);
       setSolicitudEnviada(true);
     } catch (err: any) {
       const msg = err?.response?.data?.mensaje
@@ -758,7 +842,7 @@ export default function PersonalizacionPage() {
   return (
     <div className="min-h-screen bg-surface-muted">
       <TopBar active="Productos" />
-      <main className="flex flex-col gap-8 px-12 py-12">
+      <main className="flex flex-col gap-8 px-4 py-8 sm:px-6 lg:px-12 lg:py-12">
         <Link
           to={RUTAS.DETALLE_PRODUCTO(producto.id)}
           className="inline-flex w-fit items-center gap-2 rounded-lg px-3 py-2 text-[15px] font-medium text-brand-600 transition-colors hover:bg-brand-50"
@@ -799,6 +883,7 @@ export default function PersonalizacionPage() {
             tipoSeleccionado={tipoSeleccionado}
             enviando={enviando}
             errorEnvio={errorEnvio}
+            formularioValido={formularioValido}
             onEnviar={handleEnviar}
             onCancelar={handleCancelar}
           />

@@ -15,7 +15,7 @@ export default function ComingSoonPage({ active, title, description }: Props) {
   return (
     <div className="flex min-h-screen flex-col bg-surface-muted">
       <TopBar active={active} />
-      <main className="flex flex-1 items-center justify-center px-12 py-24">
+      <main className="flex flex-1 items-center justify-center px-4 py-16 sm:px-6 lg:px-12 lg:py-24">
         <div className="flex max-w-xl flex-col items-center gap-6 text-center">
           <span className="text-[14px] font-bold uppercase tracking-[0.08em] text-brand-700">
             Próximamente

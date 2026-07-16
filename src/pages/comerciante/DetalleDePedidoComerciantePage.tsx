@@ -82,7 +82,7 @@ export default function DetalleDePedidoComerciantePage() {
     <div className="flex min-h-screen">
       <ComercianteSidebar />
 
-      <main className="flex-1 bg-gray-100 p-7">
+      <main className="min-w-0 flex-1 bg-gray-100 px-4 py-16 sm:px-6 lg:p-7">
         <p className="text-[12px] text-gray-500 mb-2">
           <Link to={RUTAS.COMERCIANTE_PEDIDOS} className="hover:text-primario hover:underline">
             Pedidos
@@ -215,7 +215,6 @@ export default function DetalleDePedidoComerciantePage() {
                   <div className="text-[11px] text-gray-500 uppercase tracking-[0.4px]">Costo del Pedido</div>
                 </div>
               </div>
-
 
             </div>
 

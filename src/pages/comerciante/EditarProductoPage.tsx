@@ -507,7 +507,7 @@ export default function EditarProductoPage() {
         onChange={handleVarianteFileChange}
       />
 
-      <main className="flex-1 bg-gray-100 p-7">
+      <main className="min-w-0 flex-1 bg-gray-100 px-4 py-16 sm:px-6 lg:p-7">
         <p className="text-[12px] text-gray-500 mb-2">
           <span className="text-primario font-medium cursor-pointer hover:underline" onClick={() => navigate(RUTAS.COMERCIANTE_DASHBOARD)}>Inicio</span>
           {' '}›{' '}
@@ -552,7 +552,7 @@ export default function EditarProductoPage() {
               {errMsg('descripcion')}
             </div>
 
-            <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>
                   Categoría <span className="text-red-500 normal-case font-normal">*</span>
@@ -736,7 +736,7 @@ export default function EditarProductoPage() {
         <div className="bg-white rounded-xl px-6 py-[22px] shadow-sm mb-5">
           <p className="text-[14px] font-bold text-gray-900 mb-5">Gestión de Variantes</p>
 
-          <div className="grid grid-cols-2 gap-5 mb-5">
+          <div className="mb-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
             {/* Tallas */}
             <div>
               <label className={labelClass}>Tallas</label>
