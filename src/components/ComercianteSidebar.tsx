@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { label: 'Inicio', icon: 'dashboard', to: RUTAS.COMERCIANTE_DASHBOARD },
   { label: 'Inventario', icon: 'inventory_2', to: RUTAS.COMERCIANTE_CATALOGO },
   { label: 'Pedidos', icon: 'shopping_bag', to: RUTAS.COMERCIANTE_PEDIDOS },
+  { label: 'Promociones', icon: 'local_offer', to: RUTAS.COMERCIANTE_PROMOCIONES },
   { label: 'Personalizaciones', icon: 'palette', to: RUTAS.COMERCIANTE_PERSONALIZACIONES },
   { label: 'Cotizaciones', icon: 'request_quote', to: RUTAS.COMERCIANTE_COTIZACIONES },
   { label: 'Notificaciones', icon: 'notifications', to: RUTAS.COMERCIANTE_NOTIFICACIONES },
@@ -24,7 +25,7 @@ export default function ComercianteSidebar() {
   };
 
   return (
-    <aside className="fixed top-0 left-0 w-64 min-h-screen bg-gray-900 text-white flex flex-col z-10 shadow-lg">
+    <aside className="sticky top-0 h-screen w-64 flex-shrink-0 overflow-y-auto bg-gray-900 text-white flex flex-col z-10 shadow-lg">
       <div className="px-6 py-5 border-b border-white/10">
         <LogoGamarra size="sm" className="brightness-0 invert" />
         <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/50">
@@ -53,17 +54,17 @@ export default function ComercianteSidebar() {
       </nav>
 
       <div className="p-3 border-t border-white/10 space-y-0.5">
-        {/* Ver Tienda — deshabilitado hasta implementación futura */}
-        <div
-          className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-white/25 cursor-not-allowed select-none"
-          title="Próximamente disponible"
+        <Link
+          to={RUTAS.COMERCIANTE_CUENTA}
+          className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            location.pathname.startsWith(RUTAS.COMERCIANTE_CUENTA)
+              ? 'bg-white/10 text-white'
+              : 'text-white/65 hover:bg-white/5 hover:text-white'
+          }`}
         >
           <MaterialIcon name="storefront" style={{ fontSize: '18px' }} />
           Ver Tienda
-          <span className="ml-auto text-[10px] font-semibold uppercase tracking-wide bg-white/10 text-white/40 px-1.5 py-0.5 rounded">
-            Pronto
-          </span>
-        </div>
+        </Link>
 
         <button
           onClick={handleLogout}

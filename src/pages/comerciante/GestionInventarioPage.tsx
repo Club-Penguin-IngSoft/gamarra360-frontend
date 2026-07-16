@@ -15,7 +15,7 @@ interface IProductoBackend {
   nombreCategoria?: string;
   nombreTipoProducto?: string;
   imagenes: { url: string; esPrincipal: boolean }[] | null;
-  variantes: { stock?: number }[] | null;
+  variantes: { stock?: number; minimoStock?: number }[] | null;
 }
 
 interface IProductoFila {
@@ -24,22 +24,34 @@ interface IProductoFila {
   categoria: string;
   precioBase: number;
   unidades: number;
-  ganancias: number;
   estado: 'PUBLICADO' | 'AGOTADO' | 'SIN_PUBLICAR' | 'POCA_EXISTENCIA';
   imagenUrl?: string;
 }
 
-const STOCK_MINIMO = 5;
+/** Umbral por defecto solo para variantes sin minimoStock propio configurado. */
+const STOCK_MINIMO_DEFAULT = 5;
 
-function computarEstado(activo: boolean, stock: number): IProductoFila['estado'] {
+function computarEstado(
+  activo: boolean,
+  totalStock: number,
+  variantes: { stock?: number; minimoStock?: number }[],
+): IProductoFila['estado'] {
   if (!activo) return 'SIN_PUBLICAR';
-  if (stock === 0) return 'AGOTADO';
-  if (stock <= STOCK_MINIMO) return 'POCA_EXISTENCIA';
-  return 'PUBLICADO';
+  if (totalStock === 0) return 'AGOTADO';
+  // "Poca existencia" es por variante, no por la suma total: si UNA variante ya
+  // llegó a su propio umbral (aunque otras variantes tengan stock de sobra), el
+  // comerciante igual necesita saberlo para reabastecerla.
+  const algunaVarianteBaja = variantes.some((v) => {
+    const stock = v.stock ?? 0;
+    const umbral = v.minimoStock ?? STOCK_MINIMO_DEFAULT;
+    return stock <= umbral;
+  });
+  return algunaVarianteBaja ? 'POCA_EXISTENCIA' : 'PUBLICADO';
 }
 
 function adaptarFila(p: IProductoBackend): IProductoFila {
-  const totalStock = (p.variantes ?? []).reduce((s, v) => s + (v.stock ?? 0), 0);
+  const variantes = p.variantes ?? [];
+  const totalStock = variantes.reduce((s, v) => s + (v.stock ?? 0), 0);
   const principal = (p.imagenes ?? []).find((i) => i.esPrincipal) ?? p.imagenes?.[0];
   return {
     idProducto: p.idProducto,
@@ -47,8 +59,7 @@ function adaptarFila(p: IProductoBackend): IProductoFila {
     categoria: p.nombreTipoProducto ?? p.nombreCategoria ?? '—',
     precioBase: p.precioBase ?? 0,
     unidades: totalStock,
-    ganancias: (p.precioBase ?? 0) * totalStock,
-    estado: computarEstado(p.activo, totalStock),
+    estado: computarEstado(p.activo, totalStock, variantes),
     imagenUrl: principal?.url,
   };
 }
@@ -149,7 +160,7 @@ export default function GestionInventarioPage() {
     <div className="flex min-h-screen">
       <ComercianteSidebar />
 
-      <main className="ml-64 flex-1 bg-gray-100 p-7">
+      <main className="flex-1 bg-gray-100 p-7">
         <p className="text-[12px] text-gray-500 mb-2">
           Inicio &rsaquo; <span className="text-primario font-medium">Inventario</span>
         </p>
@@ -279,7 +290,7 @@ export default function GestionInventarioPage() {
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  {['Producto', 'Categoría', 'Precio Base', 'Unidades', 'Ganancias', 'Estado', 'Acciones'].map((col) => (
+                  {['Producto', 'Categoría', 'Precio Base', 'Unidades', 'Estado', 'Acciones'].map((col) => (
                     <th
                       key={col}
                       className="text-left text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] px-4 py-3 bg-gray-100 border-b border-gray-200"
@@ -317,9 +328,6 @@ export default function GestionInventarioPage() {
                     </td>
                     <td className="px-4 py-3.5 text-[13px] text-gray-900 border-b border-gray-100 align-middle">
                       {p.unidades}
-                    </td>
-                    <td className="px-4 py-3.5 text-[13px] text-gray-900 border-b border-gray-100 align-middle">
-                      S/ {p.ganancias.toLocaleString()}
                     </td>
                     <td className="px-4 py-3.5 border-b border-gray-100 align-middle">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${estadoBadgeClasses[p.estado]}`}>

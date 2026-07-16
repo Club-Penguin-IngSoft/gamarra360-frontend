@@ -14,10 +14,13 @@ export interface IFiltrosCatalogo {
   categorias: string[];
   tiposProducto: string[];
   color: string | null;
-  material: string | null;
+  materiales: string[];
   tallas: string[];
   precioMin: number | null;
   precioMax: number | null;
+  ofreceEnvio: boolean;
+  /** Búsqueda por palabra clave (nombre/descripción), viene del buscador del navbar (?q=). */
+  q: string | null;
 }
 
 export const FILTROS_VACIOS: IFiltrosCatalogo = {
@@ -26,10 +29,12 @@ export const FILTROS_VACIOS: IFiltrosCatalogo = {
   categorias: [],
   tiposProducto: [],
   color: null,
-  material: null,
+  materiales: [],
   tallas: [],
   precioMin: null,
   precioMax: null,
+  ofreceEnvio: false,
+  q: null,
 };
 
 /**
@@ -43,12 +48,12 @@ export interface IFiltrosTiendas {
   categorias: string[];
   tiposProducto: string[];
   tipoServicio: TipoServicio[];
-  galeria: GaleriaGamarra | null;
+  galerias: GaleriaGamarra[];
 }
 
 export const FILTROS_TIENDAS_VACIOS: IFiltrosTiendas = {
   categorias: [],
   tiposProducto: [],
   tipoServicio: [],
-  galeria: null,
+  galerias: [],
 };

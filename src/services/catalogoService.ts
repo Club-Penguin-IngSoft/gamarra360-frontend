@@ -18,28 +18,40 @@ interface IProductoBackend {
   descripcion?: string;
   precioBase?: number;
   precioFinal?: number;
+  /** Solo viene poblado si hay una oferta ACTIVA vigente ahora (backend: esOfertaActiva()). */
+  oferta?: { titulo: string; tipoDescuento: 'PORCENTAJE' | 'MONTO_FIJO'; valorDescuento: number } | null;
   esPersonalizable: boolean;
   activo: boolean;
   idTienda?: number;
   idComerciante?: number;
   nombreTienda?: string;
+  logoTienda?: string;
   nombreCategoria?: string;
   // Campo plano que envía ProductoResponse (formato actual del backend)
   nombreTipoProducto?: string;
   // Campos en formato anidado (para compatibilidad con respuestas futuras)
   categorias?: { idCategoria: number; nombre: string }[];
   tipoProducto?: { idTipoProducto: number; nombre: string } | null;
+  materialPrincipal?: string;
   especificaciones?: { nombre: string; descripcion: string }[];
+  materiales?: string[];
+  tiendaOfreceEnvio?: boolean;
+  galeria?: string;
+  comercianteActivo?: boolean;
   imagenes: { idImagen: number; url: string; esPrincipal: boolean }[];
   variantes: {
     idVariante: number;
     sku?: string;
     stock?: number;
-    precioAjustado?: number;
+    minimoStock?: number;
+    precioAjustado?: number | null;
+    precioEfectivo?: number | null;
     disponible?: boolean;
     talla?: string;
     color?: string;
     colorHex?: string;
+    idColor?: number;
+    idTalla?: number;
   }[];
 }
 
@@ -61,6 +73,7 @@ export interface IProductoPayload {
   esPersonalizable: boolean;
   idCategoria: number;
   idTipoProducto: number;
+  idMaterial?: number;
   imagenes: { url: string; esPrincipal: boolean }[];
   especificaciones?: { nombre: string; descripcion: string }[];
 }
@@ -103,6 +116,11 @@ export async function crearVariante(payload: IVariantePayload): Promise<void> {
 /** Actualiza una variante existente en el backend. */
 export async function actualizarVariante(idVariante: number, payload: Partial<IVariantePayload>): Promise<void> {
   await apiClient.put(`/variantes-producto/${idVariante}`, payload);
+}
+
+/** Elimina una variante existente en el backend. */
+export async function eliminarVariante(idVariante: number): Promise<void> {
+  await apiClient.delete(`/variantes-producto/${idVariante}`);
 }
 
 /** Actualiza solo el stock de una variante (PATCH /variantes-producto/{id}/stock). */
@@ -155,9 +173,16 @@ function adaptarProducto(p: IProductoBackend): IProducto {
   const variantes: IVarianteProducto[] = (p.variantes ?? []).map((v) => ({
     id: String(v.idVariante),
     stock: v.stock ?? 0,
+    disponible: v.disponible ?? true,
     talla: v.talla ?? undefined,
     color: v.color ?? undefined,
     colorHex: v.colorHex ?? undefined,
+    idColor: v.idColor ?? undefined,
+    idTalla: v.idTalla ?? undefined,
+    precioAjustado: v.precioAjustado ?? undefined,
+    // precioEfectivo viene del backend si ya está implementado;
+    // si no, cae a precioAjustado como precio final de variante
+    precioEfectivo: v.precioEfectivo ?? v.precioAjustado ?? undefined,
   }));
 
   return {
@@ -167,6 +192,7 @@ function adaptarProducto(p: IProductoBackend): IProducto {
     idTienda: String(p.idTienda ?? ''),
     idComerciante: String(p.idComerciante ?? p.idTienda ?? ''),
     nombreTienda: p.nombreTienda ?? '',
+    logoTienda: p.logoTienda ?? undefined,
     imagenes: urlsImagenes,
     categoria: p.nombreCategoria ?? 'Desconocida',
     tipoServicio,
@@ -177,7 +203,13 @@ function adaptarProducto(p: IProductoBackend): IProducto {
     })),
     precioBase: p.precioBase ?? undefined,
     precioFinal: p.precioFinal ?? p.precioBase ?? undefined,
+    oferta: p.oferta ?? undefined,
     variantes: variantes.length > 0 ? variantes : undefined,
+    materialPrincipal: p.materialPrincipal ?? undefined,
+    materiales: p.materiales ?? undefined,
+    tiendaOfreceEnvio: p.tiendaOfreceEnvio ?? false,
+    galeria: p.galeria ?? undefined,
+    comercianteActivo: p.comercianteActivo ?? true,
   };
 }
 
@@ -193,11 +225,20 @@ function adaptarProducto(p: IProductoBackend): IProducto {
 export async function listarProductosPaginados(
   page: number = 0,
   size: number = 12,
-  _filtros?: Partial<IFiltrosCatalogo>,
+  filtros?: Partial<IFiltrosCatalogo>,
 ): Promise<{ contenido: IProducto[]; totalPaginas: number; totalElementos: number }> {
-  const { data } = await apiClient.get<IPageBackend>('/productos', {
-    params: { page, size },
-  });
+  const params = new URLSearchParams();
+  params.append('page', String(page));
+  params.append('size', String(size));
+  filtros?.categorias?.forEach((c) => params.append('categorias', c));
+  filtros?.tiposProducto?.forEach((t) => params.append('tiposProducto', t));
+  if (filtros?.color) params.append('color', filtros.color);
+  filtros?.tallas?.forEach((t) => params.append('tallas', t));
+  if (filtros?.precioMin != null) params.append('precioMin', String(filtros.precioMin));
+  if (filtros?.precioMax != null) params.append('precioMax', String(filtros.precioMax));
+  if (filtros?.q) params.append('q', filtros.q);
+
+  const { data } = await apiClient.get<IPageBackend>('/productos', { params });
 
   return {
     contenido: data.contenido.map(adaptarProducto),
@@ -254,6 +295,12 @@ export async function listarTiposPorCategoria(idCategoria: number): Promise<ITip
   return data;
 }
 
+/** Devuelve los materiales disponibles para los selects del formulario. */
+export async function listarMateriales(): Promise<{ idMaterial: number; nombre: string }[]> {
+  const { data } = await apiClient.get<{ idMaterial: number; nombre: string }[]>('/materiales');
+  return data;
+}
+
 /** Crea un producto en la tienda del comerciante autenticado (POST /productos). */
 export async function crearProducto(payload: IProductoPayload): Promise<IProducto> {
   const { data } = await apiClient.post<IProductoBackend>('/productos', payload);
@@ -299,7 +346,7 @@ export interface IOpcionesFiltro {
   materiales: string[];
   tallas: string[];
   tiposProducto: string[];
-  categorias: string[];  // Vendrá como ["Niños", "Hombre", "Mujer", ...]
+  categorias: string[];
 }
 
 /**

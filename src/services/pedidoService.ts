@@ -5,8 +5,10 @@ import type {
   ICrearDetallePedidoRequest,
   IOrdenPago,
   IDetalleOrden,
+  IPedido,
   IPedidoComercianteResumen,
   IPedidoComercianteDetalle,
+  IDistritoEnvio,
 } from '../types/IPedido';
 
 const BASE_ORDENES = '/ordenes-pago';
@@ -18,12 +20,14 @@ export interface IItemParaDetalle {
   cantidad: number;
   precio: number;
   personalizacionId?: number | null;
+  cotizacionId?: number | null;
 }
 
 export interface IGrupoTienda {
   vendedorId: number;
   tipoEntrega: 'DELIVERY' | 'RECOJO_TIENDA';
   direccionEntrega?: string;
+  idDistrito?: number | null;
   total: number;
   items: IItemParaDetalle[];
 }
@@ -96,9 +100,21 @@ async function listarPedidosComerciante(): Promise<IPedidoComercianteResumen[]> 
   return data;
 }
 
+/** Avanza el pedido al siguiente estado (RECIBIDO→EN_PREPARACION→EN_CAMINO→LISTO_PARA_ENTREGA→ENTREGADO). */
+async function avanzarEstadoPedido(pedidoId: number): Promise<IPedido> {
+  const { data } = await apiClient.patch<IPedido>(`${BASE_PEDIDOS}/${pedidoId}/avanzar-estado`);
+  return data;
+}
+
 /** Detalle completo de un pedido propio del comerciante (items, envío, cliente, historial). */
 async function obtenerDetallePedidoComerciante(id: number): Promise<IPedidoComercianteDetalle> {
   const { data } = await apiClient.get<IPedidoComercianteDetalle>(`${BASE_PEDIDOS}/${id}/comerciante-detalle`);
+  return data;
+}
+
+/** Lista todos los distritos disponibles para envío. */
+async function listarDistritos(): Promise<IDistritoEnvio[]> {
+  const { data } = await apiClient.get<IDistritoEnvio[]>('/distritos');
   return data;
 }
 
@@ -109,4 +125,6 @@ export const pedidoService = {
   cancelarPedido,
   listarPedidosComerciante,
   obtenerDetallePedidoComerciante,
+  avanzarEstadoPedido,
+  listarDistritos,
 };

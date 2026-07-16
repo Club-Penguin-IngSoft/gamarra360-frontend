@@ -1,17 +1,50 @@
+import { useEffect, useState } from 'react';
 import { AdminSidebar } from "../../components/admin/AdminSidebar"
 import {
   Users,
   DollarSign,
   Clock,
   ArrowUpRight,
-  Package,
-  AlertTriangle,
-  CheckCircle,
+  User as UserIcon,
 } from "lucide-react"
 import { useAuth } from "../../hooks/useAuth"
+import apiClient from "../../services/apiClient"
+
+interface IActividadReciente {
+  tipo: 'COMERCIANTE' | 'CLIENTE';
+  nombreCompleto: string;
+  email: string;
+}
+
+interface IDashboardResumen {
+  totalUsuarios: number;
+  ingresosTotales: number;
+  comerciantesPendientes: number;
+  comerciantesAprobados: number;
+  comerciantesRechazados: number;
+  actividadReciente: IActividadReciente[];
+}
 
 export default function AdminDashboardPage() {
-  const { usuario } = useAuth()
+  const { usuario } = useAuth();
+  const [resumen, setResumen] = useState<IDashboardResumen | null>(null);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    apiClient.get<IDashboardResumen>('/admin/usuarios/dashboard')
+      .then(({ data }) => setResumen(data))
+      .catch(console.error)
+      .finally(() => setCargando(false));
+  }, []);
+
+  const totalVendedores =
+    (resumen?.comerciantesAprobados ?? 0) +
+    (resumen?.comerciantesPendientes ?? 0) +
+    (resumen?.comerciantesRechazados ?? 0);
+
+  const porcentajeVerificados = totalVendedores > 0
+    ? Math.round(((resumen?.comerciantesAprobados ?? 0) / totalVendedores) * 100)
+    : 0;
 
   return (
     <div className="flex min-h-screen bg-neutro-50 font-sans">
@@ -30,26 +63,30 @@ export default function AdminDashboardPage() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Usuarios Verificados */}
+          {/* Usuarios Totales */}
           <div className="bg-white rounded-tarjeta p-6 shadow-tarjeta border border-neutro-100">
             <div className="w-12 h-12 rounded-xl bg-primario-claro flex items-center justify-center mb-4">
               <Users className="w-6 h-6 text-primario" />
             </div>
             <p className="text-xs font-bold text-neutro-400 uppercase tracking-widest mb-1">
-              USUARIOS VERIFICADOS
+              USUARIOS TOTALES
             </p>
-            <p className="text-4xl font-black text-neutro-900">24,512</p>
+            <p className="text-4xl font-black text-neutro-900">
+              {cargando ? '—' : resumen?.totalUsuarios.toLocaleString()}
+            </p>
           </div>
 
-          {/* Ventas Totales */}
+          {/* Ingresos Totales */}
           <div className="bg-white rounded-tarjeta p-6 shadow-tarjeta border border-neutro-100">
             <div className="w-12 h-12 rounded-xl bg-primario-claro flex items-center justify-center mb-4">
               <DollarSign className="w-6 h-6 text-primario" />
             </div>
             <p className="text-xs font-bold text-neutro-400 uppercase tracking-widest mb-1">
-              VENTAS TOTALES
+              INGRESOS TOTALES (10% DE CADA VENTA)
             </p>
-            <p className="text-4xl font-black text-neutro-900">S/ 1.2M</p>
+            <p className="text-4xl font-black text-neutro-900">
+              {cargando ? '—' : `S/ ${resumen?.ingresosTotales.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+            </p>
           </div>
 
           {/* Aprobaciones Pendientes */}
@@ -58,9 +95,11 @@ export default function AdminDashboardPage() {
               <Clock className="w-6 h-6 text-primario" />
             </div>
             <p className="text-xs font-bold text-neutro-400 uppercase tracking-widest mb-1">
-              APROBACIONES PENDIENTES
+              COMERCIANTES PENDIENTES
             </p>
-            <p className="text-4xl font-black text-neutro-900">142</p>
+            <p className="text-4xl font-black text-neutro-900">
+              {cargando ? '—' : resumen?.comerciantesPendientes}
+            </p>
           </div>
         </div>
 
@@ -70,75 +109,36 @@ export default function AdminDashboardPage() {
           <div className="lg:col-span-2 bg-white rounded-tarjeta p-6 shadow-tarjeta border border-neutro-100">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-black text-neutro-900">Actividad Reciente</h2>
-              <button className="text-primario text-sm font-bold hover:underline uppercase tracking-tight">
-                VER TODOS LOS REGISTROS
-              </button>
             </div>
 
             <div className="space-y-6">
-              {/* Activity Item 1 */}
-              <div className="flex items-start gap-4 p-3 rounded-xl hover:bg-neutro-50 transition-colors">
-                <div className="w-10 h-10 rounded-full bg-primario-claro flex items-center justify-center flex-shrink-0">
-                  <ArrowUpRight className="w-5 h-5 text-primario" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold text-neutro-900">Nueva Solicitud de Vendedor</p>
-                    <span className="text-sm text-neutro-400 font-medium">hace 2 min</span>
+              {cargando ? (
+                <p className="text-neutro-400 text-sm">Cargando...</p>
+              ) : resumen?.actividadReciente.length === 0 ? (
+                <p className="text-neutro-400 text-sm">Sin registros recientes.</p>
+              ) : (
+                resumen?.actividadReciente.map((a, i) => (
+                  <div key={i} className="flex items-start gap-4 p-3 rounded-xl hover:bg-neutro-50 transition-colors">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      a.tipo === 'COMERCIANTE' ? 'bg-primario-claro' : 'bg-info-claro'
+                    }`}>
+                      {a.tipo === 'COMERCIANTE'
+                        ? <ArrowUpRight className="w-5 h-5 text-primario" />
+                        : <UserIcon className="w-5 h-5 text-info" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <p className="font-bold text-neutro-900">
+                          {a.tipo === 'COMERCIANTE' ? 'Nuevo Comerciante Registrado' : 'Nuevo Cliente Registrado'}
+                        </p>
+                      </div>
+                      <p className="text-sm text-neutro-600 mt-1">
+                        {a.nombreCompleto || a.email} se registró en la plataforma.
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-sm text-neutro-600 mt-1">
-                    Textiles Gamarra S.A. envió documentación para verificación Nivel 2.
-                  </p>
-                </div>
-              </div>
-
-              {/* Activity Item 2 */}
-              <div className="flex items-start gap-4 p-3 rounded-xl hover:bg-neutro-50 transition-colors">
-                <div className="w-10 h-10 rounded-full bg-advertencia-claro flex items-center justify-center flex-shrink-0">
-                  <AlertTriangle className="w-5 h-5 text-advertencia" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold text-neutro-900">Advertencia del Sistema</p>
-                    <span className="text-sm text-neutro-400 font-medium">hace 45 min</span>
-                  </div>
-                  <p className="text-sm text-neutro-600 mt-1">
-                    Alta latencia detectada en pasarela de pagos 'Gateway-7'. Auto-escalado iniciado.
-                  </p>
-                </div>
-              </div>
-
-              {/* Activity Item 3 */}
-              <div className="flex items-start gap-4 p-3 rounded-xl hover:bg-neutro-50 transition-colors">
-                <div className="w-10 h-10 rounded-full bg-info-claro flex items-center justify-center flex-shrink-0">
-                  <Package className="w-5 h-5 text-info" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold text-neutro-900">Actualización Masiva de Inventario</p>
-                    <span className="text-sm text-neutro-400 font-medium">hace 2 horas</span>
-                  </div>
-                  <p className="text-sm text-neutro-600 mt-1">
-                    El Vendedor ID #9042 actualizó 1,200 SKUs en la categoría 'Colección Verano'.
-                  </p>
-                </div>
-              </div>
-
-              {/* Activity Item 4 */}
-              <div className="flex items-start gap-4 p-3 rounded-xl hover:bg-neutro-50 transition-colors">
-                <div className="w-10 h-10 rounded-full bg-neutro-100 flex items-center justify-center flex-shrink-0">
-                  <CheckCircle className="w-5 h-5 text-neutro-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold text-neutro-900">Vendedor Verificado</p>
-                    <span className="text-sm text-neutro-400 font-medium">hace 5 horas</span>
-                  </div>
-                  <p className="text-sm text-neutro-600 mt-1">
-                    La Admin 'María Q.' aprobó la verificación de 'Andean Alpaca Designs'.
-                  </p>
-                </div>
-              </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -149,29 +149,33 @@ export default function AdminDashboardPage() {
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-white/80 font-medium">Verificados</span>
-                <span className="font-black text-xl">1,842</span>
+                <span className="text-white/80 font-medium">Aprobados</span>
+                <span className="font-black text-xl">
+                  {cargando ? '—' : resumen?.comerciantesAprobados}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-white/80 font-medium">Pendientes</span>
-                <span className="font-black text-xl text-dorado">142</span>
+                <span className="font-black text-xl text-dorado">
+                  {cargando ? '—' : resumen?.comerciantesPendientes}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-white/80 font-medium">Rechazados</span>
-                <span className="font-black text-xl text-red-400">34</span>
+                <span className="font-black text-xl text-red-400">
+                  {cargando ? '—' : resumen?.comerciantesRechazados}
+                </span>
               </div>
             </div>
 
-            {/* Progress Bar */}
             <div className="mt-6 mb-6">
               <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                <div className="h-full bg-dorado rounded-full shadow-[0_0_10px_rgba(245,205,64,0.5)]" style={{ width: "91%" }} />
+                <div
+                  className="h-full bg-dorado rounded-full shadow-[0_0_10px_rgba(245,205,64,0.5)]"
+                  style={{ width: `${porcentajeVerificados}%` }}
+                />
               </div>
             </div>
-
-            <button className="w-full py-3 bg-white text-marino font-black rounded-xl hover:bg-white/90 transition-all uppercase text-sm tracking-wide">
-              REVISAR COLA
-            </button>
           </div>
         </div>
       </main>

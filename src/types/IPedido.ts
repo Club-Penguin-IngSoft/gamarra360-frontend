@@ -3,6 +3,13 @@
  * Los enums replican exactamente los valores definidos en Java (UPPER_SNAKE_CASE).
  */
 
+export interface IDistritoEnvio {
+  id: number;
+  ciudad: string;
+  nombre: string;
+  costoEnvio: number;
+}
+
 // Valores reales del enum EstadoPedido en el backend Java
 export type EstadoPedido =
   | 'RECIBIDO'
@@ -37,6 +44,8 @@ export interface IDetallePedidoResponse {
   talla: string | null;
   color: string | null;
   sku: string | null;
+  cotizacionId?: number | null;
+  personalizacionId?: number | null;
 }
 
 /** Respuesta del backend al obtener un pedido (campos no @JsonIgnore de Pedido.java) */
@@ -156,6 +165,7 @@ export interface ICrearPedidoRequest {
   tipoEntrega: TipoEntrega;
   direccionEntrega?: string;
   total: number;
+  idDistrito?: number;
 }
 
 /** Payload para POST /api/v1/detalles-pedido (mapea a DetallePedido.java) */
@@ -208,6 +218,8 @@ export interface ICotizacionResumen {
   cantidadProductos: number;
   precioPropuesto?: number;
   nombreCliente?: string;
+  pedidoId?: number | null;
+  pedidoEstado?: string | null;
 }
 
 export interface ICotizacionDetalleProducto {
@@ -241,6 +253,9 @@ export interface ICotizacionDetalle {
   fotoTienda?: string;
   productos: ICotizacionDetalleProducto[];
   respuesta?: ICotizacionRespuesta;
+  precioDeseado?: number;
+  pedidoId?: number | null;
+  pedidoEstado?: string | null;
 }
 
 export interface ICotizacionRequest {
@@ -255,4 +270,10 @@ export interface IProductoCotizacionDto {
   imagenUrl?: string;
   especificacion?: string;
   cantidad?: number;
+}
+
+export interface IContraPropuestaRequest {
+  precioDeseado?: number;
+  especificacion?: string;
+  comentario?: string;
 }

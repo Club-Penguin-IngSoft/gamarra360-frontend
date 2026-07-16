@@ -32,10 +32,11 @@ function CartItemRow({ item }: { item: IItemCarrito }) {
   const talla = variante?.talla;
   const color = variante?.color;
 
-  const tieneDescuento =
-    item.producto.precioBase !== undefined &&
-    item.producto.precioFinal !== undefined &&
-    item.producto.precioBase > item.producto.precioFinal;
+  // El "precio sin oferta" es el propio de la variante (o el base del producto si no
+  // tiene uno propio) — nunca el precioBase a secas, porque una variante puede tener
+  // su propio precio sin que eso sea un descuento por oferta.
+  const precioSinOferta = variante?.precioAjustado ?? item.producto.precioBase ?? item.precioUnitario;
+  const tieneDescuento = item.producto.oferta != null && precioSinOferta > item.precioUnitario;
 
   return (
     <div className="flex gap-3 border-b border-ink-100 py-4">
@@ -92,7 +93,7 @@ function CartItemRow({ item }: { item: IItemCarrito }) {
             </span>
             {tieneDescuento && (
               <span className="text-[11px] text-ink-500 line-through">
-                {formatearPrecio(item.producto.precioBase! * item.cantidad)}
+                {formatearPrecio(precioSinOferta * item.cantidad)}
               </span>
             )}
           </div>

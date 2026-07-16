@@ -15,6 +15,8 @@
 
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { RUTAS } from '../constants/rutas';
 import { useOpcionesFiltro } from '../hooks/useOpcionesFiltro';
 import {
   ChevronDown,
@@ -29,7 +31,8 @@ import EmptyState from '../components/EmptyState';
 import { Store as StoreIcon } from 'lucide-react';
 import { listarTiendas } from '../services/tiendaService';
 import type { ITienda } from '../types/ITienda';
-// GaleriaGamarra y ETIQUETA_GALERIA: pendiente cuando el backend exponga galeria
+import type { GaleriaGamarra } from '../types/ITienda';
+import { ETIQUETA_GALERIA } from '../types/ITienda';
 import type { TipoServicio } from '../types/IProducto';
 import type { IFiltrosTiendas } from '../types/IFiltro';
 import { FILTROS_TIENDAS_VACIOS } from '../types/IFiltro';
@@ -173,6 +176,15 @@ function TiendasFilterPanel({
     }));
   };
 
+  const toggleGaleria = (g: GaleriaGamarra) => {
+    setBorrador((b) => ({
+      ...b,
+      galerias: b.galerias.includes(g)
+        ? b.galerias.filter((x) => x !== g)
+        : [...b.galerias, g],
+    }));
+  };
+
   const limpiarTodo = () => {
     setBorrador(FILTROS_TIENDAS_VACIOS);
     onChange(FILTROS_TIENDAS_VACIOS);
@@ -271,19 +283,22 @@ function TiendasFilterPanel({
             </div>
           </FilterSection>
 
-          {/* Oculto temporalmente: El atributo galeria aún no se recibe del backend para tiendas */}
-          {/* 
           <FilterSection
             title="Galería"
             open={sections.galeria}
             onToggle={() => toggleSection('galeria')}
           >
-            <GaleriaSelect
-              value={filtros.galeria}
-              onChange={(g) => onChange({ ...filtros, galeria: g })}
-            />
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(ETIQUETA_GALERIA) as GaleriaGamarra[]).map((key) => (
+                <PillButton
+                  key={key}
+                  label={ETIQUETA_GALERIA[key]}
+                  active={borrador.galerias.includes(key)}
+                  onClick={() => toggleGaleria(key)}
+                />
+              ))}
+            </div>
           </FilterSection>
-          */}
         </div>
 
         {/* Footer buttons */}
@@ -312,6 +327,7 @@ function TiendasFilterPanel({
    ========================================================================= */
 
 export default function TiendasPage() {
+  const navigate = useNavigate();
   const [filterOpen, setFilterOpen] = useState(false);
   const [filtros, setFiltros] = useState<IFiltrosTiendas>(FILTROS_TIENDAS_VACIOS);
   const [tiendas, setTiendas] = useState<ITienda[]>([]);
@@ -446,7 +462,10 @@ export default function TiendasPage() {
               ¡Te damos el mejor precio a medida de tus necesidades!
             </p>
 
-            <button className="mt-5 inline-flex h-11 items-center rounded-md bg-white px-5 text-[16px] font-semibold text-[#AD225E] hover:bg-white/95">
+            <button
+              onClick={() => navigate(RUTAS.COTIZACIONES)}
+              className="mt-5 inline-flex h-11 items-center rounded-md bg-white px-5 text-[16px] font-semibold text-[#AD225E] hover:bg-white/95"
+            >
               Cotiza ahora
             </button>
           </div>

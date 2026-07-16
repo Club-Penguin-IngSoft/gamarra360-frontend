@@ -1,50 +1,46 @@
 import { useState } from 'react';
-import type { IUsuario } from '../../types/IUsuario';
-import ModalBase from './ModalBase';
+import type { FormEvent } from 'react';
 import { Loader2 } from 'lucide-react';
-import apiClient from '../../services/apiClient';
-import { useAuth } from '../../hooks/useAuth';
+import ModalBase from './ModalBase';
+import { actualizarDatosPersonales } from '../../services/clienteService';
+import { limpiarCelular } from '../../utils/validaciones';
+import type { IPerfilCliente } from '../../types/ICliente';
 
-interface EditarPerfilModalProps {
-  usuario: IUsuario | null;
+interface Props {
+  perfil: IPerfilCliente | null;
   onCerrar: () => void;
+  onGuardado: () => void;
 }
 
-const inputClase =
-  'w-full rounded-input border border-neutro-200 bg-white px-4 py-3 text-body-md text-ink-900 placeholder-ink-400 transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100';
+const INPUT = 'w-full rounded-input border border-neutro-200 bg-white px-4 py-3 text-body-md text-ink-900 placeholder-ink-400 transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100';
+const LABEL = 'text-label-md font-medium text-ink-700';
 
-const etiquetaClase = 'text-label-md font-medium text-ink-700';
+export default function EditarPerfilModal({ perfil, onCerrar, onGuardado }: Props) {
+  const [nombres, setNombres]                 = useState(perfil?.nombres ?? '');
+  const [primerApellido, setPrimerApellido]   = useState(perfil?.primerApellido ?? '');
+  const [segundoApellido, setSegundoApellido] = useState(perfil?.segundoApellido ?? '');
+  // El teléfono se guarda con el prefijo +51 incluido (ver limpiarCelular / registro);
+  // aquí se edita solo el número local para no duplicar el prefijo en el input.
+  const [celular, setCelular]                 = useState((perfil?.telefono ?? '').replace(/^\+51\s?/, ''));
+  const [guardando, setGuardando]             = useState(false);
+  const [error, setError]                     = useState<string | null>(null);
 
-export default function EditarPerfilModal({ usuario, onCerrar }: EditarPerfilModalProps) {
-  const { actualizarUsuario } = useAuth();
-
-  const [nombre, setNombre] = useState(usuario?.nombre ?? '');
-  const [primerApellido, setPrimerApellido] = useState(usuario?.apellido ?? '');
-  const [segundoApellido, setSegundoApellido] = useState('');
-  const [celular, setCelular] = useState(usuario?.telefono ?? '');
-  const [guardando, setGuardando] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleGuardar = async () => {
-    if (!nombre.trim()) {
-      setError('El nombre es obligatorio.');
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!nombres.trim() || !primerApellido.trim()) {
+      setError('El nombre y el primer apellido son obligatorios.');
       return;
     }
     setGuardando(true);
     setError(null);
     try {
-      await apiClient.patch(`/usuarios/${usuario?.id}/perfil`, {
-        nombres:         nombre.trim(),
-        primerApellido:  primerApellido.trim(),
-        segundoApellido: segundoApellido.trim(),
-        telefono:        celular.trim(),
+      await actualizarDatosPersonales({
+        nombres: nombres.trim(),
+        primerApellido: primerApellido.trim(),
+        segundoApellido: segundoApellido.trim() || undefined,
+        telefono: limpiarCelular(celular.trim()),
       });
-      actualizarUsuario({
-        nombre:   nombre.trim(),
-        apellido: primerApellido.trim(),
-        telefono: celular.trim(),
-      });
-      onCerrar();
+      onGuardado();
     } catch {
       setError('No se pudo guardar. Inténtalo de nuevo.');
     } finally {
@@ -53,11 +49,69 @@ export default function EditarPerfilModal({ usuario, onCerrar }: EditarPerfilMod
   };
 
   return (
-    <ModalBase
-      titulo="Editar perfil"
-      onCerrar={onCerrar}
-      footer={
-        <>
+    <ModalBase titulo="Editar perfil" onCerrar={onCerrar}>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <label className="flex flex-col gap-1.5">
+          <span className={LABEL}>Nombre(s)</span>
+          <input
+            className={INPUT}
+            value={nombres}
+            required
+            maxLength={50}
+            pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$"
+            onChange={e => setNombres(e.target.value)}
+          />
+        </label>
+
+        <label className="flex flex-col gap-1.5">
+          <span className={LABEL}>Primer apellido</span>
+          <input
+            className={INPUT}
+            value={primerApellido}
+            required
+            maxLength={50}
+            pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$"
+            onChange={e => setPrimerApellido(e.target.value)}
+          />
+        </label>
+
+        <label className="flex flex-col gap-1.5">
+          <span className={LABEL}>
+            Segundo apellido{' '}
+            <span className="font-normal text-ink-400">(opcional)</span>
+          </span>
+          <input
+            className={INPUT}
+            placeholder="Opcional"
+            value={segundoApellido}
+            maxLength={50}
+            pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$"
+            onChange={e => setSegundoApellido(e.target.value)}
+          />
+        </label>
+
+        <label className="flex flex-col gap-1.5">
+          <span className={LABEL}>Celular</span>
+          <input
+            type="tel"
+            className={INPUT}
+            placeholder="999 999 999"
+            value={celular}
+            required
+            minLength={9}
+            maxLength={9}
+            pattern="^9[0-9]{8}$"
+            onChange={e => setCelular(e.target.value)}
+          />
+        </label>
+
+        {error && (
+          <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-600">
+            {error}
+          </p>
+        )}
+
+        <div className="flex gap-3 pt-2">
           <button
             type="button"
             onClick={onCerrar}
@@ -67,51 +121,18 @@ export default function EditarPerfilModal({ usuario, onCerrar }: EditarPerfilMod
             Cancelar
           </button>
           <button
-            type="button"
-            onClick={handleGuardar}
+            type="submit"
             disabled={guardando}
             className="flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-brand-500 text-label-lg font-medium text-white transition-colors hover:bg-brand-600 disabled:opacity-60"
           >
-            {guardando ? <><Loader2 className="h-4 w-4 animate-spin" /> Guardando...</> : 'Guardar'}
+            {guardando ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Guardando...</>
+            ) : (
+              'Guardar'
+            )}
           </button>
-        </>
-      }
-    >
-      <label className="flex flex-col gap-1.5">
-        <span className={etiquetaClase}>Nombre(s)</span>
-        <input className={inputClase} value={nombre} onChange={(e) => setNombre(e.target.value)} />
-      </label>
-
-      <label className="flex flex-col gap-1.5">
-        <span className={etiquetaClase}>Primer apellido</span>
-        <input className={inputClase} value={primerApellido} onChange={(e) => setPrimerApellido(e.target.value)} />
-      </label>
-
-      <label className="flex flex-col gap-1.5">
-        <span className={etiquetaClase}>Segundo apellido</span>
-        <input className={inputClase} value={segundoApellido} onChange={(e) => setSegundoApellido(e.target.value)} />
-      </label>
-
-      <label className="flex flex-col gap-1.5">
-        <span className={etiquetaClase}>Celular</span>
-        <div className="flex gap-2">
-          <span className="flex items-center justify-center rounded-input border border-neutro-200 bg-surface-muted px-4 text-body-md text-ink-700">
-            +51
-          </span>
-          <input
-            type="tel"
-            className={`${inputClase} flex-1`}
-            value={celular}
-            onChange={(e) => setCelular(e.target.value)}
-          />
         </div>
-      </label>
-
-      {error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-600">
-          {error}
-        </p>
-      )}
+      </form>
     </ModalBase>
   );
 }

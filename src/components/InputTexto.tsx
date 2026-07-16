@@ -1,6 +1,6 @@
 import React from 'react';
 
-interface InputTextoProps {
+interface InputTextoProps extends React.InputHTMLAttributes<HTMLInputElement> {
   tipo: 'email' | 'password' | 'text' | 'tel' | 'number';
   nombre: string;
   placeholder: string;
@@ -20,6 +20,7 @@ const InputTexto = ({
   autoComplete,
   sufijo,
   disabled = false,
+  ...rest
 }: InputTextoProps) => (
   <div className="relative">
     <input
@@ -39,6 +40,7 @@ const InputTexto = ({
         transition-all duration-150
       "
       style={{ paddingRight: sufijo ? '2.75rem' : undefined }}
+      {...rest}
     />
     {sufijo && (
       <div className="absolute right-3 top-1/2 -translate-y-1/2">{sufijo}</div>

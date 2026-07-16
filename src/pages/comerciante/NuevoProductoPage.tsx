@@ -5,6 +5,7 @@ import { RUTAS } from '../../constants/rutas';
 import {
   listarCategorias,
   listarTiposPorCategoria,
+  listarMateriales,
   crearProducto,
   crearVariante,
   resolverTalla,
@@ -93,6 +94,8 @@ export default function NuevoProductoPage() {
   const [idTipoProducto, setIdTipoProducto] = useState<number | ''>('');
   const [categorias, setCategorias] = useState<ICategoriaOpcion[]>([]);
   const [tipos, setTipos] = useState<ITipoProductoOpcion[]>([]);
+  const [materialesBackend, setMaterialesBackend] = useState<{ idMaterial: number; nombre: string }[]>([]);
+  const [idMaterial, setIdMaterial] = useState<number | ''>('');
   const [correlativo] = useState(1);
   const [skuInterno, setSkuInterno] = useState('');
 
@@ -131,6 +134,7 @@ export default function NuevoProductoPage() {
 
   useEffect(() => {
     listarCategorias().then(setCategorias).catch(console.error);
+    listarMateriales().then(setMaterialesBackend).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -141,6 +145,15 @@ export default function NuevoProductoPage() {
       setIdTipoProducto('');
     }
   }, [idCategoria]);
+
+  useEffect(() => {
+    if (!idCategoria || !idTipoProducto) return;
+    const cat = categorias.find((c) => c.idCategoria === Number(idCategoria));
+    const tipo = tipos.find((t) => t.idTipoProducto === Number(idTipoProducto));
+    if (cat && tipo) {
+      setSkuInterno(generarSKUBase(cat.nombre, tipo.nombre, correlativo));
+    }
+  }, [idCategoria, idTipoProducto, categorias, tipos, correlativo]);
 
   const totalStock = variantes.reduce((sum, v) => sum + v.stock, 0);
   const puedeGenerar = tallas.length > 0 && colores.length > 0;
@@ -215,6 +228,9 @@ export default function NuevoProductoPage() {
 
   const updateVariantePrecio = (id: number, precio: number) =>
     setVariantes((p) => p.map((v) => (v.id === id ? { ...v, precioBase: precio } : v)));
+
+  const aplicarPrecioATodasLasVariantes = () =>
+    setVariantes((p) => p.map((v) => ({ ...v, precioBase })));
 
   const updateVarianteStock = (id: number, stock: number) =>
     setVariantes((p) => p.map((v) => (v.id === id ? { ...v, stock } : v)));
@@ -307,6 +323,7 @@ export default function NuevoProductoPage() {
         esPersonalizable,
         idCategoria: idCategoria as number,
         idTipoProducto: idTipoProducto as number,
+        idMaterial: idMaterial !== '' ? idMaterial : undefined,
         imagenes: imagenesProducto.length > 0
           ? imagenesProducto
           : [],
@@ -323,7 +340,7 @@ export default function NuevoProductoPage() {
             resolverColor(v.colorNombre, v.colorHex),
           ]);
           await crearVariante({
-            sku: skuInterno ? generarSKUVariante(skuInterno, v.talla, v.colorNombre) : v.talla + '-' + v.colorNombre,
+            sku: generarSKUVariante(skuInterno || 'GEN-PRD-001-GEN', v.talla, v.colorNombre),
             stock: v.stock,
             minimoStock: v.stockMinimo,
             precioAjustado: v.precioBase,
@@ -376,7 +393,7 @@ export default function NuevoProductoPage() {
         onChange={handleVarianteFileChange}
       />
 
-      <main className="ml-64 flex-1 bg-gray-100 p-7">
+      <main className="flex-1 bg-gray-100 p-7">
         <p className="text-[12px] text-gray-500 mb-2">
           <span className="text-primario font-medium cursor-pointer hover:underline" onClick={() => navigate(RUTAS.COMERCIANTE_DASHBOARD)}>Inicio</span>
           {' '}›{' '}
@@ -446,6 +463,20 @@ export default function NuevoProductoPage() {
                 </select>
                 {errMsg('tipoProducto')}
               </div>
+            </div>
+
+            <div className="mb-4">
+              <label className={labelClass}>Material Principal</label>
+              <select
+                className="w-full h-[42px] border border-gray-300 rounded-lg px-3.5 text-[13px] text-gray-900 bg-white focus:outline-none focus:border-primario transition-colors"
+                value={idMaterial}
+                onChange={(e) => setIdMaterial(e.target.value === '' ? '' : Number(e.target.value))}
+              >
+                <option value="">Sin especificar</option>
+                {materialesBackend.map((m) => (
+                  <option key={m.idMaterial} value={m.idMaterial}>{m.nombre}</option>
+                ))}
+              </select>
             </div>
 
             {/* Imágenes del producto */}
@@ -530,6 +561,15 @@ export default function NuevoProductoPage() {
                 />
               </div>
               {errMsg('precioBase')}
+              {variantes.length > 0 && (
+                <button
+                  type="button"
+                  onClick={aplicarPrecioATodasLasVariantes}
+                  className="mt-2 text-[11px] font-semibold text-primario hover:underline"
+                >
+                  Aplicar a todas las variantes
+                </button>
+              )}
             </div>
 
             <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
@@ -559,6 +599,13 @@ export default function NuevoProductoPage() {
             {errorApi && (
               <p className="text-[11px] text-red-500 mb-2 text-center">{errorApi}</p>
             )}
+            <button
+              className="w-full h-[42px] bg-white text-gray-700 rounded-lg text-[13px] font-semibold mb-2.5 border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => navigate(RUTAS.COMERCIANTE_CATALOGO)}
+              disabled={enviando}
+            >
+              Cancelar
+            </button>
             <button
               className="w-full h-[42px] bg-primario text-white rounded-lg text-[13px] font-semibold hover:bg-primario-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handlePublicar}

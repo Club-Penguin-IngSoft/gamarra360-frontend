@@ -61,6 +61,7 @@ export interface IPersonalizacionDetalle {
   total: number;
   propuesta: IPropuestaInfo | null;
   pedido: IPedidoInfo | null;
+  precioDeseado: number | null;
 }
 
 export type IAceptarPersonalizacionResponse = IPersonalizacionDetalle;
@@ -115,7 +116,10 @@ export interface IPersonalizacionComercianteDetalle {
   urlLogo: string | null;
   tipoPersonalizacion: string | null;
   descripcion: string | null;
+  precioBase: number | null;
+  descuentos: number | null;
   propuesta: IPropuestaComercianteInfo | null;
+  precioDeseado: number | null;
 }
 
 export interface IResponderPersonalizacionRequest {
@@ -123,5 +127,11 @@ export interface IResponderPersonalizacionRequest {
   precioPropuesto?: number;
   anotaciones?: string;
   condiciones?: string;
+  comentario?: string;
+}
+
+export interface IContraPropuestaPersonalizacionRequest {
+  precioDeseado?: number;
+  especificacion?: string;
   comentario?: string;
 }

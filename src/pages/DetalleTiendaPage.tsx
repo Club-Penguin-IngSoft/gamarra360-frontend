@@ -69,6 +69,8 @@ function Breadcrumb({ tienda }: { tienda: ITienda }) {
 /* =============================== Brand Hero ============================ */
 
 function BrandHero({ tienda }: { tienda: ITienda }) {
+  const tiendaInhabilitada = tienda.comercianteActivo === false;
+
   // Iniciales del logo (ej. "Vidal & Co." → "V&C", "Estilo Killa" → "EK")
   const iniciales = tienda.nombre
     .split(/\s+/)
@@ -77,12 +79,13 @@ function BrandHero({ tienda }: { tienda: ITienda }) {
     .map((w) => w[0]!.toUpperCase())
     .join('');
 
-  const ubicacion =
-    tienda.galeria && tienda.direccion
-      ? `${ETIQUETA_GALERIA[tienda.galeria]}, ${tienda.direccion}`
-      : tienda.galeria
-        ? ETIQUETA_GALERIA[tienda.galeria]
-        : tienda.direccion ?? '';
+  const ubicacion = [
+    tienda.galeria ? ETIQUETA_GALERIA[tienda.galeria] : null,
+    tienda.piso ?? null,
+    tienda.stand ?? null,
+    // Usar direccion solo si no hay piso ni stand (campo legado)
+    !tienda.piso && !tienda.stand ? (tienda.direccion ?? null) : null,
+  ].filter(Boolean).join(', ');
 
   return (
     <section className="relative overflow-hidden rounded-xl bg-ink-800 text-white">
@@ -112,6 +115,13 @@ function BrandHero({ tienda }: { tienda: ITienda }) {
 
         {/* Info */}
         <div className="flex flex-1 flex-col gap-3 min-w-0">
+          
+          {tiendaInhabilitada && (
+            <div className="rounded-lg border border-red-300 bg-red-500/20 px-4 py-3 text-[14px] font-medium text-red-100">
+              Esta tienda ha sido deshabilitada por un administrador.
+            </div>
+          )}
+          
           {/* Tags */}
           {tienda.tiposServicio && tienda.tiposServicio.length > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -173,10 +183,13 @@ function CotizacionSection({ tienda }: { tienda: ITienda }) {
             <p className="text-[15px] leading-relaxed text-ink-700">
               {servicio.descripcion}
             </p>
-            <button className="mt-2 inline-flex w-fit items-center justify-center gap-2 rounded-lg bg-brand-500 px-5 py-3 text-[15px] font-medium text-white transition-colors hover:bg-brand-600">
+            <Link
+              to={RUTAS.COTIZACIONES}
+              className="mt-2 inline-flex w-fit items-center justify-center gap-2 rounded-lg bg-brand-500 px-5 py-3 text-[15px] font-medium text-white transition-colors hover:bg-brand-600"
+            >
               Solicitar cotización
               <ArrowRight className="h-4 w-4" />
-            </button>
+            </Link>
           </div>
 
           {/* Lado derecho: imagen */}
@@ -440,7 +453,12 @@ export default function DetalleTiendaPage() {
               ))}
             </div>
           ) : (
-            <CatalogoSection productos={productosCatalogo} />
+            <CatalogoSection
+              productos={productosCatalogo.map(p => ({
+                ...p,
+                comercianteActivo: tienda.comercianteActivo, // 👈 propaga el estado a cada producto
+              }))}
+            />
           )
         )}
       </main>

@@ -3,7 +3,7 @@
  * Conectado a los endpoints públicos del backend Spring Boot.
  */
 
-import type { ITienda } from '../types/ITienda';
+import type { ITienda, GaleriaGamarra } from '../types/ITienda';
 import type { IFiltrosTiendas } from '../types/IFiltro';
 import apiClient from './apiClient';
 
@@ -15,9 +15,14 @@ interface ITiendaBackend {
   informacion?: string;
   foto: string;
   verificada?: boolean;
-  categorias?: string[];     // Categorías que vende la tienda
-  tiposServicio?: string[];  // Tipos de servicio que ofrece
-  tiposProducto?: string[];  // Tipos de producto (Polos, Blusas, etc.)
+  categorias?: string[];
+  tiposServicio?: string[];
+  tiposProducto?: string[];
+  galeria?: string;
+  piso?: string;
+  stand?: string;
+  ofreceEnvio?: boolean;
+  comercianteActivo?: boolean;
 }
 
 /* ── Adaptador backend → ITienda ──────────────────────────────────────── */
@@ -29,10 +34,14 @@ function adaptarTienda(t: ITiendaBackend): ITienda {
     descripcion: t.informacion,
     logo: t.foto,
     verificada: t.verificada,
-    // Categorías dinámicas desde BD (strings como "Hombre", "Mujer", etc.)
     categorias: t.categorias ?? [],
     tiposServicio: (t.tiposServicio as any) ?? ['COMPRA_DIRECTA'],
     tiposProducto: t.tiposProducto ?? [],
+    galeria: t.galeria as GaleriaGamarra | undefined,
+    piso: t.piso,
+    stand: t.stand,
+    ofreceEnvio: t.ofreceEnvio ?? false,
+    comercianteActivo: t.comercianteActivo ?? true,
   };
 }
 
@@ -65,9 +74,12 @@ function aplicarFiltrosTiendaClienteSide(
     );
   }
 
-  // Filtrar por galería (si se envía)
-  if (filtros.galeria) {
-    resultado = resultado.filter((t) => t.galeria === filtros.galeria);
+  // Filtrar por galería: la tienda debe pertenecer a AL MENOS UNA de las galerías seleccionadas
+  if (filtros.galerias && filtros.galerias.length > 0) {
+    const galerias = filtros.galerias;
+    resultado = resultado.filter(
+      (t) => t.galeria != null && galerias.includes(t.galeria as GaleriaGamarra),
+    );
   }
 
   return resultado;
@@ -138,5 +150,60 @@ export interface IMiTiendaResumen {
 
 export async function obtenerMiTienda(): Promise<IMiTiendaResumen> {
   const { data } = await apiClient.get<IMiTiendaResumen>('/tiendas/mi-tienda');
+  return data;
+}
+
+/* ── Perfil del comerciante autenticado ──────────────────────────────────── */
+
+export interface IPerfilComerciante {
+  // Negocio
+  nombreTienda: string;
+  razonSocial: string;
+  ruc: string;
+  galeria?: string;
+  piso?: string;
+  stand?: string;
+  logoUrl?: string;
+  foto?: string;
+  informacion?: string;
+  ofreceEnvio?: boolean;
+  verificada?: boolean;
+  // Titular
+  email: string;
+  nombres: string;
+  primerApellido: string;
+  segundoApellido?: string;
+  tipoDocumento: string;
+  dni: string;
+  telefono: string;
+}
+
+export interface IPerfilComerciantePayload {
+  nombreTienda: string;
+  razonSocial: string;
+  galeria?: string;
+  piso?: string;
+  stand?: string;
+  logoUrl?: string;
+  foto?: string;
+  informacion?: string;
+  ofreceEnvio?: boolean;
+  nombres: string;
+  primerApellido: string;
+  segundoApellido: string;
+  tipoDocumento: string;
+  dni: string;
+  telefono: string;
+}
+
+export async function obtenerPerfilComerciante(): Promise<IPerfilComerciante> {
+  const { data } = await apiClient.get<IPerfilComerciante>('/comerciantes/perfil');
+  return data;
+}
+
+export async function actualizarPerfilComerciante(
+  payload: IPerfilComerciantePayload,
+): Promise<IPerfilComerciante> {
+  const { data } = await apiClient.put<IPerfilComerciante>('/comerciantes/perfil', payload);
   return data;
 }

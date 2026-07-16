@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Package, User } from 'lucide-react';
 import ComercianteSidebar from '../../components/ComercianteSidebar';
+import EspecificacionConLinks from '../../components/EspecificacionConLinks';
 import { cotizacionService, type IRespuestaCotizacionRequest } from '../../services/cotizacionService';
 import { RUTAS } from '../../constants/rutas';
 import type { ICotizacionDetalle } from '../../types/IPedido';
@@ -28,6 +29,7 @@ export default function DetalleCotizacionComerciantePage() {
   const [cargando, setCargando]       = useState(true);
   const [error, setError]             = useState<string | null>(null);
   const [enviando, setEnviando]       = useState(false);
+  const [cancelando, setCancelando]   = useState(false);
   const [respondida, setRespondida]   = useState(false);
 
   // Formulario de respuesta
@@ -52,9 +54,23 @@ export default function DetalleCotizacionComerciantePage() {
       .finally(() => setCargando(false));
   }, [id]);
 
-  async function handleResponder() {
+  async function handleCancelar() {
     if (!cotizacion) return;
-    const precio = parseFloat(precioPropuesto);
+    if (!window.confirm('¿Seguro que deseas cancelar esta cotización?')) return;
+    setCancelando(true);
+    setError(null);
+    try {
+      await cotizacionService.cancelarCotizacionComerciante(cotizacion.id);
+      setCotizacion((prev) => prev ? { ...prev, estado: 'RECHAZADA' } : prev);
+    } catch {
+      setError('No se pudo cancelar la cotización. Inténtalo de nuevo.');
+    } finally {
+      setCancelando(false);
+    }
+  }
+
+  async function enviarRespuesta(precio: number) {
+    if (!cotizacion) return;
     if (isNaN(precio) || precio <= 0) {
       setError('Ingresa un precio válido mayor a 0.');
       return;
@@ -76,6 +92,15 @@ export default function DetalleCotizacionComerciantePage() {
     } finally {
       setEnviando(false);
     }
+  }
+
+  function handleResponder() {
+    enviarRespuesta(parseFloat(precioPropuesto));
+  }
+
+  function handleAceptarPrecioCliente() {
+    if (!cotizacion?.precioDeseado) return;
+    enviarRespuesta(cotizacion.precioDeseado);
   }
 
   if (cargando) {
@@ -157,14 +182,14 @@ export default function DetalleCotizacionComerciantePage() {
                         <Package className="h-7 w-7 text-ink-300" />
                       </div>
                     )}
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <p className="font-medium text-ink-900">{p.nombre ?? `Producto ${i + 1}`}</p>
                       <p className="mt-0.5 text-xs text-ink-400">{p.tipo === 'CATALOGO' ? 'Del catálogo' : 'Ingresado manualmente'}</p>
                       {p.precio != null && (
                         <p className="mt-0.5 text-sm text-ink-600">Precio base: S/.{p.precio.toFixed(2)}</p>
                       )}
                       {p.especificacion && (
-                        <p className="mt-2 whitespace-pre-wrap text-sm text-ink-700">{p.especificacion}</p>
+                        <EspecificacionConLinks texto={p.especificacion} className="mt-2" />
                       )}
                     </div>
                   </div>
@@ -172,6 +197,25 @@ export default function DetalleCotizacionComerciantePage() {
               </div>
             )}
           </div>
+
+          {/* Contrapropuesta del cliente (si existe precio deseado) */}
+          {cotizacion.precioDeseado != null && (
+            <div className="mb-6 rounded-2xl border border-brand-200 bg-brand-50 p-5 shadow-sm">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-500">Precio propuesto por el cliente</p>
+              <p className="text-2xl font-bold text-brand-700">S/.{cotizacion.precioDeseado.toFixed(2)}</p>
+              <p className="mt-1 text-xs text-ink-400">El cliente envió una contrapropuesta. Acepta su precio o responde con uno nuevo abajo.</p>
+              {puedeResponder && (
+                <button
+                  type="button"
+                  onClick={handleAceptarPrecioCliente}
+                  disabled={enviando}
+                  className="mt-3 w-full rounded-xl bg-green-600 py-3 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-60"
+                >
+                  {enviando ? 'Enviando...' : `Aceptar precio del cliente — S/.${cotizacion.precioDeseado.toFixed(2)}`}
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Formulario de respuesta */}
           {puedeResponder && (
@@ -230,20 +274,30 @@ export default function DetalleCotizacionComerciantePage() {
                 <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
               )}
 
-              <button
-                type="button"
-                onClick={handleResponder}
-                disabled={enviando}
-                className="w-full rounded-xl bg-brand-500 py-3 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
-              >
-                {enviando ? 'Enviando respuesta...' : 'Enviar propuesta al cliente'}
-              </button>
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={handleResponder}
+                  disabled={enviando}
+                  className="w-full rounded-xl bg-brand-500 py-3 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
+                >
+                  {enviando ? 'Enviando respuesta...' : 'Enviar propuesta al cliente'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelar}
+                  disabled={cancelando}
+                  className="w-full rounded-xl border border-red-300 py-3 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+                >
+                  {cancelando ? 'Cancelando...' : 'Cancelar cotización'}
+                </button>
+              </div>
             </div>
           )}
 
           {/* Respuesta ya enviada */}
           {yaRespondio && cotizacion.respuesta && (
-            <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6 shadow-sm">
+            <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 p-6 shadow-sm">
               <h2 className="mb-3 font-semibold text-ink-900">Tu propuesta enviada</h2>
               {cotizacion.respuesta.precioPropuesto != null && (
                 <p className="mb-2 text-2xl font-bold text-ink-900">
@@ -258,6 +312,23 @@ export default function DetalleCotizacionComerciantePage() {
                   ¡Propuesta enviada! El cliente recibirá una notificación.
                 </p>
               )}
+            </div>
+          )}
+
+          {/* Cancelar desde estado RESPONDIDA */}
+          {cotizacion.estado === 'RESPONDIDA' && (
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              {error && (
+                <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+              )}
+              <button
+                type="button"
+                onClick={handleCancelar}
+                disabled={cancelando}
+                className="w-full rounded-xl border border-red-300 py-3 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+              >
+                {cancelando ? 'Cancelando...' : 'Cancelar cotización'}
+              </button>
             </div>
           )}
         </div>

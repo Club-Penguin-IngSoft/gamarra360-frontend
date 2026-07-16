@@ -28,9 +28,9 @@ import DashboardPage from '../pages/comerciante/DashboardPage';
 import GestionInventarioPage from '../pages/comerciante/GestionInventarioPage';
 import EditarProductoPage from '../pages/comerciante/EditarProductoPage';
 import NuevoProductoPage from '../pages/comerciante/NuevoProductoPage';
-
-import ComingSoonInternalPage from '../pages/ComingSoonInternalPage';
-import ComercianteSidebar from '../components/ComercianteSidebar';
+import NotificacionesPage from '../pages/comerciante/NotificacionesPage'
+//import ComingSoonInternalPage from '../pages/ComingSoonInternalPage';
+//import ComercianteSidebar from '../components/ComercianteSidebar';
 import CheckoutEntregaPage from '../pages/CheckoutEntregaPage';
 import PagoPage from '../pages/PagoPage';
 import MisPedidosPage from '../pages/MisPedidosPage';
@@ -48,7 +48,11 @@ import TableroDePedidosPage from '../pages/comerciante/TableroDePedidosPage';
 import DetalleDePedidoComerciantePage from '../pages/comerciante/DetalleDePedidoComerciantePage';
 import TableroDePersonalizacionesPage from '../pages/comerciante/TableroDePersonalizacionesPage';
 import DetalleDePersonalizacionComerciantePage from '../pages/comerciante/DetalleDePersonalizacionComerciantePage';
+import MiCuentaComerciantePage from '../pages/comerciante/MiCuentaPage';
+import PromocionesPage from '../pages/comerciante/PromocionesPage';
+import OlvidoPasswordPage from '../pages/OlvidoPasswordPage';
 import { useAuth } from '../hooks/useAuth';
+import PedidoConfirmadoPage from '../pages/PedidoConfirmadoPage';
 /**
  * Definición de rutas. NO incluye BrowserRouter — ese se monta en `main.tsx`
  * para que componentes globales como `CartDrawer` (que viven en StoreProvider)
@@ -93,6 +97,7 @@ export default function AppRouter() {
 
       <Route path={RUTAS.LOGIN} element={<LoginPage />} />
       <Route path={RUTAS.REGISTRO} element={<RegistroPage />} />
+      <Route path={RUTAS.OLVIDO_PASSWORD} element={<OlvidoPasswordPage />} />
       <Route
         path={RUTAS.PERSONALIZAR()}
         element={<PersonalizacionPage />}
@@ -120,20 +125,17 @@ export default function AppRouter() {
         <Route path={RUTAS.COMERCIANTE_PERSONALIZACION_DETALLE()} element={<DetalleDePersonalizacionComerciantePage />} />
         <Route path={RUTAS.COMERCIANTE_COTIZACIONES} element={<CotizacionesComerciantePage />} />
         <Route path={RUTAS.COMERCIANTE_COTIZACION_DETALLE()} element={<DetalleCotizacionComerciantePage />} />
+        <Route path={RUTAS.COMERCIANTE_PROMOCIONES} element={<PromocionesPage />} />
+        <Route path={RUTAS.COMERCIANTE_CUENTA} element={<MiCuentaComerciantePage />} />
         <Route
           path={RUTAS.COMERCIANTE_NOTIFICACIONES}
-          element={
-            <ComingSoonInternalPage
-              sidebar={<ComercianteSidebar />}
-              title="Notificaciones"
-              description="Centro de notificaciones del comerciante. Disponible próximamente."
-            />
-          }
+          element={<NotificacionesPage />}
         />
       </Route>
       {/* Stripe retorno — fuera de RutaProtegida */}
       <Route path="/comerciante/stripe/completado" element={<StripeCompletado />} />
       <Route path="/comerciante/stripe/refresh/:id" element={<StripeRefresh />} />
+      <Route path="/pedido-confirmado" element={<PedidoConfirmadoPage />} />
       <Route path="*" element={<Navigate to={RUTAS.INICIO} replace />} />
     </Routes>
   );

@@ -16,14 +16,13 @@ import { useCarrito } from '../hooks/useCarrito';
 import { useAuth } from '../hooks/useAuth';
 import { formatearPrecio } from '../utils/formatearPrecio';
 import { RUTAS } from '../constants/rutas';
-import { pedidoService } from '../services/pedidoService';
+//import { pedidoService } from '../services/pedidoService';
 import { pagoService } from '../services/pagoService';
 import type { IGrupoTienda } from '../services/pedidoService';
 import type { TipoEntrega } from '../types/IPedido';
 
 // ── Stripe init (fuera del componente para no recrear en cada render) ──
 const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
-const COSTO_DELIVERY = 12;
 
 interface EntregaTiendaState {
   tipoEntrega: TipoEntrega;
@@ -34,15 +33,23 @@ interface PersonalizacionGrupoState {
   idVarianteProducto: number;
   precioUnitario: number;
 }
+interface CotizacionGrupoState {
+  vendedorId: number;
+  precioUnitario: number;
+}
 interface CheckoutState {
   entregasPorTienda?: Record<string, EntregaTiendaState>;
   direccionEntrega?: string;
+  idDistrito?: number | null;
+  costoEnvioEstimado?: number;
   personalizacionId?: number;
   personalizacionGrupo?: PersonalizacionGrupoState;
+  cotizacionId?: number;
+  cotizacionGrupo?: CotizacionGrupoState;
 }
 
 // ── Formulario interno de Stripe ──────────────────────────────────────
-function StripeCheckoutForm({ ordenId }: { ordenId: number; onExito?: () => void }) {
+function StripeCheckoutForm() {
   const stripe = useStripe();
   const elements = useElements();
   const [cargando, setCargando] = useState(false);
@@ -65,7 +72,7 @@ function StripeCheckoutForm({ ordenId }: { ordenId: number; onExito?: () => void
       elements,
       confirmParams: {
         // Stripe redirige aquí tras el pago exitoso
-        return_url: `${window.location.origin}${RUTAS.DETALLE_PEDIDO(ordenId)}`,
+        return_url: `${window.location.origin}/pedido-confirmado`,
       },
     });
 
@@ -120,10 +127,10 @@ export default function PagoPage() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { entregasPorTienda = {}, direccionEntrega = '', personalizacionId, personalizacionGrupo } =
+  const { entregasPorTienda = {}, direccionEntrega = '', idDistrito = null, costoEnvioEstimado = 0, personalizacionId, personalizacionGrupo, cotizacionId, cotizacionGrupo } =
     (location.state as CheckoutState) ?? {};
   const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [ordenId, setOrdenId] = useState<number | null>(null);
+  //const [ordenId, setOrdenId] = useState<number | null>(null);
   const [iniciando, setIniciando] = useState(false);
   const [errorInicio, setErrorInicio] = useState<string | null>(null);
   // ── Cálculos de totales — se calculan UNA vez y se guardan en estado ──
@@ -136,14 +143,8 @@ export default function PagoPage() {
 
   // Calcula el resumen al montar, antes de que se vacíe el carrito
   useEffect(() => {
-    const entregasArr = Object.values(entregasPorTienda);
-    const costoEnvio =
-      entregasArr.length > 0
-        ? entregasArr.reduce(
-            (acc, e) => acc + (e.tipoEntrega === 'DELIVERY' ? COSTO_DELIVERY : 0),
-            0
-          )
-        : COSTO_DELIVERY;
+    // costoEnvioEstimado viene de CheckoutEntregaPage con el costo real del distrito seleccionado
+    const costoEnvio = costoEnvioEstimado;
 
     if (personalizacionGrupo) {
       const subtotalSinDescuento = personalizacionGrupo.precioUnitario;
@@ -151,128 +152,144 @@ export default function PagoPage() {
       return;
     }
 
-    const subtotalSinDescuento = items.reduce((acc, i) => {
-      const base = i.producto.precioBase ?? i.producto.precioFinal ?? 0;
-      return acc + base * i.cantidad;
-    }, 0);
-    const descuentos = items.reduce((acc, i) => {
-      const base = i.producto.precioBase ?? 0;
-      const final = i.producto.precioFinal ?? 0;
-      const ahorro = base > final ? base - final : 0;
-      return acc + ahorro * i.cantidad;
-    }, 0);
-    const total = subtotalSinDescuento - descuentos + costoEnvio;
+    if (cotizacionGrupo) {
+      const subtotalSinDescuento = cotizacionGrupo.precioUnitario;
+      setResumen({ subtotalSinDescuento, descuentos: 0, costoEnvio, total: subtotalSinDescuento + costoEnvio });
+      return;
+    }
 
-    setResumen({ subtotalSinDescuento, descuentos, costoEnvio, total });
+    // Estimación inicial con precioUnitario (fuente de verdad del carrito)
+    const subtotalSinDescuento = items.reduce((acc, i) => acc + i.precioUnitario * i.cantidad, 0);
+    const total = subtotalSinDescuento + costoEnvio;
+
+    setResumen({ subtotalSinDescuento, descuentos: 0, costoEnvio, total });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   
 
   // ── Al montar: crea la orden en el backend y obtiene el clientSecret ──
   useEffect(() => {
-    if ((!items.length && !personalizacionGrupo) || !usuario) return;
+    if ((!items.length && !personalizacionGrupo && !cotizacionGrupo) || !usuario) return;
 
-    const iniciarPago = async () => {
-      setIniciando(true);
-      setErrorInicio(null);
+  const iniciarPago = async () => {
+    setIniciando(true);
+    setErrorInicio(null);
 
-      try {
-        // 1. Crea la OrdenPago + Pedidos en tu backend (igual que antes)
-        let grupos: IGrupoTienda[];
+    try {
+      let grupos: IGrupoTienda[];
 
-        if (personalizacionGrupo) {
-          const idComerciante = String(personalizacionGrupo.vendedorId);
-          const entregaTienda = entregasPorTienda[idComerciante];
-          const tipoEntrega = entregaTienda?.tipoEntrega ?? 'DELIVERY';
-          const costoEntrega = tipoEntrega === 'DELIVERY' ? COSTO_DELIVERY : 0;
+      if (personalizacionGrupo) {
+        const idComerciante = String(personalizacionGrupo.vendedorId);
+        const entregaTienda = entregasPorTienda[idComerciante];
+        const tipoEntrega = entregaTienda?.tipoEntrega ?? 'DELIVERY';
 
-          grupos = [{
-            vendedorId: personalizacionGrupo.vendedorId,
-            tipoEntrega,
-            direccionEntrega: tipoEntrega === 'DELIVERY' ? direccionEntrega : undefined,
-            total: personalizacionGrupo.precioUnitario + costoEntrega,
-            items: [{
-              idVarianteProducto: personalizacionGrupo.idVarianteProducto,
-              cantidad: 1,
-              precio: personalizacionGrupo.precioUnitario,
-              personalizacionId,
-            }],
-          }];
-        } else {
-          const porComerciante = items.reduce<Record<string, typeof items>>(
-            (acc, item) => {
-              const id = item.producto.idComerciante || 'sin-tienda';
-              if (!acc[id]) acc[id] = [];
-              acc[id].push(item);
-              return acc;
-            },
-            {}
-          );
+        grupos = [{
+          vendedorId: personalizacionGrupo.vendedorId,
+          tipoEntrega,
+          direccionEntrega: tipoEntrega === 'DELIVERY' ? direccionEntrega : undefined,
+          idDistrito: tipoEntrega === 'DELIVERY' ? idDistrito : null,
+          total: personalizacionGrupo.precioUnitario,
+          items: [{
+            idVarianteProducto: personalizacionGrupo.idVarianteProducto,
+            cantidad: 1,
+            precio: personalizacionGrupo.precioUnitario,
+            personalizacionId,
+          }],
+        }];
+      } else if (cotizacionGrupo) {
+        const idComerciante = String(cotizacionGrupo.vendedorId);
+        const entregaTienda = entregasPorTienda[idComerciante];
+        const tipoEntrega = entregaTienda?.tipoEntrega ?? 'DELIVERY';
 
-          grupos = Object.entries(porComerciante).map(
-            ([idComerciante, itemsGrupo]) => {
-              const entregaTienda = entregasPorTienda[idComerciante];
-              const tipoEntrega = entregaTienda?.tipoEntrega ?? 'DELIVERY';
-              const costoEntrega =
-                tipoEntrega === 'DELIVERY' ? COSTO_DELIVERY : 0;
-              const subtotalGrupo = itemsGrupo.reduce((acc, i) => {
-                const precio =
-                  i.producto.precioFinal ?? i.producto.precioBase ?? 0;
-                return acc + precio * i.cantidad;
-              }, 0);
-              return {
-                vendedorId: Number(idComerciante) || 0,
-                tipoEntrega,
-                direccionEntrega:
-                  tipoEntrega === 'DELIVERY'
-                    ? direccionEntrega
-                    : undefined,
-                total: subtotalGrupo + costoEntrega,
-                items: itemsGrupo.map((i) => ({
-                  idVarianteProducto: i.idVariante
-                    ? Number(i.idVariante)
-                    : Number(i.producto.variantes?.[0]?.id) || null,
-                  cantidad: i.cantidad,
-                  precio: i.precioUnitario,
-                })),
-              };
-            }
-          );
-        }
-
-        const idOrden = await pedidoService.crearOrdenCompleta(
-          Number(usuario.id),
-          resumen.total,
-          grupos
+        grupos = [{
+          vendedorId: cotizacionGrupo.vendedorId,
+          tipoEntrega,
+          direccionEntrega: tipoEntrega === 'DELIVERY' ? direccionEntrega : undefined,
+          idDistrito: tipoEntrega === 'DELIVERY' ? idDistrito : null,
+          total: cotizacionGrupo.precioUnitario,
+          items: [{
+            idVarianteProducto: null,
+            cantidad: 1,
+            precio: cotizacionGrupo.precioUnitario,
+            cotizacionId,
+          }],
+        }];
+      } else {
+        const porComerciante = items.reduce<Record<string, typeof items>>(
+          (acc, item) => {
+            const id = item.producto.idComerciante || 'sin-tienda';
+            if (!acc[id]) acc[id] = [];
+            acc[id].push(item);
+            return acc;
+          },
+          {}
         );
-        setOrdenId(idOrden);
 
-        // 2. Crea el PaymentIntent en Stripe y obtiene el clientSecret
-        const { clientSecret: secret } =
-          await pagoService.crearIntent(idOrden);
-        setClientSecret(secret);
-
-        if (personalizacionId) {
-          // El carrito no se usó: guardamos el id para confirmar la
-          // personalización tras el redirect de Stripe (ver DetallePedidoPage)
-          sessionStorage.setItem('pendingPersonalizacionId', String(personalizacionId));
-        } else {
-          // Vaciamos el carrito aquí para que no se duplique la orden
-          vaciarCarrito();
-        }
-      } catch (err) {
-        console.error('[PagoPage] Error al iniciar pago:', err);
-        setErrorInicio(
-          'No se pudo iniciar el pago. Por favor vuelve al carrito e intenta de nuevo.'
+        grupos = Object.entries(porComerciante).map(
+          ([idComerciante, itemsGrupo]) => {
+            const entregaTienda = entregasPorTienda[idComerciante];
+            const tipoEntrega = entregaTienda?.tipoEntrega ?? 'DELIVERY';
+            const subtotalGrupo = itemsGrupo.reduce(
+              (acc, i) => acc + i.precioUnitario * i.cantidad,
+              0
+            );
+            return {
+              vendedorId: Number(idComerciante) || 0,
+              tipoEntrega,
+              direccionEntrega: tipoEntrega === 'DELIVERY' ? direccionEntrega : undefined,
+              idDistrito: tipoEntrega === 'DELIVERY' ? idDistrito : null,
+              total: subtotalGrupo,
+              items: itemsGrupo.map((i) => ({
+                idVarianteProducto: i.idVariante
+                  ? Number(i.idVariante)
+                  : Number(i.producto.variantes?.[0]?.id) || null,
+                cantidad: i.cantidad,
+                precio: i.precioUnitario,
+              })),
+            };
+          }
         );
-      } finally {
-        setIniciando(false);
       }
-    };
+      const subtotalItems = grupos.reduce((acc, g) => acc + g.total, 0);
+
+      // 1. Prepara el carrito pendiente (NO crea pedidos aún)
+      const carritoResp = await pagoService.prepararCarrito(
+        Number(usuario.id),
+        subtotalItems,
+        grupos
+      );
+
+      // Actualizar resumen con los valores validados por el backend (fuente de verdad)
+      setResumen(prev => ({
+        ...prev,
+        subtotalSinDescuento: carritoResp.subtotalItems,
+        descuentos: 0,
+        costoEnvio: carritoResp.costoEntregaTotal,
+        total: carritoResp.total,
+      }));
+
+      // 2. Crea el PaymentIntent vinculado al carrito pendiente
+      const { clientSecret: secret } = await pagoService.crearIntent(carritoResp.carritoPendienteId);
+      setClientSecret(secret);
+
+      if (personalizacionId) {
+        sessionStorage.setItem('pendingPersonalizacionId', String(personalizacionId));
+      } else if (!cotizacionId) {
+        vaciarCarrito();
+      }
+    } catch (err) {
+      console.error('[PagoPage] Error al iniciar pago:', err);
+      setErrorInicio(
+        'No se pudo iniciar el pago. Por favor vuelve al carrito e intenta de nuevo.'
+      );
+    } finally {
+      setIniciando(false);
+    }
+  };
 
     iniciarPago();
   }, []); // solo al montar
 
-  if (!items.length && !clientSecret && !personalizacionGrupo) {
+  if (!items.length && !clientSecret && !personalizacionGrupo && !cotizacionGrupo) {
     return (
       <div className="flex min-h-screen flex-col bg-surface-muted">
         <TopBar active="Inicio" />
@@ -343,7 +360,7 @@ export default function PagoPage() {
                 </div>
               )}
 
-              {clientSecret && ordenId && (
+              {clientSecret && (
                 <Elements
                   stripe={stripePromise}
                   options={{
@@ -358,10 +375,7 @@ export default function PagoPage() {
                     },
                   }}
                 >
-                  <StripeCheckoutForm
-                    ordenId={ordenId}
-                    onExito={() => navigate(RUTAS.DETALLE_PEDIDO(ordenId))}
-                  />
+                  <StripeCheckoutForm />
                 </Elements>
               )}
             </div>

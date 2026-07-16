@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { ListFilter } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { ListFilter, X } from 'lucide-react';
 
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
@@ -11,6 +12,7 @@ import { PAGINA_TAMANO_CATALOGO } from '../constants';
 import type { IFiltrosCatalogo } from '../types/IFiltro';
 import { FILTROS_VACIOS } from '../types/IFiltro';
 import { useCatalogo } from '../hooks/useCatalogo';
+import { RUTAS } from '../constants/rutas';
 
 function FilterButton({ onClick }: { onClick: () => void }) {
   return (
@@ -25,23 +27,24 @@ function FilterButton({ onClick }: { onClick: () => void }) {
 }
 
 export default function CatalogoPage() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const qUrl = searchParams.get('q');
+
   const [sort, setSort]             = useState(SORT_OPTIONS_DEFAULT[0]);
   const [page, setPage]             = useState(1);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [filtros, setFiltros]       = useState<IFiltrosCatalogo>(FILTROS_VACIOS);
+  const [filtros, setFiltros]       = useState<IFiltrosCatalogo>({ ...FILTROS_VACIOS, q: qUrl });
 
-  const hayFiltrosReales =
-    (filtros.categorias && filtros.categorias.length > 0) ||
-    (filtros.tipoServicio && filtros.tipoServicio.length > 0) ||
-    filtros.precioMin ||
-    filtros.precioMax;
+  // El usuario puede llegar/navegar de nuevo con un ?q= distinto sin remontar la página
+  // (ej. desde el buscador del navbar estando ya en /catalogo).
+  useEffect(() => {
+    setFiltros((f) => ({ ...f, q: qUrl }));
+    setPage(1);
+  }, [qUrl]);
 
-  const filtrosParaHook = hayFiltrosReales ? filtros : undefined;
-
-  // El hook ya devuelve IProducto[] completamente adaptados desde el service.
-  // NO hay que volver a mapear aquí.
   const { productos, totalPaginas, totalElementos, cargando, error } = useCatalogo(
-    filtrosParaHook,
+    filtros,
     page,
     PAGINA_TAMANO_CATALOGO,
   );
@@ -53,6 +56,10 @@ export default function CatalogoPage() {
   const handleSort = (value: string) => {
     setSort(value);
     setPage(1);
+  };
+  const limpiarBusqueda = () => {
+    searchParams.delete('q');
+    setSearchParams(searchParams);
   };
 
   // Ordenamiento client-side sobre los productos ya adaptados
@@ -84,9 +91,24 @@ export default function CatalogoPage() {
               <span className="block text-ink-900">Catálogo de</span>
               <span className="block text-brand-600">Productos</span>
             </h1>
-            <p className="text-[18px] text-ink-700">
-              Explorando {totalElementos} productos únicos de los mejores talleres de Gamarra.
-            </p>
+            {filtros.q ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-[18px] text-ink-700">
+                  {totalElementos} resultado{totalElementos !== 1 ? 's' : ''} para "{filtros.q}"
+                </p>
+                <button
+                  onClick={limpiarBusqueda}
+                  className="inline-flex items-center gap-1 text-[14px] font-medium text-brand-600 hover:underline"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Quitar búsqueda
+                </button>
+              </div>
+            ) : (
+              <p className="text-[18px] text-ink-700">
+                Explorando {totalElementos} productos únicos de los mejores talleres de Gamarra.
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col items-start gap-4 md:flex-row md:items-end md:justify-between">
@@ -108,7 +130,9 @@ export default function CatalogoPage() {
           {!cargando && !error && productosSorted.length === 0 && (
             <div className="rounded-2xl border-2 border-dashed border-ink-200 bg-white py-20 text-center">
               <p className="text-[16px] text-ink-500">
-                No se encontraron productos para los filtros seleccionados.
+                {filtros.q
+                  ? `No se encontraron productos para "${filtros.q}".`
+                  : 'No se encontraron productos para los filtros seleccionados.'}
               </p>
             </div>
           )}
@@ -148,7 +172,10 @@ export default function CatalogoPage() {
               Solicita tu cotización para productos exclusivos y personalizados.
               ¡Te damos el mejor precio a medida de tus necesidades!
             </p>
-            <button className="mt-5 inline-flex h-11 items-center rounded-md bg-white px-5 text-[16px] font-semibold text-[#AD225E] hover:bg-white/95">
+            <button
+              onClick={() => navigate(RUTAS.COTIZACIONES)}
+              className="mt-5 inline-flex h-11 items-center rounded-md bg-white px-5 text-[16px] font-semibold text-[#AD225E] hover:bg-white/95"
+            >
               Cotiza ahora
             </button>
           </div>

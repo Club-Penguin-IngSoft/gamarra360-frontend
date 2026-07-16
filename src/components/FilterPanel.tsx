@@ -16,9 +16,12 @@ import {
   X,
 } from 'lucide-react';
 import type { TipoServicio } from '../types/IProducto';
+import type { GaleriaGamarra } from '../types/ITienda';
+import { ETIQUETA_GALERIA } from '../types/ITienda';
 import type { IFiltrosCatalogo } from '../types/IFiltro';
 import { FILTROS_VACIOS } from '../types/IFiltro';
 import { useOpcionesFiltro } from '../hooks/useOpcionesFiltro';
+import { listarMateriales } from '../services/catalogoService';
 
 /* ---------------------------- Constantes UI ---------------------------- */
 
@@ -32,6 +35,8 @@ type SectionKey =
   | 'categoria'
   | 'producto'
   | 'servicio'
+  | 'galeria'
+  | 'envio'
   | 'color'
   | 'material'
   | 'talla'
@@ -123,25 +128,52 @@ function Select({
 
 /* ============================== FilterPanel ============================ */
 
+/**
+ * Extiende IFiltrosCatalogo con `galerias` para que FilterPanel pueda manejar
+ * el filtro de galería de tiendas en el mismo borrador, sin contaminar la interfaz
+ * de filtros de productos.
+ */
+type BorradorFiltros = IFiltrosCatalogo & { galerias: GaleriaGamarra[] };
+
 interface Props {
   open: boolean;
   filtros: IFiltrosCatalogo;
   onChange: (f: IFiltrosCatalogo) => void;
   onClose: () => void;
-  /** Si true, oculta secciones de "Tipo de Producto" y "Tipo de Entrega" para modo tiendas */
+  /** Si true, oculta secciones exclusivas de productos (Tipo de Producto, Color, etc.) */
   isTienda?: boolean;
+  /** Galerías seleccionadas actualmente — cuando se proporciona, muestra la sección Galería */
+  galeriasSeleccionadas?: GaleriaGamarra[];
+  /** Callback para propagar cambios de galerías al padre */
+  onGaleriasChange?: (g: GaleriaGamarra[]) => void;
 }
 
-export default function FilterPanel({ open, filtros, onChange, onClose, isTienda = false }: Props) {
-  // Opciones dinámicas desde la BD (colores, materiales, tallas, tiposProducto)
+export default function FilterPanel({
+  open, filtros, onChange, onClose,
+  isTienda = false,
+  galeriasSeleccionadas,
+  onGaleriasChange,
+}: Props) {
+  // Opciones dinámicas desde la BD (colores, tallas, tiposProducto, categorias)
   const opciones = useOpcionesFiltro();
 
+  // Materiales desde la tabla maestra (GET /materiales), no desde opciones-filtro
+  const [materialesBD, setMaterialesBD] = useState<string[]>([]);
+  useEffect(() => {
+    listarMateriales()
+      .then((lista) => setMaterialesBD(lista.map((m) => m.nombre)))
+      .catch(() => {});
+  }, []);
+
   // Estado borrador: se edita internamente y solo se aplica al padre con "Aplicar filtros"
-  const [borrador, setBorrador] = useState<IFiltrosCatalogo>(filtros);
+  const [borrador, setBorrador] = useState<BorradorFiltros>({
+    ...filtros,
+    galerias: galeriasSeleccionadas ?? [],
+  });
 
   // Cada vez que el panel se abre, sincroniza el borrador con los filtros aplicados
   useEffect(() => {
-    if (open) setBorrador(filtros);
+    if (open) setBorrador({ ...filtros, galerias: galeriasSeleccionadas ?? [] });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -149,6 +181,8 @@ export default function FilterPanel({ open, filtros, onChange, onClose, isTienda
     categoria: true,
     producto: true,
     servicio: true,
+    galeria: true,
+    envio: true,
     color: true,
     material: true,
     talla: false,
@@ -190,16 +224,38 @@ export default function FilterPanel({ open, filtros, onChange, onClose, isTienda
         : [...b.tallas, t],
     }));
 
+  // Galería: multi-select (igual que categorías o tipo de servicio)
+  const toggleGaleria = (g: GaleriaGamarra) =>
+    setBorrador((b) => ({
+      ...b,
+      galerias: b.galerias.includes(g)
+        ? b.galerias.filter((x) => x !== g)
+        : [...b.galerias, g],
+    }));
+
+  const toggleMaterial = (m: string) =>
+    setBorrador((b) => ({
+      ...b,
+      materiales: b.materiales.includes(m)
+        ? b.materiales.filter((x) => x !== m)
+        : [...b.materiales, m],
+    }));
+
+  const toggleOfreceEnvio = () =>
+    setBorrador((b) => ({ ...b, ofreceEnvio: !b.ofreceEnvio }));
+
   // Limpia el borrador, aplica de inmediato al padre y cierra el panel
   const limpiarTodo = () => {
-    setBorrador(FILTROS_VACIOS);
+    setBorrador({ ...FILTROS_VACIOS, galerias: [] });
     onChange(FILTROS_VACIOS);
+    onGaleriasChange?.([]);
     onClose();
   };
 
   // Aplica el borrador al padre y cierra el panel
   const aplicarFiltros = () => {
     onChange(borrador);
+    onGaleriasChange?.(borrador.galerias);
     onClose();
   };
 
@@ -317,6 +373,43 @@ export default function FilterPanel({ open, filtros, onChange, onClose, isTienda
             </div>
           </Section>
 
+          {/* Galería — multi-select, solo visible cuando el padre pasa onGaleriasChange */}
+          {onGaleriasChange && (
+            <Section
+              title="Galería"
+              open={sections.galeria}
+              onToggle={() => toggleSection('galeria')}
+            >
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(ETIQUETA_GALERIA) as GaleriaGamarra[]).map((key) => (
+                  <Pill
+                    key={key}
+                    label={ETIQUETA_GALERIA[key]}
+                    active={borrador.galerias.includes(key)}
+                    onClick={() => toggleGaleria(key)}
+                  />
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {/* Envío a domicilio — toggle único, solo para catálogo de productos */}
+          {!isTienda && (
+            <Section
+              title="Envío a domicilio"
+              open={sections.envio}
+              onToggle={() => toggleSection('envio')}
+            >
+              <div className="flex flex-wrap gap-2">
+                <Pill
+                  label="Con envío a domicilio"
+                  active={borrador.ofreceEnvio}
+                  onClick={toggleOfreceEnvio}
+                />
+              </div>
+            </Section>
+          )}
+
           {/* Solo mostrar si NO es modo tiendas */}
           {!isTienda && (
             <>
@@ -340,14 +433,16 @@ export default function FilterPanel({ open, filtros, onChange, onClose, isTienda
                 open={sections.material}
                 onToggle={() => toggleSection('material')}
               >
-                <Select
-                  placeholder="Todos"
-                  value={borrador.material ?? ''}
-                  onChange={(v) =>
-                    setBorrador((b) => ({ ...b, material: v ? v : null }))
-                  }
-                  options={opciones.materiales}
-                />
+                <div className="flex flex-wrap gap-2">
+                  {materialesBD.map((m) => (
+                    <Pill
+                      key={m}
+                      label={m}
+                      active={borrador.materiales.includes(m)}
+                      onClick={() => toggleMaterial(m)}
+                    />
+                  ))}
+                </div>
               </Section>
 
               <Section
@@ -376,26 +471,30 @@ export default function FilterPanel({ open, filtros, onChange, onClose, isTienda
                   <input
                     type="number"
                     placeholder="Mín"
+                    min={0}
                     value={borrador.precioMin ?? ''}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const val = e.target.value ? Math.max(0, Number(e.target.value)) : null;
                       setBorrador((b) => ({
                         ...b,
-                        precioMin: e.target.value ? Number(e.target.value) : null,
-                      }))
-                    }
+                        precioMin: val,
+                      }));
+                    }}
                     className="h-10 w-full rounded-md border border-ink-100 bg-white px-3 text-[14px] text-ink-700 focus:border-brand-500 focus:outline-none"
                   />
                   <span className="text-ink-500">—</span>
                   <input
                     type="number"
                     placeholder="Máx"
+                    min={0}
                     value={borrador.precioMax ?? ''}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const val = e.target.value ? Math.max(0, Number(e.target.value)) : null;
                       setBorrador((b) => ({
                         ...b,
-                        precioMax: e.target.value ? Number(e.target.value) : null,
-                      }))
-                    }
+                        precioMax: val,
+                      }));
+                    }}
                     className="h-10 w-full rounded-md border border-ink-100 bg-white px-3 text-[14px] text-ink-700 focus:border-brand-500 focus:outline-none"
                   />
                 </div>
@@ -456,12 +555,11 @@ export function aplicarFiltrosCliente(
     }
 
     if (
-      filtros.material != null &&
-      !p.especificaciones?.some(
-        (e) => e.etiqueta === 'Material' && e.valor === filtros.material,
-      )
-    )
+      filtros.materiales.length > 0 &&
+      (p.materialPrincipal == null || !filtros.materiales.includes(p.materialPrincipal))
+    ) {
       return false;
+    }
     if (filtros.color != null && !p.variantes?.some((v) => v.color === filtros.color))
       return false;
     if (
@@ -469,10 +567,21 @@ export function aplicarFiltrosCliente(
       !p.variantes?.some((v) => v.talla != null && filtros.tallas.includes(v.talla))
     )
       return false;
-    if (filtros.precioMin != null && (p.precioFinal ?? Infinity) < filtros.precioMin)
-      return false;
-    if (filtros.precioMax != null && (p.precioFinal ?? 0) > filtros.precioMax)
-      return false;
+    if (filtros.precioMin != null || filtros.precioMax != null) {
+      const precios = (
+        p.variantes
+          ?.filter((v) => v.disponible !== false && (v.stock ?? 0) > 0)
+          .map((v) => v.precioEfectivo ?? v.precioAjustado ?? p.precioFinal ?? p.precioBase ?? 0)
+          .filter((x): x is number => x != null) ?? []
+      );
+      const candidatos = precios.length > 0 ? precios : [p.precioFinal ?? p.precioBase ?? 0];
+      const alguienCalifica = candidatos.some(
+        (precio) =>
+          (filtros.precioMin == null || precio >= filtros.precioMin) &&
+          (filtros.precioMax == null || precio <= filtros.precioMax),
+      );
+      if (!alguienCalifica) return false;
+    }
     return true;
   });
 }

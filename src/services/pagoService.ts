@@ -9,11 +9,37 @@ interface CrearIntentResponse {
 }
 
 export const pagoService = {
-  async crearIntent(ordenPagoId: number): Promise<CrearIntentResponse> {
+  async crearIntent(carritoPendienteId: number): Promise<CrearIntentResponse> {
     const { data } = await apiClient.post<CrearIntentResponse>(
       '/pagos/crear-intent',
-      { ordenPagoId }
+      { carritoPendienteId },
+      { timeout: 20000 }
     );
     return data;
+  },
+
+  async prepararCarrito(
+    clienteId: number,
+    total: number,
+    grupos: unknown[]
+  ): Promise<{ carritoPendienteId: number; subtotalItems: number; costoEntregaTotal: number; total: number }> {
+    const { data } = await apiClient.post<{
+      carritoPendienteId: number;
+      subtotalItems: number;
+      costoEntregaTotal: number;
+      total: number;
+    }>('/pagos/preparar', { clienteId, total, grupos });
+    return data;
+  },
+
+  async buscarOrdenPorPaymentIntent(paymentIntentId: string): Promise<number | null> {
+    try {
+      const { data } = await apiClient.get<number>(
+        `/ordenes-pago/buscar-por-intent/${paymentIntentId}`
+      );
+      return data;
+    } catch {
+      return null;
+    }
   },
 };

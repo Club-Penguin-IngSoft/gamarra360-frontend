@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import MaterialIcon from '../components/MaterialIcon';
 import LogoGamarra from '../components/LogoGamarra';
 import InputTexto from '../components/InputTexto';
@@ -16,13 +16,19 @@ const LoginPage = () => {
   const [form, setForm] = useState<ILoginRequest>({ email: '', contrasenha: '' });
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const { iniciarSesion, loginConGoogle, cargando, error } = useLogin();
-  const [estadoModal, setEstadoModal] = useState<'pendiente' | 'rechazado' | null>(null);
+  const [estadoModal, setEstadoModal] = useState<'pendiente' | 'rechazado' | 'desactivado' | null>(null);
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('cuentaDesactivada') === 'true') {
+      setEstadoModal('desactivado');
+    }
+  }, [searchParams]);
 
   const loginGoogle = useGoogleLogin({
     flow: 'implicit',
     onSuccess: async (tokenResponse) => {
       const data = await loginConGoogle(tokenResponse.access_token);
-      // loginConGoogle debe retornar el AuthResponse completo (ver hook abajo)
 
       if (data?.estadoSolicitud === 'PENDIENTE') {
         setEstadoModal('pendiente');
@@ -30,6 +36,10 @@ const LoginPage = () => {
       }
       if (data?.estadoSolicitud === 'RECHAZADO') {
         setEstadoModal('rechazado');
+        return;
+      }
+      if (data?.estadoSolicitud === 'DESACTIVADO') {
+        setEstadoModal('desactivado');
         return;
       }
     },
@@ -44,10 +54,17 @@ const LoginPage = () => {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formularioValido && !cargando) {
-      iniciarSesion(form);
+      const data = await iniciarSesion(form);
+      if (data?.estadoSolicitud === 'DESACTIVADO') {
+        setEstadoModal('desactivado');
+      } else if (data?.estadoSolicitud === 'PENDIENTE') {
+        setEstadoModal('pendiente');
+      } else if (data?.estadoSolicitud === 'RECHAZADO') {
+        setEstadoModal('rechazado');
+      }
     }
   };
 
@@ -79,7 +96,7 @@ const LoginPage = () => {
         >
           <div
             className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: "url('/login-bg.jpg')" }}
+            style={{ backgroundImage: "url('https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1600&q=80')" }}
           />
           <div
             className="absolute inset-0"
@@ -114,8 +131,8 @@ const LoginPage = () => {
             <h2 className="text-3xl font-extrabold text-neutro-900 mb-1">
               Bienvenido de nuevo
             </h2>
-            <p className="text-neutro-400 text-sm mb-8">
-              Ingresa tus credenciales para acceder.
+            <p className="text-neutro-400 text-sm mb-6">
+              Selecciona tu método de acceso para continuar.
             </p>
 
             {error && (
@@ -125,6 +142,16 @@ const LoginPage = () => {
               </div>
             )}
 
+            <BotonGoogle onClick={() => loginGoogle()} />
+
+            <div className="flex items-center gap-3 my-6">
+              <div className="flex-1 h-px bg-neutro-400" />
+              <span className="text-xs text-neutro-500 uppercase tracking-widest font-medium whitespace-nowrap">
+                O con tu correo
+              </span>
+              <div className="flex-1 h-px bg-neutro-400" />
+            </div>
+
             <form onSubmit={handleSubmit} noValidate className="space-y-4">
               <InputTexto
                 tipo="email"
@@ -133,6 +160,8 @@ const LoginPage = () => {
                 valor={form.email}
                 onChange={handleChange}
                 autoComplete="email"
+                required
+                maxLength={100}
               />
 
               <InputTexto
@@ -142,6 +171,9 @@ const LoginPage = () => {
                 valor={form.contrasenha}
                 onChange={handleChange}
                 autoComplete="current-password"
+                required
+                minLength={8}
+                maxLength={32}
                 sufijo={
                   <button
                     type="button"
@@ -169,24 +201,14 @@ const LoginPage = () => {
 
             <p className="text-center text-sm text-neutro-500 mt-5">
               ¿Olvidaste tu contraseña?{' '}
-              <button
-                type="button"
+              <Link
+                to={RUTAS.OLVIDO_PASSWORD}
                 className="font-semibold hover:underline"
                 style={{ color: COLORES.primario }}
               >
                 Haz clic aquí
-              </button>
+              </Link>
             </p>
-
-            <div className="flex items-center gap-3 my-6">
-              <div className="flex-1 h-px bg-neutro-400" />
-              <span className="text-xs text-neutro-500 uppercase tracking-widest font-medium whitespace-nowrap">
-                O continúa con
-              </span>
-              <div className="flex-1 h-px bg-neutro-400" />
-            </div>
-
-            <BotonGoogle onClick={() => loginGoogle()} />
 
             <p className="text-center text-sm text-neutro-400 mt-6">
               ¿No tienes una cuenta?{' '}

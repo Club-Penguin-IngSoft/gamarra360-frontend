@@ -7,35 +7,10 @@ import Footer from '../components/Footer';
 import ProductCard from '../components/ProductCard';
 import StoreCard from '../components/StoreCard';
 import { RUTAS } from '../constants/rutas';
-import { listarProductosDestacados } from '../services/catalogoService';
+import { listarProductosDestacados, obtenerOpcionesFiltro } from '../services/catalogoService';
 import { listarTiendasDestacadas, shuffleDiario, semillaDelDia } from '../services/tiendaService';
 import type { ITienda } from '../types/ITienda';
-import type { IProducto, Categoria } from '../types/IProducto';
-
-/** Pseudo-categoría visible en UI — incluye "TODO" además de los enums del backend */
-type CategoriaUI =
-  | 'TODO'
-  | 'HOMBRE'
-  | 'MUJER'
-  | 'NIÑOS'
-  | 'UNISEX ADULTOS';
-
-const CATEGORIAS_UI: CategoriaUI[] = [
-  'TODO',
-  'HOMBRE',
-  'MUJER',
-  'NIÑOS',
-  'UNISEX ADULTOS',
-];
-
-/** Mapeo de la etiqueta visual al enum del backend */
-const CAT_MAP: Record<CategoriaUI, Categoria | null> = {
-  TODO: null,
-  HOMBRE: 'HOMBRE',
-  MUJER: 'MUJER',
-  NIÑOS: 'NINOS',
-  'UNISEX ADULTOS': 'UNISEX_ADULTOS',
-};
+import type { IProducto } from '../types/IProducto';
 
 /* --------------------------------- Hero ---------------------------------- */
 
@@ -82,10 +57,9 @@ function CategoryTags({
   onChange,
   categorias,
 }: {
-  active: CategoriaUI;
-  onChange: (c: CategoriaUI) => void;
-  /** Solo las categorías que tienen al menos un producto */
-  categorias: CategoriaUI[];
+  active: string;
+  onChange: (c: string) => void;
+  categorias: string[];
 }) {
   return (
     <div className="flex flex-wrap gap-4">
@@ -101,7 +75,7 @@ function CategoryTags({
                 : 'bg-surface-tag text-ink-700 hover:bg-ink-100'
             }`}
           >
-            {c}
+            {c.toUpperCase()}
           </button>
         );
       })}
@@ -112,42 +86,43 @@ function CategoryTags({
 /* --------------------------- Catálogo Global ----------------------------- */
 
 function CatalogoGlobal() {
-  const [categoria, setCategoria] = useState<CategoriaUI>('TODO');
+  const [categoria, setCategoria] = useState<string>('Todo');
   const [productos, setProductos] = useState<IProducto[]>([]);
-  const [cargando, setCargando] = useState(true);
+  const [categoriasBD, setCategoriasBD] = useState<string[]>([]);
+  const [cargandoProductos, setCargandoProductos] = useState(true);
 
-  // Trae 8 productos por categoría desde el backend (una sola query eficiente).
-  // Esto garantiza que cada categoría con datos reales tenga productos disponibles
-  // y el frontend puede rotar cuáles 4 mostrar cada día con shuffleDiario.
   useEffect(() => {
-    setCargando(true);
+    // Fetches independientes: un fallo en categorías no bloquea los productos
     listarProductosDestacados(8)
       .then(setProductos)
-      .finally(() => setCargando(false));
+      .catch(() => {})
+      .finally(() => setCargandoProductos(false));
+
+    obtenerOpcionesFiltro()
+      .then((opts) => setCategoriasBD(opts.categorias))
+      .catch(() => {});
   }, []);
 
-  // Calcula qué tabs mostrar: solo los que tienen al menos 1 producto en la BD.
-  // Durante la carga muestra todos para evitar saltos de layout.
-  const categoriasDisponibles = useMemo<CategoriaUI[]>(() => {
-    if (cargando || productos.length === 0) return CATEGORIAS_UI;
+  // Solo muestra las categorías que tienen al menos 1 producto en la BD.
+  // Mientras cargan los productos muestra todas las categorías disponibles.
+  const categoriasDisponibles = useMemo<string[]>(() => {
+    if (cargandoProductos || productos.length === 0) return ['Todo', ...categoriasBD];
     const conProductos = new Set(productos.map((p) => p.categoria));
-    return CATEGORIAS_UI.filter(
-      (c) => c === 'TODO' || conProductos.has(CAT_MAP[c] as Categoria),
-    );
-  }, [productos, cargando]);
+    return ['Todo', ...categoriasBD.filter((c) => conProductos.has(c))];
+  }, [productos, categoriasBD, cargandoProductos]);
 
-  // Si la categoría activa queda fuera de las disponibles, vuelve a TODO.
+  // Si la categoría activa queda fuera de las disponibles, vuelve a Todo.
   useEffect(() => {
-    if (!cargando && !categoriasDisponibles.includes(categoria)) {
-      setCategoria('TODO');
+    if (!cargandoProductos && !categoriasDisponibles.includes(categoria)) {
+      setCategoria('Todo');
     }
-  }, [categoriasDisponibles, cargando, categoria]);
+  }, [categoriasDisponibles, cargandoProductos, categoria]);
 
-  // Filtra por categoría, rota diariamente y muestra hasta 4
-  const categoriaMapeada = CAT_MAP[categoria];
-  const filtrados = categoriaMapeada
-    ? productos.filter((p) => p.categoria === categoriaMapeada)
-    : productos;
+  // Filtra por categoría (p.categoria es el nombreCategoria del backend)
+  const filtrados =
+    categoria === 'Todo'
+      ? productos
+      : productos.filter((p) => p.categoria === categoria);
   const destacados = shuffleDiario(filtrados, semillaDelDia()).slice(0, 4);
 
   return (
@@ -165,7 +140,7 @@ function CatalogoGlobal() {
       </div>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {cargando
+        {cargandoProductos
           ? Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
@@ -260,13 +235,12 @@ function SpecialOrdersCTA() {
         </p>
 
         <div className="mt-8 flex flex-wrap items-center gap-4">
-          <button className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-8 py-4 text-[15px] font-semibold text-white transition-colors hover:bg-brand-600">
+          <Link
+            to={RUTAS.COTIZACIONES}
+            className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-8 py-4 text-[15px] font-semibold text-white transition-colors hover:bg-brand-600"
+          >
             Solicitar cotización
-          </button>
-
-          <button className="inline-flex items-center justify-center rounded-lg bg-white/10 px-8 py-4 text-[15px] font-semibold text-white ring-1 ring-white/15 transition-colors hover:bg-white/15">
-            Saber más
-          </button>
+          </Link>
 
           <span className="ml-2 inline-flex items-center gap-2 text-[16px] text-white/65">
             <img

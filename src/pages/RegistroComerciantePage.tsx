@@ -13,14 +13,17 @@ import { COLORES } from '../styles/tokens';
 import { useGoogleLogin } from '@react-oauth/google';
 import useLogin from '../hooks/useLogin';
 import apiClient from '../services/apiClient';
+import type { GaleriaGamarra } from '../types/ITienda';
+import { ETIQUETA_GALERIA } from '../types/ITienda';
+import { limpiarCelular, validarCelularPeru, validarDocumento, validarRuc, validarSoloLetras } from '../utils/validaciones';
 //import axios from 'axios';
 
 /* ── Datos de selects ───────────────────────────────────────────────────── */
 
-const GALERIAS = [
-  'Galería Guizado', 'Los Inkas', 'Gamarra Center', 'El Rey de Gamarra',
-  'Las Malvinas', 'Galería Molitalia', 'Galería Los Reyes',
-];
+const GALERIA_OPTIONS = (Object.keys(ETIQUETA_GALERIA) as GaleriaGamarra[]).map((k) => ({
+  value: k,
+  label: ETIQUETA_GALERIA[k],
+}));
 const TIPOS_DOCUMENTO = ['DNI', 'Carnet de extranjería', 'Pasaporte'];
 
 //const rutaPorRol: Record<string, string> = {
@@ -42,6 +45,9 @@ function validarContrasena(pass: string) {
   );
 }
 
+function generarPasswordAleatoria(): string {
+  return `Gx${Math.random().toString(36).slice(-8)}!9`;
+}
 /* ── Sub-componentes ────────────────────────────────────────────────────── */
 
 function SectionBadge({ num, label }: { num: number; label: string }) {
@@ -59,13 +65,14 @@ function SectionBadge({ num, label }: { num: number; label: string }) {
 }
 
 function FieldSelect({
-  name, value, onChange, placeholder, options, className = '',
+  name, value, onChange, placeholder, options = [], optionItems, className = '',
 }: {
   name: string;
   value: string;
   onChange: (e: ChangeEvent<HTMLSelectElement>) => void;
   placeholder: string;
-  options: string[];
+  options?: string[];
+  optionItems?: { value: string; label: string }[];
   className?: string;
 }) {
   return (
@@ -78,7 +85,9 @@ function FieldSelect({
         style={{ color: value ? '#212529' : '#adb5bd' }}
       >
         <option value="" disabled>{placeholder}</option>
-        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+        {optionItems
+          ? optionItems.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)
+          : options.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
       <MaterialIcon
         name="expand_more"
@@ -140,13 +149,17 @@ export default function RegistroComerciantePage() {
   const [galeria, setGaleria]             = useState('');
   const [piso, setPiso]                   = useState('');
   const [stand, setStand]                 = useState('');
+  const [ofreceEnvio, setOfreceEnvio]     = useState(false);
   const [logoFile, setLogoFile]           = useState<File | null>(null);
   const [logoDragging, setLogoDragging]   = useState(false);
+
+  const [informacion, setInformacion]       = useState('');
 
   /* Información del titular */
   const [correo, setCorreo]               = useState('');
   const [nombres, setNombres]             = useState('');
-  const [apellidos, setApellidos]         = useState('');
+  const [primerApellido, setPrimerApellido] = useState('');
+  const [segundoApellido, setSegundoApellido] = useState('');
   const [tipoDoc, setTipoDoc]             = useState('');
   const [numeroDoc, setNumeroDoc]         = useState('');
   const [celular, setCelular]             = useState('');
@@ -159,7 +172,13 @@ export default function RegistroComerciantePage() {
 
   const [errorForm, setErrorForm]         = useState<string | null>(null);
   const [enviado, setEnviado]             = useState(false);
-  const [estadoModal, setEstadoModal]     = useState<'pendiente' | 'rechazado' | null>(null);
+  const [estadoModal, setEstadoModal] = useState<'pendiente' | 'rechazado' | 'desactivado' | null>(null);
+  const [errorCelularLive, setErrorCelularLive] = useState<string | null>(null);
+  const [errorDocLive, setErrorDocLive] = useState<string | null>(null);
+  const [errorRucLive, setErrorRucLive] = useState<string | null>(null);
+  const [errorNombresLive, setErrorNombresLive] = useState<string | null>(null);
+  const [errorPrimerApellidoLive, setErrorPrimerApellidoLive] = useState<string | null>(null);
+  const [errorSegundoApellidoLive, setErrorSegundoApellidoLive] = useState<string | null>(null);
 
   const loginGoogle = useGoogleLogin({
     flow: 'implicit',
@@ -175,6 +194,10 @@ export default function RegistroComerciantePage() {
           setEstadoModal('rechazado');
           return;
         }
+        if (data?.estadoSolicitud === 'DESACTIVADO') {
+          setEstadoModal('desactivado');
+          return;
+        }
         if (data?.needsRegistration) {
           navigate(RUTAS.REGISTRO_COMERCIANTE, { state: { email: data.email } });
           return;
@@ -188,10 +211,25 @@ export default function RegistroComerciantePage() {
     onError: () => setErrorForm('No se pudo conectar con Google'),
   });
 
+  
   const puedeEnviar =
-    nombreTienda && razonSocial && ruc && galeria &&
-    (emailGoogle || correo) && nombres && apellidos && tipoDoc && numeroDoc && celular &&
-    validarContrasena(contrasena) && contrasena === confirmar;
+    nombreTienda.trim().length > 0 && nombreTienda.length <= 100 &&
+    razonSocial.trim().length > 0 && razonSocial.length <= 100 &&
+    ruc && validarRuc(ruc) === null &&
+    galeria &&
+    (emailGoogle || correo) &&
+    nombres && validarSoloLetras(nombres, 'Nombre(s)') === null &&
+    primerApellido && validarSoloLetras(primerApellido, 'Primer apellido') === null &&
+    (!segundoApellido || validarSoloLetras(segundoApellido, 'Segundo apellido') === null) &&
+    tipoDoc && numeroDoc &&
+    validarDocumento(tipoDoc, numeroDoc) === null &&
+    celular && validarCelularPeru(celular) === null &&
+    (!piso || piso.length <= 2) &&
+    (!stand || stand.length <= 6) &&
+    (!informacion || informacion.length <= 500) &&
+    (emailGoogle
+      ? true
+      : validarContrasena(contrasena) && contrasena === confirmar);
 
   const handleLogoFile = (file: File | null) => {
     if (!file) return;
@@ -204,17 +242,56 @@ export default function RegistroComerciantePage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrorForm(null);
-    if (!validarContrasena(contrasena)) {
-      setErrorForm('La contraseña debe tener mínimo 8 caracteres, 1 mayúscula, 1 minúscula, 1 número y 1 carácter especial.');
+
+    const errorRuc = validarRuc(ruc);
+    if (errorRuc) {
+      setErrorForm(errorRuc);
       return;
     }
-    if (contrasena !== confirmar) {
-      setErrorForm('Las contraseñas no coinciden.');
+
+    const errorDoc = validarDocumento(tipoDoc, numeroDoc);
+    if (errorDoc) {
+      setErrorForm(errorDoc);
       return;
+    }
+
+    const errorCelular = validarCelularPeru(celular);
+    if (errorCelular) {
+      setErrorForm(errorCelular);
+      return;
+    }
+
+    const errorNombres = validarSoloLetras(nombres, 'Nombre(s)');
+    if (errorNombres) {
+      setErrorForm(errorNombres);
+      return;
+    }
+
+    const errorPrimerAp = validarSoloLetras(primerApellido, 'Primer apellido');
+    if (errorPrimerAp) {
+      setErrorForm(errorPrimerAp);
+      return;
+    }
+
+    if (segundoApellido) {
+      const errorSegundoAp = validarSoloLetras(segundoApellido, 'Segundo apellido');
+      if (errorSegundoAp) {
+        setErrorForm(errorSegundoAp);
+        return;
+      }
+    }
+
+    if (!emailGoogle) {
+      if (!validarContrasena(contrasena)) {
+        setErrorForm('La contraseña debe tener mínimo 8 caracteres, 1 mayúscula, 1 minúscula, 1 número y 1 carácter especial.');
+        return;
+      }
+      if (contrasena !== confirmar) {
+        setErrorForm('Las contraseñas no coinciden.');
+        return;
+      }
     }
     try {
-      const apellidosArr = apellidos.split(' ');
-
       let logoUrl: string | null = null;
       if (logoFile) {
         const formData = new FormData();
@@ -223,40 +300,44 @@ export default function RegistroComerciantePage() {
         const { data: s3Data } = await apiClient.post<{ url: string }>(
           '/s3/upload',
           formData,
+          { headers: { 'Content-Type': 'multipart/form-data' } },
         );
         logoUrl = s3Data.url;
       }
 
       const payload = {
         nombres,
-        primerApellido: apellidosArr[0] || '',
-        segundoApellido: apellidosArr[1] || '',
+        primerApellido,
+        segundoApellido,
         email: emailGoogle || correo,
-        contrasenha: contrasena,
+        contrasenha: emailGoogle ? generarPasswordAleatoria() : contrasena,
         dni: numeroDoc,
-        telefono: celular,
+        telefono: limpiarCelular(celular),
         tipoDocumento: tipoDoc,
         rol: 'VENDEDOR',
         ruc,
         razonSocial,
         nombreTienda,
-        piso,
-        stand,
+        informacion: informacion || undefined,
+        piso: piso || undefined,
+        stand: stand || undefined,
         galeria,
+        ofreceEnvio,
         logoUrl,
       };
 
-      await apiClient.post(
-        '/auth/google/register-comerciante',
-        payload
-      );
+      const endpoint = emailGoogle
+        ? '/auth/google/register-comerciante'
+        : '/auth/register-comerciante';
+      await apiClient.post(endpoint, payload);
 
       setEnviado(true);
 
     } catch (error: any) {
       console.log('ERROR COMPLETO:', error);
       console.log('RESPUESTA BACKEND:', error.response?.data);
-      setErrorForm('Error al registrar comerciante');
+      const mensaje = error.response?.data?.mensaje ?? 'Error al registrar comerciante';
+      setErrorForm(mensaje);
     }
   };
 
@@ -289,14 +370,23 @@ export default function RegistroComerciantePage() {
 
       {/* ── Google ──────────────────────────────────────────────────── */}
       <div className="mx-auto w-full max-w-[960px] px-8 flex flex-col gap-3 pb-2">
-        <GoogleButton onClick={() => loginGoogle()} />
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-gray-200" />
-          <span className="text-xs text-gray-400 uppercase tracking-widest font-medium whitespace-nowrap">
-            O continua con tus datos
-          </span>
-          <div className="flex-1 h-px bg-gray-200" />
-        </div>
+        {emailGoogle ? (
+          <div className="mb-2 flex items-center gap-2 rounded-xl bg-pink-50 border border-pink-200 px-4 py-3 text-sm text-pink-700">
+            <MaterialIcon name="check_circle" style={{ fontSize: '20px' }} />
+            <span>Vinculado con Google: <strong>{emailGoogle}</strong></span>
+          </div>
+        ) : (
+          <>
+            <GoogleButton onClick={() => loginGoogle()} />
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-xs text-gray-400 uppercase tracking-widest font-medium whitespace-nowrap">
+                O continua con tus datos
+              </span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+          </>
+        )}
       </div>
 
       {/* ── Form ────────────────────────────────────────────────────── */}
@@ -312,34 +402,96 @@ export default function RegistroComerciantePage() {
           <div className="flex flex-col gap-3">
             <Input
               type="text" name="nombreTienda" placeholder="Nombre de la tienda"
-              value={nombreTienda} onChange={(e) => setNombreTienda(e.target.value)}
+              value={nombreTienda}
+              required
+              maxLength={100}
+              onChange={(e) => setNombreTienda(e.target.value)}
             />
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_180px]">
               <Input
                 type="text" name="razonSocial" placeholder="Razón social"
-                value={razonSocial} onChange={(e) => setRazonSocial(e.target.value)}
+                value={razonSocial}
+                required
+                maxLength={100}
+                onChange={(e) => setRazonSocial(e.target.value)}
               />
-              <Input
-                type="text" name="ruc" placeholder="RUC"
-                value={ruc} onChange={(e) => setRuc(e.target.value)}
-              />
+              <div className="space-y-1">
+                <Input
+                  type="text" name="ruc" placeholder="RUC"
+                  value={ruc}
+                  required
+                  minLength={11}
+                  maxLength={11}
+                  pattern="^[0-9]+$"
+                  onChange={(e) => {
+                    const valor = e.target.value.replace(/\D/g, '');
+                    setRuc(valor);
+                    setErrorRucLive(valor ? validarRuc(valor) : null);
+                  }}
+                />
+                {errorRucLive && (
+                  <p className="text-xs text-red-500 px-1">{errorRucLive}</p>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <FieldSelect
                 name="galeria" value={galeria} placeholder="Galería"
-                options={GALERIAS} onChange={(e) => setGaleria(e.target.value)}
+                optionItems={GALERIA_OPTIONS} onChange={(e) => setGaleria(e.target.value)}
               />
               <Input
                 type="text" name="piso" placeholder="Piso (opcional)"
-                value={piso} onChange={(e) => setPiso(e.target.value)}
+                value={piso}
+                maxLength={2}
+                pattern="^[0-9]+$"
+                onChange={(e) => setPiso(e.target.value.replace(/\D/g, ''))}
               />
               <Input
                 type="text" name="stand" placeholder="Stand (opcional)"
-                value={stand} onChange={(e) => setStand(e.target.value)}
+                value={stand}
+                maxLength={6}
+                pattern="^[a-zA-Z0-9-]+$"
+                onChange={(e) => setStand(e.target.value.replace(/[^a-zA-Z0-9-]/g, ''))}
               />
             </div>
+
+            {/* Descripción de la tienda */}
+            <div>
+              <textarea
+                placeholder="Descripción de la tienda (visible para los compradores)"
+                value={informacion}
+                maxLength={500}
+                onChange={(e) => setInformacion(e.target.value)}
+                rows={3}
+                className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-[11px] text-sm focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100 transition-all"
+              />
+              <p className="text-right text-[10px] text-gray-400 mt-1">{informacion.length}/500 caracteres</p>
+            </div>
+
+            {/* Envío a domicilio */}
+            <label className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 cursor-pointer select-none">
+              <div className="flex items-center gap-2.5">
+                <MaterialIcon name="local_shipping" style={{ fontSize: '18px', color: '#6c757d' }} />
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Envío a domicilio</p>
+                  <p className="text-xs text-gray-500">¿Tu tienda ofrece despacho a domicilio?</p>
+                </div>
+              </div>
+              <div
+                onClick={() => setOfreceEnvio((v) => !v)}
+                className={`relative flex h-6 w-11 flex-shrink-0 rounded-full transition-colors duration-200 ${
+                  ofreceEnvio ? 'bg-primario' : 'bg-gray-200'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
+                    ofreceEnvio ? 'translate-x-5' : 'translate-x-0.5'
+                  }`}
+                />
+              </div>
+            </label>
 
             {/* Logo upload */}
             <div>
@@ -412,39 +564,111 @@ export default function RegistroComerciantePage() {
               onChange={(e) => setCorreo(e.target.value)}
               autoComplete="email"
               disabled={!!emailGoogle}
+              required
+              maxLength={100}
             />
-            <Input
-              type="text" name="nombres" placeholder="Nombre(s)"
-              value={nombres} onChange={(e) => setNombres(e.target.value)}
-              autoComplete="given-name"
-            />
-            <Input
-              type="text" name="apellidos" placeholder="Apellidos"
-              value={apellidos} onChange={(e) => setApellidos(e.target.value)}
-              autoComplete="family-name"
-            />
+            <div className="space-y-1">
+              <Input
+                type="text" name="nombres" placeholder="Nombre(s)"
+                value={nombres}
+                maxLength={50}
+                required
+                pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$"
+                onChange={(e) => {
+                  const valor = e.target.value;
+                  setNombres(valor);
+                  setErrorNombresLive(valor ? validarSoloLetras(valor, 'Nombre(s)') : null);
+                }}
+                autoComplete="given-name"
+              />
+              {errorNombresLive && <p className="text-xs text-red-500 px-1">{errorNombresLive}</p>}
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Input
+                  type="text" name="primerApellido" placeholder="Primer apellido"
+                  value={primerApellido}
+                  maxLength={50}
+                  required
+                  pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$"
+                  onChange={(e) => {
+                    const valor = e.target.value;
+                    setPrimerApellido(valor);
+                    setErrorPrimerApellidoLive(valor ? validarSoloLetras(valor, 'Primer apellido') : null);
+                  }}
+                  autoComplete="family-name"
+                />
+                {errorPrimerApellidoLive && <p className="text-xs text-red-500 px-1">{errorPrimerApellidoLive}</p>}
+              </div>
+              <div className="space-y-1">
+                <Input
+                  type="text" name="segundoApellido" placeholder="Segundo apellido (opcional)"
+                  value={segundoApellido}
+                  maxLength={50}
+                  pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$"
+                  onChange={(e) => {
+                    const valor = e.target.value;
+                    setSegundoApellido(valor);
+                    setErrorSegundoApellidoLive(valor ? (valor.trim() ? validarSoloLetras(valor, 'Segundo apellido') : null) : null);
+                  }}
+                />
+                {errorSegundoApellidoLive && <p className="text-xs text-red-500 px-1">{errorSegundoApellidoLive}</p>}
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FieldSelect
                 name="tipoDoc" value={tipoDoc} placeholder="Tipo de documento"
                 options={TIPOS_DOCUMENTO} onChange={(e) => setTipoDoc(e.target.value)}
               />
-              <Input
-                type="text" name="numeroDoc" placeholder="Número de documento"
-                value={numeroDoc} onChange={(e) => setNumeroDoc(e.target.value)}
-              />
+              <div className="space-y-1">
+                <Input
+                  type="text" name="numeroDoc" placeholder="Número de documento"
+                  value={numeroDoc}
+                  required
+                  minLength={8}
+                  maxLength={11}
+                  pattern="^[0-9]+$"
+                  onChange={(e) => {
+                    const valor = e.target.value;
+                    setNumeroDoc(valor);
+                    setErrorDocLive(valor ? validarDocumento(tipoDoc, valor) : null);
+                  }}
+                />
+                {errorDocLive && (
+                  <p className="text-xs text-red-500 px-1">{errorDocLive}</p>
+                )}
+              </div>
             </div>
 
-            <Input
-              type="tel" name="celular" placeholder="Celular"
-              value={celular} onChange={(e) => setCelular(e.target.value)}
-              autoComplete="tel"
-            />
+            <div className="space-y-1">
+              <p className="text-xs text-gray-400 px-1">
+                Debe empezar con 9 y tener 9 dígitos.
+              </p>
+              <Input
+                type="tel" name="celular" placeholder="Celular (999 999 999)"
+                value={celular}
+                required
+                minLength={9}
+                maxLength={9}
+                pattern="^9[0-9]{8}$"
+                onChange={(e) => {
+                  const valor = e.target.value;
+                  setCelular(valor);
+                  setErrorCelularLive(valor ? validarCelularPeru(valor) : null);
+                }}
+                autoComplete="tel"
+              />
+              {errorCelularLive && (
+                <p className="text-xs text-red-500 px-1">{errorCelularLive}</p>
+              )}
+            </div>
           </div>
         </div>
 
         {/* ── Sección 3: Seguridad ──────────────────────────────────── */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-cardShadow">
+        {!emailGoogle && (
+          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-cardShadow">
           <SectionBadge num={3} label="Seguridad" />
 
           <div className="flex flex-col gap-3">
@@ -452,6 +676,9 @@ export default function RegistroComerciantePage() {
               <Input
                 type={mostrarPass ? 'text' : 'password'} name="contrasena"
                 placeholder="Contraseña" value={contrasena}
+                required
+                minLength={8}
+                maxLength={32}
                 onChange={(e) => setContrasena(e.target.value)}
                 autoComplete="new-password"
                 suffix={
@@ -467,6 +694,9 @@ export default function RegistroComerciantePage() {
               <Input
                 type={mostrarConf ? 'text' : 'password'} name="confirmar"
                 placeholder="Confirmar contraseña" value={confirmar}
+                required
+                minLength={8}
+                maxLength={32}
                 onChange={(e) => setConfirmar(e.target.value)}
                 autoComplete="new-password"
                 suffix={
@@ -489,6 +719,7 @@ export default function RegistroComerciantePage() {
             </div>
           </div>
         </div>
+        )}
 
         {/* ── Error ────────────────────────────────────────────────── */}
         {errorForm && (

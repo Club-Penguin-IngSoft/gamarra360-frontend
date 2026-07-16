@@ -5,16 +5,29 @@
 
 export type TipoServicio = 'COMPRA_DIRECTA' | 'PERSONALIZABLE' | 'COTIZACION';
 
+/** Resumen de la oferta aplicada a un producto — solo viene del backend si hay una oferta ACTIVA vigente ahora mismo. */
+export interface IOfertaResumen {
+  titulo: string;
+  tipoDescuento: 'PORCENTAJE' | 'MONTO_FIJO';
+  valorDescuento: number;
+}
+
 /** Categoría de producto — valor dinámico desde la BD (no enum) */
 export type Categoria = string;
 
 export interface IVarianteProducto {
   id: string;
+  stock: number;
+  disponible?: boolean;
   talla?: string;
   color?: string;
-  /** Hex del color, para mostrarse como swatch */
   colorHex?: string;
-  stock: number;
+  idColor?: number;
+  idTalla?: number;
+  /** Precio final con ofertas/descuentos para esta combinación talla+color */
+  precioEfectivo?: number | null;
+  /** Precio ajustado por regla de descuento (antes de ofertas) */
+  precioAjustado?: number | null;
 }
 
 export interface IProducto {
@@ -25,6 +38,8 @@ export interface IProducto {
   idTienda: string;
   idComerciante: string;
   nombreTienda: string;
+  /** Logo/foto de la tienda — puede no existir si el comerciante no la subió */
+  logoTienda?: string;
   imagenes: string[];
   categoria: Categoria;
   tipoServicio: TipoServicio;
@@ -34,9 +49,20 @@ export interface IProducto {
   precioBase?: number;
   /** Precio final con descuentos aplicados. Undefined cuando es COTIZACION */
   precioFinal?: number;
+  /** Presente SOLO si el producto tiene una oferta activa vigente ahora mismo (id_oferta no nulo Y dentro del rango de fechas Y activa=true). Úsalo para decidir si mostrar "Descuentos" en carrito/checkout — nunca infieras el descuento comparando precios. */
+  oferta?: IOfertaResumen | null;
   variantes?: IVarianteProducto[];
   /** Especificaciones técnicas (clave/valor) — ej. MATERIAL / Cuero Top Grain */
   especificaciones?: { etiqueta: string; valor: string }[];
+  /** Material principal del producto (campo plano del backend) */
+  materialPrincipal?: string;
+  /** Lista de materiales del producto (ej. ["Algodón", "Polyester"]) */
+  materiales?: string[];
+  /** Si la tienda que vende este producto ofrece envío a domicilio */
+  tiendaOfreceEnvio?: boolean;
+  /** Galería de Gamarra donde está físicamente la tienda (para filtro de galería) */
+  galeria?: string;
+  comercianteActivo?: boolean;
 }
 
 /** Etiqueta visible del producto en cards y badges */

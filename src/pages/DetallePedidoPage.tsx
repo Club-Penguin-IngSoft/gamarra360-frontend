@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Package, Truck, Store as StoreIcon, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, Package, Truck, Store as StoreIcon, ShoppingBag, Check } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
 import { pedidoService } from '../services/pedidoService';
 import { personalizacionService } from '../services/personalizacionService';
 import { formatearPrecio } from '../utils/formatearPrecio';
-import { ESTADO_PEDIDO_INFO } from '../utils/pedidoUi';
+import { ESTADO_PEDIDO_INFO, ORDEN_ESTADOS, pasosSeguimiento } from '../utils/pedidoUi';
 import { RUTAS } from '../constants/rutas';
 import type { IDetalleOrden, EstadoPago } from '../types/IPedido';
 import apiClient from '../services/apiClient';
@@ -70,6 +70,15 @@ useEffect(() => {
         const data = await pedidoService.obtenerDetalleOrden(Number(id));
 
         if (data.estado === 'PAGADO') {
+          const pendingPersonalizacionId = sessionStorage.getItem('pendingPersonalizacionId');
+          if (pendingPersonalizacionId) {
+            sessionStorage.removeItem('pendingPersonalizacionId');
+            try {
+              await personalizacionService.aceptarPersonalizacion(Number(pendingPersonalizacionId));
+            } catch (err) {
+              console.error('[DetallePedidoPage] Error al confirmar personalización:', err);
+            }
+          }
           setOrden(data);
           setCargando(false);
           return;
@@ -218,6 +227,51 @@ useEffect(() => {
                       </div>
                     )}
 
+                    {/* Seguimiento del pedido */}
+                    <div className="border-b border-ink-100 px-5 py-4">
+                      <p className="mb-3 text-[13px] font-semibold text-ink-700">Seguimiento del pedido</p>
+                      {pedido.estado === 'CANCELADO' ? (
+                        <div className="rounded-lg bg-error-claro px-3 py-2 text-[13px] text-error">
+                          Este pedido fue cancelado.
+                        </div>
+                      ) : (
+                        <ol>
+                          {pasosSeguimiento(pedido.tipoEntrega).map((paso, i, arr) => {
+                            const idxPaso = ORDEN_ESTADOS.indexOf(paso.estado);
+                            const idxActual = ORDEN_ESTADOS.indexOf(pedido.estado);
+                            const completado = idxPaso < idxActual;
+                            const actual = idxPaso === idxActual;
+                            const esUltimo = i === arr.length - 1;
+                            return (
+                              <li key={paso.estado} className="flex gap-3">
+                                <div className="flex flex-col items-center">
+                                  <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                                    completado ? 'border-exito bg-exito text-white'
+                                    : actual ? 'border-brand-500 bg-brand-500 text-white'
+                                    : 'border-ink-200 bg-white'
+                                  }`}>
+                                    {completado && <Check className="h-3 w-3" />}
+                                    {actual && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                                  </div>
+                                  {!esUltimo && (
+                                    <span className={`w-0.5 grow ${completado ? 'bg-exito' : 'bg-ink-200'}`} style={{ minHeight: '26px' }} />
+                                  )}
+                                </div>
+                                <div className="pb-4">
+                                  <p className={`text-[13px] font-semibold ${completado || actual ? 'text-ink-900' : 'text-ink-400'}`}>
+                                    {paso.titulo}
+                                  </p>
+                                  <p className={`text-[12px] ${actual ? 'text-ink-600' : 'text-ink-400'}`}>
+                                    {paso.descripcion}
+                                  </p>
+                                </div>
+                              </li>
+                            );
+                          })}
+                        </ol>
+                      )}
+                    </div>
+
                     {/* Productos */}
                     <div className="divide-y divide-ink-100">
                       {pedido.detalles.map((d) => (
@@ -235,7 +289,7 @@ useEffect(() => {
                           <div className="flex flex-1 items-center justify-between gap-4 min-w-0">
                             <div className="flex flex-col gap-0.5 min-w-0">
                               <span className="text-[14px] font-medium text-ink-900 line-clamp-1">
-                                {d.nombreProducto ?? `Variante #${d.idVarianteProducto}`}
+                                {d.nombreProducto ?? (d.idVarianteProducto != null ? `Variante #${d.idVarianteProducto}` : 'Producto')}
                               </span>
                               <div className="flex flex-wrap items-center gap-2 text-[12px] text-ink-400">
                                 {d.talla && <span>Talla: {d.talla}</span>}
@@ -243,6 +297,24 @@ useEffect(() => {
                                 {d.sku && <span className="font-mono">SKU: {d.sku}</span>}
                                 <span>Cant. {d.cantidad}</span>
                               </div>
+                              {d.cotizacionId != null && (
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(RUTAS.DETALLE_COTIZACION(d.cotizacionId!))}
+                                  className="mt-1 self-start rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700 hover:bg-blue-200"
+                                >
+                                  Ver cotización #{d.cotizacionId}
+                                </button>
+                              )}
+                              {d.personalizacionId != null && (
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(RUTAS.PERSONALIZACION_DETALLE(d.personalizacionId!))}
+                                  className="mt-1 self-start rounded-full bg-purple-100 px-2 py-0.5 text-[11px] font-semibold text-purple-700 hover:bg-purple-200"
+                                >
+                                  Ver personalización #{d.personalizacionId}
+                                </button>
+                              )}
                             </div>
                             <div className="shrink-0 text-right">
                               <p className="text-[14px] font-bold text-ink-900">

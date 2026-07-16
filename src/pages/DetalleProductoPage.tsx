@@ -65,18 +65,37 @@ function Heading({ producto }: { producto: IProducto }) {
   );
 }
 
-function PrecioBlock({ producto }: { producto: IProducto }) {
-  const descuento = calcularDescuento(producto.precioBase, producto.precioFinal);
-  const tieneDescuento = descuento > 0;
+function PrecioBlock({
+  producto,
+  precioVariante,
+  precioAjustadoVariante,
+}: {
+  producto: IProducto;
+  precioVariante?: number;
+  precioAjustadoVariante?: number | null;
+}) {
+  const precioActivo = precioVariante ?? producto.precioFinal ?? 0;
+
+  // Con variante activa: badge y tachado entre precioAjustado → precioEfectivo (oferta de variante)
+  // Sin variante: badge y tachado del producto (precioBase → precioFinal)
+  let precioTachado: number | undefined;
+  let descuento = 0;
+  if (precioVariante != null && precioAjustadoVariante != null && precioAjustadoVariante > precioVariante) {
+    precioTachado = precioAjustadoVariante;
+    descuento = calcularDescuento(precioAjustadoVariante, precioVariante);
+  } else if (precioVariante == null) {
+    descuento = calcularDescuento(producto.precioBase, producto.precioFinal);
+    if (descuento > 0) precioTachado = producto.precioBase;
+  }
 
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between gap-4">
         <span className="text-[32px] font-bold text-brand-600 md:text-[36px]">
-          {formatearPrecio(producto.precioFinal)}
+          {formatearPrecio(precioActivo)}
         </span>
 
-        {tieneDescuento && (
+        {descuento > 0 && (
           <div className="relative h-9 w-[80px] shrink-0">
             <img
               src={discountBadge}
@@ -91,9 +110,9 @@ function PrecioBlock({ producto }: { producto: IProducto }) {
         )}
       </div>
 
-      {tieneDescuento && (
+      {precioTachado != null && (
         <span className="text-[20px] font-medium text-ink-500 line-through">
-          {formatearPrecio(producto.precioBase)}
+          {formatearPrecio(precioTachado)}
         </span>
       )}
     </div>
@@ -103,12 +122,16 @@ function PrecioBlock({ producto }: { producto: IProducto }) {
 function StoreCard({ producto }: { producto: IProducto }) {
   return (
     <div className="flex items-center gap-4 rounded-xl border border-ink-50 bg-white p-4">
-      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-surface-muted">
-        <img
-          src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=200&q=80"
-          alt={`Logo ${producto.nombreTienda}`}
-          className="h-full w-full object-cover"
-        />
+      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface-muted">
+        {producto.logoTienda ? (
+          <img
+            src={producto.logoTienda}
+            alt={`Logo ${producto.nombreTienda}`}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <StoreIcon className="h-6 w-6 text-ink-400" />
+        )}
       </div>
       <div className="flex flex-1 flex-col">
         <span className="text-[13px] text-ink-500">Vendido por</span>
@@ -209,12 +232,15 @@ function CantidadStepper({
   cantidad,
   onChange,
   stockRestante,
+  noDisponible,
 }: {
   cantidad: number;
   onChange: (n: number) => void;
   stockRestante: number;
+  noDisponible?: boolean;
 }) {
-  const stockBajo = stockRestante > 0 && stockRestante <= 5;
+  const stockBajo = stockRestante > 0 && stockRestante <= 5 && !noDisponible;
+  const sinStock = stockRestante === 0 && !noDisponible;
   return (
     <div className="flex flex-col gap-3">
       <span className="text-[16px] font-bold tracking-[0.08em] text-ink-900">
@@ -224,9 +250,20 @@ function CantidadStepper({
         <QuantityStepper
           cantidad={cantidad}
           onChange={onChange}
-          max={stockRestante}
+          min={0}
+          max={noDisponible ? 0 : stockRestante}
           ariaLabel="Selector de cantidad de producto"
         />
+        {sinStock && (
+          <span className="text-[14px] font-semibold text-red-600">
+            ¡NO QUEDAN UNIDADES!
+          </span>
+        )}
+        {noDisponible && (
+          <span className="text-[14px] font-semibold text-ink-500">
+            No disponible
+          </span>
+        )}
         {stockBajo && (
           <span className="text-[14px] font-semibold text-brand-600">
             ¡ÚLTIMAS {stockRestante} UNIDADES!
@@ -237,22 +274,22 @@ function CantidadStepper({
   );
 }
 
-function EntregaInfo({ mostrarRetiroEnTienda = true }: { mostrarRetiroEnTienda?: boolean }) {
+function EntregaInfo({ ofreceEnvio }: { ofreceEnvio?: boolean }) {
   return (
     <div className="flex flex-col gap-3 border-t border-ink-100 pt-8">
       <span className="text-[12px] font-semibold tracking-[0.08em] text-ink-900">
         ENTREGA
       </span>
-      <div className="flex items-center gap-2 text-[15px] text-ink-700">
-        <Truck className="h-5 w-5 text-ink-500" />
-        <span>Envío a domicilio</span>
-      </div>
-      {mostrarRetiroEnTienda && (
+      {ofreceEnvio && (
         <div className="flex items-center gap-2 text-[15px] text-ink-700">
-          <StoreIcon className="h-5 w-5 text-ink-500" />
-          <span>Retiro en tienda</span>
+          <Truck className="h-5 w-5 text-ink-500" />
+          <span>Envío a domicilio</span>
         </div>
       )}
+      <div className="flex items-center gap-2 text-[15px] text-ink-700">
+        <StoreIcon className="h-5 w-5 text-ink-500" />
+        <span>Retiro en tienda</span>
+      </div>
     </div>
   );
 }
@@ -290,6 +327,24 @@ function useSeleccionVariante(producto: IProducto) {
     );
   }, [producto.variantes, tallaActiva, colores, colorActivo]);
 
+  const stockRestante = varianteSeleccionada?.stock ?? 0;
+
+  // Variante desactivada manualmente por el comerciante (tiene stock pero disponible=false)
+  const noDisponibleManual =
+    varianteSeleccionada != null &&
+    varianteSeleccionada.disponible === false &&
+    stockRestante > 0;
+
+  useEffect(() => {
+    if (stockRestante === 0 || noDisponibleManual) {
+      setCantidad(0);
+    }
+  }, [stockRestante, noDisponibleManual]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const precioVariante: number | undefined = varianteSeleccionada?.precioEfectivo ?? undefined;
+  // precioAjustado = precio base de la variante antes de aplicar la oferta (para badge y tachado)
+  const precioAjustadoVariante: number | undefined = varianteSeleccionada?.precioAjustado ?? undefined;
+
   return {
     colores,
     tallas,
@@ -300,7 +355,10 @@ function useSeleccionVariante(producto: IProducto) {
     cantidad,
     setCantidad,
     varianteSeleccionada,
-    stockRestante: varianteSeleccionada?.stock ?? 0,
+    stockRestante,
+    noDisponibleManual,
+    precioVariante,
+    precioAjustadoVariante,
   };
 }
 
@@ -311,6 +369,7 @@ function useSeleccionVariante(producto: IProducto) {
 function CompraDirectaInfo({ producto }: { producto: IProducto }) {
   const { agregarAlCarrito } = useCarrito();
   const s = useSeleccionVariante(producto);
+  const tiendaInhabilitada = producto.comercianteActivo === false;
 
   const handleColorChange = (i: number) => {
     s.setColorActivo(i);
@@ -324,24 +383,42 @@ function CompraDirectaInfo({ producto }: { producto: IProducto }) {
   return (
     <div className="flex flex-col gap-8">
       <Heading producto={producto} />
-      <PrecioBlock producto={producto} />
+
+      {tiendaInhabilitada && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[14px] font-medium text-red-700">
+          Este producto no está disponible. La tienda ha sido inhabilitada.
+        </div>
+      )}
+
+      {producto.descripcion && (
+        <p className="text-[16px] leading-relaxed text-ink-700">
+          {producto.descripcion}
+        </p>
+      )}
+
+      <PrecioBlock
+        producto={producto}
+        precioVariante={s.precioVariante}
+        precioAjustadoVariante={s.precioAjustadoVariante}
+      />
       <StoreCard producto={producto} />
 
       <div className="flex flex-col gap-6">
         <ColorSelector
           colores={s.colores}
           activo={s.colorActivo}
-          onChange={handleColorChange}
+          onChange={tiendaInhabilitada ? () => {} : handleColorChange}
         />
         <TallaSelector
           tallas={s.tallas}
           activa={s.tallaActiva}
-          onChange={handleTallaChange}
+          onChange={tiendaInhabilitada ? () => {} : handleTallaChange}
         />
         <CantidadStepper
           cantidad={s.cantidad}
-          onChange={s.setCantidad}
-          stockRestante={s.stockRestante}
+          onChange={tiendaInhabilitada ? () => {} : s.setCantidad}
+          stockRestante={tiendaInhabilitada ? 0 : s.stockRestante}
+          noDisponible={!tiendaInhabilitada && s.noDisponibleManual}
         />
       </div>
 
@@ -349,12 +426,19 @@ function CompraDirectaInfo({ producto }: { producto: IProducto }) {
         onClick={() =>
           agregarAlCarrito(producto, s.cantidad, s.varianteSeleccionada?.id)
         }
-        className="h-14 rounded-lg bg-brand-500 text-[16px] font-medium text-white transition-colors hover:bg-brand-600"
+        disabled={tiendaInhabilitada || s.stockRestante === 0 || s.noDisponibleManual || s.cantidad === 0}
+        className="h-14 rounded-lg bg-brand-500 text-[16px] font-medium text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-ink-300 disabled:hover:bg-ink-300"
       >
-        Añadir al carrito
+        {tiendaInhabilitada
+          ? 'Producto no disponible'
+          : s.noDisponibleManual
+          ? 'No disponible'
+          : s.stockRestante === 0
+          ? 'Sin stock'
+          : 'Añadir al carrito'}
       </button>
 
-      <EntregaInfo />
+      <EntregaInfo ofreceEnvio={producto.tiendaOfreceEnvio} />
     </div>
   );
 }
@@ -363,16 +447,18 @@ function CompraDirectaInfo({ producto }: { producto: IProducto }) {
    Layout 2: Producto PERSONALIZABLE (Figma 2413-7951)
    ========================================================================= */
 
-function PersonalizationPromoCard({ producto }: { producto: IProducto }) {
+function PersonalizationPromoCard({
+  producto,
+  deshabilitado,
+}: {
+  producto: IProducto;
+  deshabilitado?: boolean;
+}) {
   const navigate = useNavigate();
   const { estaAutenticado } = useAuth();
 
-  /**
-   * Si el usuario está autenticado → va directo al formulario de personalización.
-   * Si NO está autenticado → redirige a /login con returnTo apuntando al
-   * formulario, así el flujo continúa después del login.
-   */
   const handleSolicitar = () => {
+    if (deshabilitado) return;
     const destino = RUTAS.PERSONALIZAR(producto.id);
     if (estaAutenticado) {
       navigate(destino);
@@ -383,13 +469,13 @@ function PersonalizationPromoCard({ producto }: { producto: IProducto }) {
 
   return (
     <div
-      className="relative overflow-hidden rounded-xl p-6 text-white"
+      className={`relative overflow-hidden rounded-xl p-6 text-white ${
+        deshabilitado ? 'opacity-50' : ''
+      }`}
       style={{
-        backgroundImage:
-          'linear-gradient(169deg, #A92D5F 0%, #ED7DA1 100%)',
+        backgroundImage: 'linear-gradient(169deg, #A92D5F 0%, #ED7DA1 100%)',
       }}
     >
-      {/* Decorative brush icon (top-right, partially clipped) */}
       <Brush
         className="absolute -right-4 -top-4 h-32 w-32 rotate-12 text-white/15"
         strokeWidth={1.5}
@@ -408,7 +494,8 @@ function PersonalizationPromoCard({ producto }: { producto: IProducto }) {
         </p>
         <button
           onClick={handleSolicitar}
-          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-brand-500 bg-white text-[15px] font-medium text-brand-600 transition-colors hover:bg-brand-50"
+          disabled={deshabilitado}
+          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-brand-500 bg-white text-[15px] font-medium text-brand-600 transition-colors hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
           Solicitar personalización
           <ArrowRight className="h-4 w-4" />
@@ -421,7 +508,8 @@ function PersonalizationPromoCard({ producto }: { producto: IProducto }) {
 function PersonalizableInfo({ producto }: { producto: IProducto }) {
   const { agregarAlCarrito } = useCarrito();
   const s = useSeleccionVariante(producto);
-  
+  const tiendaInhabilitada = producto.comercianteActivo === false;
+
   const handleColorChange = (i: number) => {
     s.setColorActivo(i);
     s.setCantidad(1);
@@ -434,41 +522,65 @@ function PersonalizableInfo({ producto }: { producto: IProducto }) {
   return (
     <div className="flex flex-col gap-8">
       <Heading producto={producto} />
-      <PrecioBlock producto={producto} />
+
+      {tiendaInhabilitada && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[14px] font-medium text-red-700">
+          Este producto no está disponible. La tienda ha sido inhabilitada.
+        </div>
+      )}
+
+      {producto.descripcion && (
+        <p className="text-[16px] leading-relaxed text-ink-700">
+          {producto.descripcion}
+        </p>
+      )}
+
+      <PrecioBlock
+        producto={producto}
+        precioVariante={s.precioVariante}
+        precioAjustadoVariante={s.precioAjustadoVariante}
+      />
       <StoreCard producto={producto} />
 
       <div className="flex flex-col gap-6">
         <ColorSelector
           colores={s.colores}
           activo={s.colorActivo}
-          onChange={handleColorChange}
+          onChange={tiendaInhabilitada ? () => {} : handleColorChange}
         />
         <TallaSelector
           tallas={s.tallas}
           activa={s.tallaActiva}
-          onChange={handleTallaChange}
+          onChange={tiendaInhabilitada ? () => {} : handleTallaChange}
         />
         <CantidadStepper
           cantidad={s.cantidad}
-          onChange={s.setCantidad}
-          stockRestante={s.stockRestante}
+          onChange={tiendaInhabilitada ? () => {} : s.setCantidad}
+          stockRestante={tiendaInhabilitada ? 0 : s.stockRestante}
+          noDisponible={!tiendaInhabilitada && s.noDisponibleManual}
         />
       </div>
 
       {/* Card específica de PERSONALIZABLE — entre Cantidad y Añadir al carrito */}
-      <PersonalizationPromoCard producto={producto} />
+      <PersonalizationPromoCard producto={producto} deshabilitado={tiendaInhabilitada} />
 
       <button
         onClick={() =>
           agregarAlCarrito(producto, s.cantidad, s.varianteSeleccionada?.id)
         }
-        className="h-14 rounded-lg bg-brand-500 text-[16px] font-medium text-white transition-colors hover:bg-brand-600"
+        disabled={tiendaInhabilitada || s.stockRestante === 0 || s.noDisponibleManual || s.cantidad === 0}
+        className="h-14 rounded-lg bg-brand-500 text-[16px] font-medium text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-ink-300 disabled:hover:bg-ink-300"
       >
-        Añadir al carrito
+        {tiendaInhabilitada
+          ? 'Producto no disponible'
+          : s.noDisponibleManual
+          ? 'No disponible'
+          : s.stockRestante === 0
+          ? 'Sin stock'
+          : 'Añadir al carrito'}
       </button>
 
-      {/* Entrega: ambas opciones como placeholder hasta que BD soporte tipo_entrega */}
-      <EntregaInfo />
+      <EntregaInfo ofreceEnvio={producto.tiendaOfreceEnvio} />
     </div>
   );
 }
@@ -478,9 +590,17 @@ function PersonalizableInfo({ producto }: { producto: IProducto }) {
    ========================================================================= */
 
 function CotizacionInfo({ producto }: { producto: IProducto }) {
+  const tiendaInhabilitada = producto.comercianteActivo === false;
+
   return (
     <div className="flex flex-col gap-8">
       <Heading producto={producto} />
+
+      {tiendaInhabilitada && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[14px] font-medium text-red-700">
+          Este producto no está disponible. La tienda ha sido inhabilitada.
+        </div>
+      )}
 
       {producto.descripcion && (
         <p className="text-[16px] leading-relaxed text-ink-700">
@@ -513,15 +633,25 @@ function CotizacionInfo({ producto }: { producto: IProducto }) {
         </p>
       </div>
 
-      <Link
-        to={RUTAS.CARRITO}
-        className="flex h-14 items-center justify-center gap-2 rounded-lg bg-sky-700 text-[16px] font-medium text-white transition-colors hover:bg-sky-800"
-      >
-        <FileText className="h-5 w-5" />
-        Solicitar cotización
-      </Link>
+      {tiendaInhabilitada ? (
+        <button
+          disabled
+          className="flex h-14 items-center justify-center gap-2 rounded-lg bg-ink-300 text-[16px] font-medium text-white cursor-not-allowed"
+        >
+          <FileText className="h-5 w-5" />
+          Producto no disponible
+        </button>
+      ) : (
+        <Link
+          to={RUTAS.COTIZACIONES}
+          className="flex h-14 items-center justify-center gap-2 rounded-lg bg-sky-700 text-[16px] font-medium text-white transition-colors hover:bg-sky-800"
+        >
+          <FileText className="h-5 w-5" />
+          Solicitar cotización
+        </Link>
+      )}
 
-      <EntregaInfo />
+      <EntregaInfo ofreceEnvio={producto.tiendaOfreceEnvio} />
     </div>
   );
 }

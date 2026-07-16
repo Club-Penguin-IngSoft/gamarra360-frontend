@@ -1,18 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Upload, X, Plus, CheckCircle } from 'lucide-react';
+import { Search, Upload, X, CheckCircle } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
 import { RUTAS } from '../constants/rutas';
 import { listarTiendas } from '../services/tiendaService';
-import { buscarProductos, subirImagenS3 } from '../services/catalogoService';
+import { buscarProductos, listarProductosDeTienda, subirImagenS3 } from '../services/catalogoService';
 import { cotizacionService } from '../services/cotizacionService';
+import { useAuth } from '../hooks/useAuth';
 import type { ITienda } from '../types/ITienda';
 import type { IProducto } from '../types/IProducto';
 
 /* ── Tipos locales del formulario ────────────────────────────────────── */
 
-type Categoria = 'HOMBRE' | 'MUJER' | 'NINOS' | 'UNISEX_ADULTOS' | 'UNISEX_NINOS';
 type TipoPersonalizacion = 'ESTAMPADO' | 'BORDADO' | 'IMPRESION';
 
 interface PersonalizacionDatos {
@@ -38,14 +38,6 @@ interface ProductoItem {
   especificacion: string;
   personalizacion: PersonalizacionDatos | null;
 }
-
-const CATEGORIAS_LABELS: { key: Categoria; label: string }[] = [
-  { key: 'HOMBRE',         label: 'Hombre' },
-  { key: 'MUJER',          label: 'Mujer' },
-  { key: 'NINOS',          label: 'Niños' },
-  { key: 'UNISEX_ADULTOS', label: 'Unisex Adultos' },
-  { key: 'UNISEX_NINOS',   label: 'Unisex Niños' },
-];
 
 const TIPO_TRABAJO_LABELS: Record<TipoPersonalizacion, string> = {
   ESTAMPADO: 'Estampado',
@@ -94,14 +86,15 @@ function buildEspecificacion(p: ProductoItem): string {
 
 export default function SolicitarCotizacionPage() {
   const navigate = useNavigate();
+  const { estaAutenticado } = useAuth();
 
   // Tienda
   const [todasTiendas, setTodasTiendas]           = useState<ITienda[]>([]);
   const [cargandoTiendas, setCargandoTiendas]       = useState(true);
-  const [categoriasFiltro, setCategoriasFiltro]     = useState<Categoria[]>([]);
   const [tipoProductoFiltro, setTipoProductoFiltro] = useState('');
   const [busquedaTienda, setBusquedaTienda]         = useState('');
   const [tiendaSeleccionada, setTiendaSeleccionada] = useState<ITienda | null>(null);
+  const [productosTienda, setProductosTienda]       = useState<IProducto[]>([]);
 
   // Productos
   const [productos, setProductos] = useState<ProductoItem[]>([crearProductoVacio()]);
@@ -127,6 +120,26 @@ export default function SolicitarCotizacionPage() {
       .finally(() => setCargandoTiendas(false));
   }, []);
 
+  /* ── Cargar catálogo de la tienda al seleccionarla ────────────────── */
+
+  useEffect(() => {
+    if (!tiendaSeleccionada) {
+      setProductosTienda([]);
+      return;
+    }
+    listarProductosDeTienda(tiendaSeleccionada.id)
+      .then((lista) => {
+        setProductosTienda(lista);
+        // Precarga el dropdown del producto si aún no se ha buscado ni seleccionado nada
+        setProductos((prev) => prev.map((p) =>
+          !p.productoSeleccionado && !p.busquedaQuery.trim()
+            ? { ...p, resultados: lista }
+            : p
+        ));
+      })
+      .catch(() => setProductosTienda([]));
+  }, [tiendaSeleccionada]);
+
   /* ── Tiendas filtradas derivadas ──────────────────────────────────── */
 
   const tiposProductoDisponibles = Array.from(
@@ -134,20 +147,10 @@ export default function SolicitarCotizacionPage() {
   ).sort();
 
   const tiendasFiltradas = todasTiendas.filter((t) => {
-    if (categoriasFiltro.length > 0 && !categoriasFiltro.some((c) => t.categorias?.includes(c))) return false;
     if (tipoProductoFiltro && !(t.tiposProducto ?? []).includes(tipoProductoFiltro)) return false;
     if (busquedaTienda.trim() && !t.nombre.toLowerCase().includes(busquedaTienda.toLowerCase())) return false;
     return true;
   });
-
-  /* ── Helpers de categoría ─────────────────────────────────────────── */
-
-  function toggleCategoria(cat: Categoria) {
-    setCategoriasFiltro((prev) =>
-      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat],
-    );
-    setTiendaSeleccionada(null);
-  }
 
   /* ── Helpers de productos ─────────────────────────────────────────── */
 
@@ -155,12 +158,26 @@ export default function SolicitarCotizacionPage() {
     setProductos((prev) => prev.map((p) => (p.uid === uid ? { ...p, ...cambios } : p)));
   }
 
-  function eliminarProducto(uid: string) {
-    setProductos((prev) => prev.filter((p) => p.uid !== uid));
+  /**
+   * Cambia entre las pestañas "Buscar en catálogo" / "Ingresar manualmente".
+   * Al volver a CATÁLOGO con una tienda ya elegida, repuebla la lista con el
+   * catálogo precargado de la tienda (sin esto, la lista quedaba vacía: bug).
+   */
+  function cambiarModoProducto(uid: string, modo: 'CATALOGO' | 'MANUAL') {
+    setProductos((prev) => prev.map((p) => (p.uid === uid
+      ? {
+          ...p,
+          modo,
+          productoSeleccionado: null,
+          busquedaQuery: '',
+          resultados: modo === 'CATALOGO' && tiendaSeleccionada ? productosTienda : [],
+          dropdownAbierto: false,
+        }
+      : p)));
   }
 
-  function agregarProducto() {
-    setProductos((prev) => [...prev, crearProductoVacio()]);
+  function eliminarProducto(uid: string) {
+    setProductos((prev) => prev.filter((p) => p.uid !== uid));
   }
 
   /* ── Búsqueda de productos (debounced) ───────────────────────────── */
@@ -168,6 +185,18 @@ export default function SolicitarCotizacionPage() {
   function handleBusquedaProducto(uid: string, query: string) {
     actualizarProducto(uid, { busquedaQuery: query, productoSeleccionado: null });
     clearTimeout(timers.current[uid]);
+
+    // Con tienda ya seleccionada: filtrado instantáneo sobre su catálogo (ya cargado)
+    if (tiendaSeleccionada) {
+      const q = query.trim().toLowerCase();
+      const filtrados = q
+        ? productosTienda.filter((p) => p.titulo.toLowerCase().includes(q))
+        : productosTienda;
+      actualizarProducto(uid, { resultados: filtrados, buscando: false, dropdownAbierto: true });
+      return;
+    }
+
+    // Sin tienda seleccionada: búsqueda global server-side (como antes)
     if (query.trim().length < 2) {
       actualizarProducto(uid, { resultados: [], dropdownAbierto: false });
       return;
@@ -176,10 +205,7 @@ export default function SolicitarCotizacionPage() {
     timers.current[uid] = setTimeout(async () => {
       try {
         const res = await buscarProductos(query.trim(), 10);
-        const filtrados = tiendaSeleccionada
-          ? res.filter((p) => p.idComerciante === tiendaSeleccionada.id)
-          : res;
-        actualizarProducto(uid, { resultados: filtrados, buscando: false, dropdownAbierto: true });
+        actualizarProducto(uid, { resultados: res, buscando: false, dropdownAbierto: true });
       } catch {
         actualizarProducto(uid, { buscando: false });
       }
@@ -201,6 +227,10 @@ export default function SolicitarCotizacionPage() {
       busquedaQuery: producto.titulo,
       dropdownAbierto: false,
     });
+    if (!tiendaSeleccionada) {
+      const tienda = todasTiendas.find((t) => String(t.id) === String(producto.idComerciante));
+      if (tienda) setTiendaSeleccionada(tienda);
+    }
   }
 
   /* ── Upload imagen producto manual ───────────────────────────────── */
@@ -252,6 +282,10 @@ export default function SolicitarCotizacionPage() {
   /* ── Enviar solicitud ─────────────────────────────────────────────── */
 
   async function handleSubmit() {
+    if (!estaAutenticado) {
+      navigate(RUTAS.LOGIN, { state: { redirectTo: RUTAS.COTIZACIONES } });
+      return;
+    }
     if (!tiendaSeleccionada) {
       setErrorEnvio('Debes seleccionar una tienda.');
       return;
@@ -290,7 +324,7 @@ export default function SolicitarCotizacionPage() {
 
   /* ── Render ───────────────────────────────────────────────────────── */
 
-  const hayFiltros = categoriasFiltro.length > 0 || tipoProductoFiltro || busquedaTienda.trim();
+  const hayFiltros = !!tipoProductoFiltro || !!busquedaTienda.trim();
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F5F5F5]">
@@ -309,25 +343,6 @@ export default function SolicitarCotizacionPage() {
             <div className="mb-4 flex items-center gap-3">
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-500 text-sm font-bold text-white">1</span>
               <h2 className="text-lg font-semibold text-ink-900">Tienda</h2>
-            </div>
-
-            {/* Categorías */}
-            <p className="mb-2 text-sm font-medium text-ink-600">Categoría</p>
-            <div className="mb-4 flex flex-wrap gap-2">
-              {CATEGORIAS_LABELS.map(({ key, label }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => toggleCategoria(key)}
-                  className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
-                    categoriasFiltro.includes(key)
-                      ? 'border-brand-500 bg-brand-500 text-white'
-                      : 'border-ink-200 bg-white text-ink-700 hover:border-brand-400'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
             </div>
 
             {/* Tipo de producto */}
@@ -429,11 +444,11 @@ export default function SolicitarCotizacionPage() {
           <div className="rounded-2xl bg-white p-6 shadow-sm">
             <div className="mb-2 flex items-center gap-3">
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-500 text-sm font-bold text-white">2</span>
-              <h2 className="text-lg font-semibold text-ink-900">Detalles de los Productos</h2>
+              <h2 className="text-lg font-semibold text-ink-900">Detalles del Producto</h2>
             </div>
             <p className="mb-6 text-sm text-ink-500">
-              Puedes cotizar varios productos. Si deseas personalizar alguno de ellos, ya sea con estampado, bordado industrial o impresión textil,
-              por favor asegúrate de agregar la personalización en el enlace correspondiente.
+              Si deseas personalizar el producto con estampado, bordado industrial o impresión textil,
+              asegúrate de agregar la personalización en el enlace correspondiente.
             </p>
 
             {productos.map((producto, idx) => (
@@ -443,24 +458,16 @@ export default function SolicitarCotizacionPage() {
                 numero={idx + 1}
                 tiendaId={tiendaSeleccionada?.id}
                 onCambio={(cambios) => actualizarProducto(producto.uid, cambios)}
+                onCambiarModo={(m) => cambiarModoProducto(producto.uid, m)}
                 onEliminar={() => eliminarProducto(producto.uid)}
                 onBusqueda={(q) => handleBusquedaProducto(producto.uid, q)}
                 onSeleccionarProducto={(p) => seleccionarProducto(producto.uid, p)}
                 onImagenManual={(file) => handleImagenManual(producto.uid, file)}
                 onAbrirPersonalizacion={() => abrirModal(idx)}
                 onEliminarPersonalizacion={() => eliminarPersonalizacion(producto.uid)}
-                mostrarEliminar={productos.length > 1}
+                mostrarEliminar={false}
               />
             ))}
-
-            <button
-              type="button"
-              onClick={agregarProducto}
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-ink-200 py-3 text-sm font-medium text-ink-500 transition-colors hover:border-brand-400 hover:text-brand-600"
-            >
-              <Plus className="h-4 w-4" />
-              Agregar otro producto
-            </button>
           </div>
 
           {/* Error */}
@@ -545,6 +552,7 @@ interface ProductoFormProps {
   numero: number;
   tiendaId?: string;
   onCambio: (cambios: Partial<ProductoItem>) => void;
+  onCambiarModo: (modo: 'CATALOGO' | 'MANUAL') => void;
   onEliminar: () => void;
   onBusqueda: (q: string) => void;
   onSeleccionarProducto: (p: IProducto) => void;
@@ -555,12 +563,13 @@ interface ProductoFormProps {
 }
 
 function ProductoForm({
-  producto, numero, onCambio, onEliminar, onBusqueda,
+  producto, numero, onCambio, onCambiarModo, onEliminar, onBusqueda,
   onSeleccionarProducto, onImagenManual, onAbrirPersonalizacion,
   onEliminarPersonalizacion, mostrarEliminar,
 }: ProductoFormProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [urlImagen, setUrlImagen] = useState('');
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -595,7 +604,7 @@ function ProductoForm({
           <button
             key={m}
             type="button"
-            onClick={() => onCambio({ modo: m, productoSeleccionado: null, busquedaQuery: '', resultados: [] })}
+            onClick={() => onCambiarModo(m)}
             className={`px-4 pb-2 text-sm font-medium transition-colors ${
               producto.modo === m
                 ? 'border-b-2 border-brand-500 text-brand-600'
@@ -723,6 +732,29 @@ function ProductoForm({
             className="hidden"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) onImagenManual(f); }}
           />
+
+          {/* Alternativa: URL de imagen (sin S3) */}
+          <div className="my-3 flex items-center gap-3">
+            <div className="h-px flex-1 bg-ink-100" />
+            <span className="whitespace-nowrap text-xs text-ink-400">o usa una URL de imagen</span>
+            <div className="h-px flex-1 bg-ink-100" />
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={urlImagen}
+              onChange={(e) => setUrlImagen(e.target.value)}
+              placeholder="https://ejemplo.com/imagen-producto.jpg"
+              className="flex-1 rounded-lg border border-ink-200 px-4 py-3 text-sm focus:border-brand-500 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => { const u = urlImagen.trim(); if (u) onCambio({ imagenManualUrl: u }); }}
+              className="shrink-0 rounded-lg border border-ink-200 px-4 text-sm font-medium text-ink-700 transition-colors hover:bg-surface-muted"
+            >
+              Vista previa
+            </button>
+          </div>
         </div>
       )}
 
@@ -787,6 +819,7 @@ function PersonalizacionModal({
   numerProducto, onCancelar, onGuardar,
 }: PersonalizacionModalProps) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [urlDiseno, setUrlDiseno] = useState('');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -875,19 +908,58 @@ function PersonalizacionModal({
           onChange={(e) => { const f = e.target.files?.[0]; if (f) onSubirDiseno(f); }}
         />
 
+        {/* Alternativa: URL del diseño (sin S3) */}
+        {draft.modoInfo === 'SUBIR_DISENO' && (
+          <>
+            <div className="mb-3 flex items-center gap-3">
+              <div className="h-px flex-1 bg-ink-100" />
+              <span className="whitespace-nowrap text-xs text-ink-400">o usa una URL de imagen</span>
+              <div className="h-px flex-1 bg-ink-100" />
+            </div>
+            <div className="mb-4 flex gap-2">
+              <input
+                type="url"
+                value={urlDiseno}
+                onChange={(e) => setUrlDiseno(e.target.value)}
+                placeholder="https://ejemplo.com/diseno.png"
+                className="flex-1 rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => { const u = urlDiseno.trim(); if (u) onCambio({ ...draft, imagenUrl: u }); }}
+                className="shrink-0 rounded-lg border border-ink-200 px-4 text-sm font-medium text-ink-700 transition-colors hover:bg-surface-muted"
+              >
+                Vista previa
+              </button>
+            </div>
+          </>
+        )}
+
         {/* Posición */}
         <div className="mb-4 grid grid-cols-2 gap-3">
           <input
-            type="text"
+            type="number"
+            min={0.1}
+            step="any"
             value={draft.posicionAlto}
-            onChange={(e) => onCambio({ ...draft, posicionAlto: e.target.value })}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val !== '' && Number(val) < 0) return;
+              onCambio({ ...draft, posicionAlto: val });
+            }}
             placeholder="Alto (cm)"
             className="rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none"
           />
           <input
-            type="text"
+            type="number"
+            min={0.1}
+            step="any"
             value={draft.posicionAncho}
-            onChange={(e) => onCambio({ ...draft, posicionAncho: e.target.value })}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val !== '' && Number(val) < 0) return;
+              onCambio({ ...draft, posicionAncho: val });
+            }}
             placeholder="Ancho (cm)"
             className="rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none"
           />
@@ -914,7 +986,17 @@ function PersonalizacionModal({
           </button>
           <button
             type="button"
-            onClick={onGuardar}
+            onClick={() => {
+              if (draft.posicionAlto && Number(draft.posicionAlto) <= 0) {
+                alert('El alto debe ser mayor a 0 cm.');
+                return;
+              }
+              if (draft.posicionAncho && Number(draft.posicionAncho) <= 0) {
+                alert('El ancho debe ser mayor a 0 cm.');
+                return;
+              }
+              onGuardar();
+            }}
             className="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-600"
           >
             Guardar
