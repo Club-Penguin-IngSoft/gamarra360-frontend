@@ -160,6 +160,8 @@ const LoginPage = () => {
                 valor={form.email}
                 onChange={handleChange}
                 autoComplete="email"
+                required
+                maxLength={100}
               />
 
               <InputTexto
@@ -169,6 +171,9 @@ const LoginPage = () => {
                 valor={form.contrasenha}
                 onChange={handleChange}
                 autoComplete="current-password"
+                required
+                minLength={8}
+                maxLength={32}
                 sufijo={
                   <button
                     type="button"

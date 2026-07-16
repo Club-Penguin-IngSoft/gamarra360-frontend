@@ -411,8 +411,14 @@ function DetallesPersonalizacionCard({
             <input
               id="alto"
               type="number"
+              min={0.1}
+              step="any"
               value={alto}
-              onChange={(e) => setAlto(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val !== '' && Number(val) < 0) return;
+                setAlto(val);
+              }}
               placeholder="0"
               className="h-12 rounded border border-ink-100 bg-white px-3 text-[15px] text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none"
             />
@@ -422,8 +428,14 @@ function DetallesPersonalizacionCard({
             <input
               id="ancho"
               type="number"
+              min={0.1}
+              step="any"
               value={ancho}
-              onChange={(e) => setAncho(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val !== '' && Number(val) < 0) return;
+                setAncho(val);
+              }}
               placeholder="0"
               className="h-12 rounded border border-ink-100 bg-white px-3 text-[15px] text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none"
             />
@@ -691,6 +703,16 @@ export default function PersonalizacionPage() {
 
     if (!varianteId) {
       setErrorEnvio('Selecciona una talla y color antes de enviar.');
+      return;
+    }
+
+    if (alto && Number(alto) <= 0) {
+      setErrorEnvio('El alto debe ser mayor a 0 cm.');
+      return;
+    }
+
+    if (ancho && Number(ancho) <= 0) {
+      setErrorEnvio('El ancho debe ser mayor a 0 cm.');
       return;
     }
 

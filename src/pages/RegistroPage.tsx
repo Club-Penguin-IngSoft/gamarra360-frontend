@@ -13,7 +13,7 @@ import apiClient from '../services/apiClient';
 import { useGoogleLogin } from '@react-oauth/google';
 import useLogin from '../hooks/useLogin';
 import BotonGoogle from '../components/BotonGoogle';
-import { limpiarCelular, validarCelularPeru, validarDocumento } from '../utils/validaciones';
+import { limpiarCelular, validarCelularPeru, validarDocumento, validarSoloLetras } from '../utils/validaciones';
 import ModalEstadoSolicitud from '../components/ModalEstadoSolicitud';
 //import axios from 'axios';
 
@@ -84,6 +84,9 @@ export default function RegistroPage() {
   const [errorForm, setErrorForm]               = useState<string | null>(null);
   const [errorCelularLive, setErrorCelularLive] = useState<string | null>(null);
   const [errorDocLive, setErrorDocLive] = useState<string | null>(null);
+  const [errorNombresLive, setErrorNombresLive] = useState<string | null>(null);
+  const [errorPrimerApellidoLive, setErrorPrimerApellidoLive] = useState<string | null>(null);
+  const [errorSegundoApellidoLive, setErrorSegundoApellidoLive] = useState<string | null>(null);
   const { loginConGoogle } = useLogin();
   const [registroExitoso, setRegistroExitoso] = useState(false);
   const [estadoModal, setEstadoModal] = useState<'pendiente' | 'rechazado' | 'desactivado' | null>(null);
@@ -117,12 +120,13 @@ export default function RegistroPage() {
   
   const puedeEnviar =
     (emailGoogle || correo).length > 0 &&
-    nombres.length > 0 &&
-    primerApellido.length > 0 &&
+    nombres.length > 0 && validarSoloLetras(nombres, 'Nombre(s)') === null && nombres.length <= 50 &&
+    primerApellido.length > 0 && validarSoloLetras(primerApellido, 'Primer apellido') === null && primerApellido.length <= 50 &&
+    (!segundoApellido || (validarSoloLetras(segundoApellido, 'Segundo apellido') === null && segundoApellido.length <= 50)) &&
     tipoDoc.length > 0 &&
     numeroDoc.length > 0 &&
-    celular.length > 0 &&
     validarDocumento(tipoDoc, numeroDoc) === null &&
+    celular.length > 0 &&
     validarCelularPeru(celular) === null &&
     (emailGoogle
       ? true // viene de Google, no necesita contraseña
@@ -131,6 +135,26 @@ export default function RegistroPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrorForm(null);
+
+    const errorNombres = validarSoloLetras(nombres, 'Nombre(s)');
+    if (errorNombres) {
+      setErrorForm(errorNombres);
+      return;
+    }
+
+    const errorPrimerAp = validarSoloLetras(primerApellido, 'Primer apellido');
+    if (errorPrimerAp) {
+      setErrorForm(errorPrimerAp);
+      return;
+    }
+
+    if (segundoApellido) {
+      const errorSegundoAp = validarSoloLetras(segundoApellido, 'Segundo apellido');
+      if (errorSegundoAp) {
+        setErrorForm(errorSegundoAp);
+        return;
+      }
+    }
 
     const errorDoc = validarDocumento(tipoDoc, numeroDoc);
     if (errorDoc) {
@@ -230,33 +254,64 @@ export default function RegistroPage() {
                 onChange={(e) => setCorreo(e.target.value)}
                 autoComplete="email"
                 disabled={!!emailGoogle}
+                required
+                maxLength={100}
               />
 
-              <Input
-                type="text"
-                name="nombres"
-                placeholder="Nombre(s)"
-                value={nombres}
-                onChange={(e) => setNombres(e.target.value)}
-                autoComplete="given-name"
-              />
+              <div className="space-y-1">
+                <Input
+                  type="text"
+                  name="nombres"
+                  placeholder="Nombre(s)"
+                  value={nombres}
+                  maxLength={50}
+                  required
+                  pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$"
+                  onChange={(e) => {
+                    const valor = e.target.value;
+                    setNombres(valor);
+                    setErrorNombresLive(valor ? validarSoloLetras(valor, 'Nombre(s)') : null);
+                  }}
+                  autoComplete="given-name"
+                />
+                {errorNombresLive && <p className="text-xs text-red-500 px-1">{errorNombresLive}</p>}
+              </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <Input
-                  type="text"
-                  name="primerApellido"
-                  placeholder="Primer apellido"
-                  value={primerApellido}
-                  onChange={(e) => setPrimerApellido(e.target.value)}
-                  autoComplete="family-name"
-                />
-                <Input
-                  type="text"
-                  name="segundoApellido"
-                  placeholder="Segundo apellido"
-                  value={segundoApellido}
-                  onChange={(e) => setSegundoApellido(e.target.value)}
-                />
+                <div className="space-y-1">
+                  <Input
+                    type="text"
+                    name="primerApellido"
+                    placeholder="Primer apellido"
+                    value={primerApellido}
+                    maxLength={50}
+                    required
+                    pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$"
+                    onChange={(e) => {
+                      const valor = e.target.value;
+                      setPrimerApellido(valor);
+                      setErrorPrimerApellidoLive(valor ? validarSoloLetras(valor, 'Primer apellido') : null);
+                    }}
+                    autoComplete="family-name"
+                  />
+                  {errorPrimerApellidoLive && <p className="text-xs text-red-500 px-1">{errorPrimerApellidoLive}</p>}
+                </div>
+                <div className="space-y-1">
+                  <Input
+                    type="text"
+                    name="segundoApellido"
+                    placeholder="Segundo apellido"
+                    value={segundoApellido}
+                    maxLength={50}
+                    pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$"
+                    onChange={(e) => {
+                      const valor = e.target.value;
+                      setSegundoApellido(valor);
+                      setErrorSegundoApellidoLive(valor ? (valor.trim() ? validarSoloLetras(valor, 'Segundo apellido') : null) : null);
+                    }}
+                  />
+                  {errorSegundoApellidoLive && <p className="text-xs text-red-500 px-1">{errorSegundoApellidoLive}</p>}
+                </div>
               </div>
 
               {/* Tipo de documento */}
@@ -292,6 +347,10 @@ export default function RegistroPage() {
                   name="numeroDoc"
                   placeholder="Número de documento"
                   value={numeroDoc}
+                  required
+                  minLength={8}
+                  maxLength={11}
+                  pattern="^[0-9]+$"
                   onChange={(e) => {
                     const valor = e.target.value;
                     setNumeroDoc(valor);
@@ -313,6 +372,10 @@ export default function RegistroPage() {
                   name="celular"
                   placeholder="Celular (999 999 999)"
                   value={celular}
+                  required
+                  minLength={9}
+                  maxLength={9}
+                  pattern="^9[0-9]{8}$"
                   onChange={(e) => {
                     const valor = e.target.value;
                     setCelular(valor);
@@ -332,6 +395,9 @@ export default function RegistroPage() {
                       name="contrasena"
                       placeholder="Contraseña"
                       value={contrasena}
+                      required
+                      minLength={8}
+                      maxLength={32}
                       onChange={(e) => setContrasena(e.target.value)}
                       autoComplete="new-password"
                       suffix={
@@ -359,6 +425,9 @@ export default function RegistroPage() {
                     name="confirmarContrasena"
                     placeholder="Confirmar contraseña"
                     value={confirmar}
+                    required
+                    minLength={8}
+                    maxLength={32}
                     onChange={(e) => setConfirmar(e.target.value)}
                     autoComplete="new-password"
                     suffix={

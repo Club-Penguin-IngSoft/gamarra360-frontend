@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { ChangeEvent } from 'react';
 import ComercianteSidebar from '../../components/ComercianteSidebar';
 import MaterialIcon from '../../components/MaterialIcon';
@@ -323,6 +323,8 @@ export default function MiCuentaPage() {
                   name="nombreTienda"
                   placeholder="Nombre de la tienda"
                   value={nombreTienda}
+                  required
+                  maxLength={100}
                   onChange={(e) => setNombreTienda(e.target.value)}
                 />
 
@@ -332,6 +334,8 @@ export default function MiCuentaPage() {
                     name="razonSocial"
                     placeholder="Razón social"
                     value={razonSocial}
+                    required
+                    maxLength={100}
                     onChange={(e) => setRazonSocial(e.target.value)}
                   />
                   <Input
@@ -357,6 +361,8 @@ export default function MiCuentaPage() {
                     name="piso"
                     placeholder="Piso (opcional)"
                     value={piso}
+                    maxLength={2}
+                    pattern="^[0-9]+$"
                     onChange={(e) => setPiso(e.target.value)}
                   />
                   <Input
@@ -364,6 +370,8 @@ export default function MiCuentaPage() {
                     name="stand"
                     placeholder="Stand (opcional)"
                     value={stand}
+                    maxLength={6}
+                    pattern="^[a-zA-Z0-9-]+$"
                     onChange={(e) => setStand(e.target.value)}
                   />
                 </div>
@@ -373,6 +381,7 @@ export default function MiCuentaPage() {
                   <textarea
                     placeholder="Descripción de la tienda (visible para los compradores)"
                     value={informacion}
+                    maxLength={500}
                     onChange={(e) => setInformacion(e.target.value)}
                     rows={3}
                     className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-[11px] text-sm focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100 transition-all"
@@ -479,12 +488,16 @@ export default function MiCuentaPage() {
                   value={email}
                   onChange={() => {}}
                   disabled
+                  maxLength={100}
                 />
                 <Input
                   type="text"
                   name="nombres"
                   placeholder="Nombre(s)"
                   value={nombres}
+                  required
+                  maxLength={50}
+                  pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$"
                   onChange={(e) => setNombres(e.target.value)}
                 />
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -493,6 +506,9 @@ export default function MiCuentaPage() {
                     name="primerApellido"
                     placeholder="Primer apellido"
                     value={primerApellido}
+                    required
+                    maxLength={50}
+                    pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$"
                     onChange={(e) => setPrimerApellido(e.target.value)}
                   />
                   <Input
@@ -500,6 +516,8 @@ export default function MiCuentaPage() {
                     name="segundoApellido"
                     placeholder="Segundo apellido (opcional)"
                     value={segundoApellido}
+                    maxLength={50}
+                    pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$"
                     onChange={(e) => setSegundoApellido(e.target.value)}
                   />
                 </div>
@@ -516,6 +534,10 @@ export default function MiCuentaPage() {
                     name="dni"
                     placeholder="Número de documento"
                     value={dni}
+                    required
+                    minLength={8}
+                    maxLength={11}
+                    pattern="^[0-9]+$"
                     onChange={(e) => setDni(e.target.value)}
                   />
                 </div>
@@ -524,6 +546,10 @@ export default function MiCuentaPage() {
                   name="telefono"
                   placeholder="Celular"
                   value={telefono}
+                  required
+                  minLength={9}
+                  maxLength={9}
+                  pattern="^9[0-9]{8}$"
                   onChange={(e) => setTelefono(e.target.value)}
                 />
               </div>

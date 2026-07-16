@@ -1,6 +1,6 @@
 import React from 'react';
 
-interface InputProps {
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   type: 'email' | 'password' | 'text' | 'tel' | 'number';
   name: string;
   placeholder: string;
@@ -20,6 +20,7 @@ const Input = ({
   autoComplete,
   suffix,
   disabled = false,
+  ...rest
 }: InputProps) => (
   <div className="relative">
     <input
@@ -39,6 +40,7 @@ const Input = ({
         transition-all duration-150
       "
       style={{ paddingRight: suffix ? '2.75rem' : undefined }}
+      {...rest}
     />
     {suffix && (
       <div className="absolute right-3 top-1/2 -translate-y-1/2">{suffix}</div>

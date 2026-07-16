@@ -254,6 +254,8 @@ export default function OlvidoPasswordPage() {
                       valor={email}
                       onChange={e => setEmail(e.target.value)}
                       autoComplete="email"
+                      required
+                      maxLength={100}
                     />
                     <BotonPrimario
                       type="submit"
@@ -274,6 +276,8 @@ export default function OlvidoPasswordPage() {
                         type="text"
                         inputMode="numeric"
                         maxLength={6}
+                        required
+                        pattern="^[0-9]{6}$"
                         value={codigo}
                         onChange={e => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="000000"
@@ -317,6 +321,9 @@ export default function OlvidoPasswordPage() {
                       valor={nuevaPass}
                       onChange={e => setNuevaPass(e.target.value)}
                       autoComplete="new-password"
+                      required
+                      minLength={8}
+                      maxLength={32}
                       sufijo={
                         <button
                           type="button"
@@ -338,6 +345,9 @@ export default function OlvidoPasswordPage() {
                       valor={confirmarPass}
                       onChange={e => setConfirmarPass(e.target.value)}
                       autoComplete="new-password"
+                      required
+                      minLength={8}
+                      maxLength={32}
                       sufijo={
                         <button
                           type="button"

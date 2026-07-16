@@ -53,12 +53,26 @@ export default function EditarPerfilModal({ perfil, onCerrar, onGuardado }: Prop
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
           <span className={LABEL}>Nombre(s)</span>
-          <input className={INPUT} value={nombres} onChange={e => setNombres(e.target.value)} />
+          <input
+            className={INPUT}
+            value={nombres}
+            required
+            maxLength={50}
+            pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$"
+            onChange={e => setNombres(e.target.value)}
+          />
         </label>
 
         <label className="flex flex-col gap-1.5">
           <span className={LABEL}>Primer apellido</span>
-          <input className={INPUT} value={primerApellido} onChange={e => setPrimerApellido(e.target.value)} />
+          <input
+            className={INPUT}
+            value={primerApellido}
+            required
+            maxLength={50}
+            pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$"
+            onChange={e => setPrimerApellido(e.target.value)}
+          />
         </label>
 
         <label className="flex flex-col gap-1.5">
@@ -70,6 +84,8 @@ export default function EditarPerfilModal({ perfil, onCerrar, onGuardado }: Prop
             className={INPUT}
             placeholder="Opcional"
             value={segundoApellido}
+            maxLength={50}
+            pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$"
             onChange={e => setSegundoApellido(e.target.value)}
           />
         </label>
@@ -81,6 +97,10 @@ export default function EditarPerfilModal({ perfil, onCerrar, onGuardado }: Prop
             className={INPUT}
             placeholder="999 999 999"
             value={celular}
+            required
+            minLength={9}
+            maxLength={9}
+            pattern="^9[0-9]{8}$"
             onChange={e => setCelular(e.target.value)}
           />
         </label>

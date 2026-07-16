@@ -15,8 +15,7 @@ import useLogin from '../hooks/useLogin';
 import apiClient from '../services/apiClient';
 import type { GaleriaGamarra } from '../types/ITienda';
 import { ETIQUETA_GALERIA } from '../types/ITienda';
-import { limpiarCelular, validarCelularPeru } from '../utils/validaciones';
-import { validarDocumento } from '../utils/validaciones';
+import { limpiarCelular, validarCelularPeru, validarDocumento, validarRuc, validarSoloLetras } from '../utils/validaciones';
 //import axios from 'axios';
 
 /* ── Datos de selects ───────────────────────────────────────────────────── */
@@ -176,6 +175,10 @@ export default function RegistroComerciantePage() {
   const [estadoModal, setEstadoModal] = useState<'pendiente' | 'rechazado' | 'desactivado' | null>(null);
   const [errorCelularLive, setErrorCelularLive] = useState<string | null>(null);
   const [errorDocLive, setErrorDocLive] = useState<string | null>(null);
+  const [errorRucLive, setErrorRucLive] = useState<string | null>(null);
+  const [errorNombresLive, setErrorNombresLive] = useState<string | null>(null);
+  const [errorPrimerApellidoLive, setErrorPrimerApellidoLive] = useState<string | null>(null);
+  const [errorSegundoApellidoLive, setErrorSegundoApellidoLive] = useState<string | null>(null);
 
   const loginGoogle = useGoogleLogin({
     flow: 'implicit',
@@ -210,10 +213,20 @@ export default function RegistroComerciantePage() {
 
   
   const puedeEnviar =
-    nombreTienda && razonSocial && ruc && galeria &&
-    (emailGoogle || correo) && nombres && primerApellido && tipoDoc && numeroDoc && celular &&
+    nombreTienda.trim().length > 0 && nombreTienda.length <= 100 &&
+    razonSocial.trim().length > 0 && razonSocial.length <= 100 &&
+    ruc && validarRuc(ruc) === null &&
+    galeria &&
+    (emailGoogle || correo) &&
+    nombres && validarSoloLetras(nombres, 'Nombre(s)') === null &&
+    primerApellido && validarSoloLetras(primerApellido, 'Primer apellido') === null &&
+    (!segundoApellido || validarSoloLetras(segundoApellido, 'Segundo apellido') === null) &&
+    tipoDoc && numeroDoc &&
     validarDocumento(tipoDoc, numeroDoc) === null &&
-    validarCelularPeru(celular) === null &&
+    celular && validarCelularPeru(celular) === null &&
+    (!piso || piso.length <= 2) &&
+    (!stand || stand.length <= 6) &&
+    (!informacion || informacion.length <= 500) &&
     (emailGoogle
       ? true
       : validarContrasena(contrasena) && contrasena === confirmar);
@@ -230,6 +243,12 @@ export default function RegistroComerciantePage() {
     e.preventDefault();
     setErrorForm(null);
 
+    const errorRuc = validarRuc(ruc);
+    if (errorRuc) {
+      setErrorForm(errorRuc);
+      return;
+    }
+
     const errorDoc = validarDocumento(tipoDoc, numeroDoc);
     if (errorDoc) {
       setErrorForm(errorDoc);
@@ -240,6 +259,26 @@ export default function RegistroComerciantePage() {
     if (errorCelular) {
       setErrorForm(errorCelular);
       return;
+    }
+
+    const errorNombres = validarSoloLetras(nombres, 'Nombre(s)');
+    if (errorNombres) {
+      setErrorForm(errorNombres);
+      return;
+    }
+
+    const errorPrimerAp = validarSoloLetras(primerApellido, 'Primer apellido');
+    if (errorPrimerAp) {
+      setErrorForm(errorPrimerAp);
+      return;
+    }
+
+    if (segundoApellido) {
+      const errorSegundoAp = validarSoloLetras(segundoApellido, 'Segundo apellido');
+      if (errorSegundoAp) {
+        setErrorForm(errorSegundoAp);
+        return;
+      }
     }
 
     if (!emailGoogle) {
@@ -363,18 +402,38 @@ export default function RegistroComerciantePage() {
           <div className="flex flex-col gap-3">
             <Input
               type="text" name="nombreTienda" placeholder="Nombre de la tienda"
-              value={nombreTienda} onChange={(e) => setNombreTienda(e.target.value)}
+              value={nombreTienda}
+              required
+              maxLength={100}
+              onChange={(e) => setNombreTienda(e.target.value)}
             />
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_180px]">
               <Input
                 type="text" name="razonSocial" placeholder="Razón social"
-                value={razonSocial} onChange={(e) => setRazonSocial(e.target.value)}
+                value={razonSocial}
+                required
+                maxLength={100}
+                onChange={(e) => setRazonSocial(e.target.value)}
               />
-              <Input
-                type="text" name="ruc" placeholder="RUC"
-                value={ruc} onChange={(e) => setRuc(e.target.value)}
-              />
+              <div className="space-y-1">
+                <Input
+                  type="text" name="ruc" placeholder="RUC"
+                  value={ruc}
+                  required
+                  minLength={11}
+                  maxLength={11}
+                  pattern="^[0-9]+$"
+                  onChange={(e) => {
+                    const valor = e.target.value.replace(/\D/g, '');
+                    setRuc(valor);
+                    setErrorRucLive(valor ? validarRuc(valor) : null);
+                  }}
+                />
+                {errorRucLive && (
+                  <p className="text-xs text-red-500 px-1">{errorRucLive}</p>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -384,22 +443,32 @@ export default function RegistroComerciantePage() {
               />
               <Input
                 type="text" name="piso" placeholder="Piso (opcional)"
-                value={piso} onChange={(e) => setPiso(e.target.value)}
+                value={piso}
+                maxLength={2}
+                pattern="^[0-9]+$"
+                onChange={(e) => setPiso(e.target.value.replace(/\D/g, ''))}
               />
               <Input
                 type="text" name="stand" placeholder="Stand (opcional)"
-                value={stand} onChange={(e) => setStand(e.target.value)}
+                value={stand}
+                maxLength={6}
+                pattern="^[a-zA-Z0-9-]+$"
+                onChange={(e) => setStand(e.target.value.replace(/[^a-zA-Z0-9-]/g, ''))}
               />
             </div>
 
             {/* Descripción de la tienda */}
-            <textarea
-              placeholder="Descripción de la tienda (visible para los compradores)"
-              value={informacion}
-              onChange={(e) => setInformacion(e.target.value)}
-              rows={3}
-              className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-[11px] text-sm focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100 transition-all"
-            />
+            <div>
+              <textarea
+                placeholder="Descripción de la tienda (visible para los compradores)"
+                value={informacion}
+                maxLength={500}
+                onChange={(e) => setInformacion(e.target.value)}
+                rows={3}
+                className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-[11px] text-sm focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100 transition-all"
+              />
+              <p className="text-right text-[10px] text-gray-400 mt-1">{informacion.length}/500 caracteres</p>
+            </div>
 
             {/* Envío a domicilio */}
             <label className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 cursor-pointer select-none">
@@ -495,22 +564,56 @@ export default function RegistroComerciantePage() {
               onChange={(e) => setCorreo(e.target.value)}
               autoComplete="email"
               disabled={!!emailGoogle}
+              required
+              maxLength={100}
             />
-            <Input
-              type="text" name="nombres" placeholder="Nombre(s)"
-              value={nombres} onChange={(e) => setNombres(e.target.value)}
-              autoComplete="given-name"
-            />
+            <div className="space-y-1">
+              <Input
+                type="text" name="nombres" placeholder="Nombre(s)"
+                value={nombres}
+                maxLength={50}
+                required
+                pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$"
+                onChange={(e) => {
+                  const valor = e.target.value;
+                  setNombres(valor);
+                  setErrorNombresLive(valor ? validarSoloLetras(valor, 'Nombre(s)') : null);
+                }}
+                autoComplete="given-name"
+              />
+              {errorNombresLive && <p className="text-xs text-red-500 px-1">{errorNombresLive}</p>}
+            </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Input
-                type="text" name="primerApellido" placeholder="Primer apellido"
-                value={primerApellido} onChange={(e) => setPrimerApellido(e.target.value)}
-                autoComplete="family-name"
-              />
-              <Input
-                type="text" name="segundoApellido" placeholder="Segundo apellido (opcional)"
-                value={segundoApellido} onChange={(e) => setSegundoApellido(e.target.value)}
-              />
+              <div className="space-y-1">
+                <Input
+                  type="text" name="primerApellido" placeholder="Primer apellido"
+                  value={primerApellido}
+                  maxLength={50}
+                  required
+                  pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$"
+                  onChange={(e) => {
+                    const valor = e.target.value;
+                    setPrimerApellido(valor);
+                    setErrorPrimerApellidoLive(valor ? validarSoloLetras(valor, 'Primer apellido') : null);
+                  }}
+                  autoComplete="family-name"
+                />
+                {errorPrimerApellidoLive && <p className="text-xs text-red-500 px-1">{errorPrimerApellidoLive}</p>}
+              </div>
+              <div className="space-y-1">
+                <Input
+                  type="text" name="segundoApellido" placeholder="Segundo apellido (opcional)"
+                  value={segundoApellido}
+                  maxLength={50}
+                  pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$"
+                  onChange={(e) => {
+                    const valor = e.target.value;
+                    setSegundoApellido(valor);
+                    setErrorSegundoApellidoLive(valor ? (valor.trim() ? validarSoloLetras(valor, 'Segundo apellido') : null) : null);
+                  }}
+                />
+                {errorSegundoApellidoLive && <p className="text-xs text-red-500 px-1">{errorSegundoApellidoLive}</p>}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -522,6 +625,10 @@ export default function RegistroComerciantePage() {
                 <Input
                   type="text" name="numeroDoc" placeholder="Número de documento"
                   value={numeroDoc}
+                  required
+                  minLength={8}
+                  maxLength={11}
+                  pattern="^[0-9]+$"
                   onChange={(e) => {
                     const valor = e.target.value;
                     setNumeroDoc(valor);
@@ -541,6 +648,10 @@ export default function RegistroComerciantePage() {
               <Input
                 type="tel" name="celular" placeholder="Celular (999 999 999)"
                 value={celular}
+                required
+                minLength={9}
+                maxLength={9}
+                pattern="^9[0-9]{8}$"
                 onChange={(e) => {
                   const valor = e.target.value;
                   setCelular(valor);
@@ -565,6 +676,9 @@ export default function RegistroComerciantePage() {
               <Input
                 type={mostrarPass ? 'text' : 'password'} name="contrasena"
                 placeholder="Contraseña" value={contrasena}
+                required
+                minLength={8}
+                maxLength={32}
                 onChange={(e) => setContrasena(e.target.value)}
                 autoComplete="new-password"
                 suffix={
@@ -580,6 +694,9 @@ export default function RegistroComerciantePage() {
               <Input
                 type={mostrarConf ? 'text' : 'password'} name="confirmar"
                 placeholder="Confirmar contraseña" value={confirmar}
+                required
+                minLength={8}
+                maxLength={32}
                 onChange={(e) => setConfirmar(e.target.value)}
                 autoComplete="new-password"
                 suffix={

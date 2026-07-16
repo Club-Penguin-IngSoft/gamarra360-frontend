@@ -94,6 +94,7 @@ export default function EditarDireccionModal({ perfil, onCerrar, onGuardado }: P
               onChange={e => handleCiudadChange(e.target.value)}
               disabled={cargando}
               className={SELECT}
+              required
               style={{ color: ciudadSel ? '#212529' : '#adb5bd' }}
             >
               <option value="">{cargando ? 'Cargando…' : 'Selecciona una ciudad'}</option>
@@ -114,6 +115,7 @@ export default function EditarDireccionModal({ perfil, onCerrar, onGuardado }: P
               onChange={e => setIdDistrito(e.target.value ? Number(e.target.value) : null)}
               disabled={cargando || !ciudadSel}
               className={SELECT}
+              required
               style={{ color: idDistrito ? '#212529' : '#adb5bd' }}
             >
               <option value="">
@@ -134,6 +136,8 @@ export default function EditarDireccionModal({ perfil, onCerrar, onGuardado }: P
             className={INPUT}
             placeholder="Ej. Av. Arequipa 3421"
             value={calle}
+            required
+            maxLength={150}
             onChange={e => setCalle(e.target.value)}
           />
         </label>
@@ -148,6 +152,7 @@ export default function EditarDireccionModal({ perfil, onCerrar, onGuardado }: P
             className={INPUT}
             placeholder="Ej. frente al parque"
             value={referencia}
+            maxLength={150}
             onChange={e => setReferencia(e.target.value)}
           />
         </label>

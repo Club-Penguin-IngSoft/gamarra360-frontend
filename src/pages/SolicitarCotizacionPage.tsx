@@ -938,16 +938,28 @@ function PersonalizacionModal({
         {/* Posición */}
         <div className="mb-4 grid grid-cols-2 gap-3">
           <input
-            type="text"
+            type="number"
+            min={0.1}
+            step="any"
             value={draft.posicionAlto}
-            onChange={(e) => onCambio({ ...draft, posicionAlto: e.target.value })}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val !== '' && Number(val) < 0) return;
+              onCambio({ ...draft, posicionAlto: val });
+            }}
             placeholder="Alto (cm)"
             className="rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none"
           />
           <input
-            type="text"
+            type="number"
+            min={0.1}
+            step="any"
             value={draft.posicionAncho}
-            onChange={(e) => onCambio({ ...draft, posicionAncho: e.target.value })}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val !== '' && Number(val) < 0) return;
+              onCambio({ ...draft, posicionAncho: val });
+            }}
             placeholder="Ancho (cm)"
             className="rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none"
           />
@@ -974,7 +986,17 @@ function PersonalizacionModal({
           </button>
           <button
             type="button"
-            onClick={onGuardar}
+            onClick={() => {
+              if (draft.posicionAlto && Number(draft.posicionAlto) <= 0) {
+                alert('El alto debe ser mayor a 0 cm.');
+                return;
+              }
+              if (draft.posicionAncho && Number(draft.posicionAncho) <= 0) {
+                alert('El ancho debe ser mayor a 0 cm.');
+                return;
+              }
+              onGuardar();
+            }}
             className="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-600"
           >
             Guardar
