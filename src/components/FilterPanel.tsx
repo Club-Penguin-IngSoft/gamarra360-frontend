@@ -471,26 +471,30 @@ export default function FilterPanel({
                   <input
                     type="number"
                     placeholder="Mín"
+                    min={0}
                     value={borrador.precioMin ?? ''}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const val = e.target.value ? Math.max(0, Number(e.target.value)) : null;
                       setBorrador((b) => ({
                         ...b,
-                        precioMin: e.target.value ? Number(e.target.value) : null,
-                      }))
-                    }
+                        precioMin: val,
+                      }));
+                    }}
                     className="h-10 w-full rounded-md border border-ink-100 bg-white px-3 text-[14px] text-ink-700 focus:border-brand-500 focus:outline-none"
                   />
                   <span className="text-ink-500">—</span>
                   <input
                     type="number"
                     placeholder="Máx"
+                    min={0}
                     value={borrador.precioMax ?? ''}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const val = e.target.value ? Math.max(0, Number(e.target.value)) : null;
                       setBorrador((b) => ({
                         ...b,
-                        precioMax: e.target.value ? Number(e.target.value) : null,
-                      }))
-                    }
+                        precioMax: val,
+                      }));
+                    }}
                     className="h-10 w-full rounded-md border border-ink-100 bg-white px-3 text-[14px] text-ink-700 focus:border-brand-500 focus:outline-none"
                   />
                 </div>

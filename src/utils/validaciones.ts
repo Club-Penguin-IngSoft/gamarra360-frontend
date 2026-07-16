@@ -55,3 +55,24 @@ export function limpiarCelular(celular: string): string {
   const sinEspacios = celular.replace(/\s+/g, '');
   return sinEspacios.startsWith('+51') ? sinEspacios : `+51${sinEspacios}`;
 }
+
+export function validarRuc(ruc: string): string | null {
+  const valor = ruc.trim();
+  if (!valor) return 'El RUC es obligatorio.';
+  if (!/^\d{11}$/.test(valor)) {
+    return 'El RUC debe tener exactamente 11 dígitos numéricos.';
+  }
+  if (!/^(10|20|15|16|17)/.test(valor)) {
+    return 'El RUC debe empezar con un prefijo válido (10, 15, 16, 17 o 20).';
+  }
+  return null;
+}
+
+export function validarSoloLetras(texto: string, nombreCampo: string): string | null {
+  const valor = texto.trim();
+  if (!valor) return `El campo ${nombreCampo} es obligatorio.`;
+  if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(valor)) {
+    return `El campo ${nombreCampo} solo debe contener letras y espacios.`;
+  }
+  return null;
+}
