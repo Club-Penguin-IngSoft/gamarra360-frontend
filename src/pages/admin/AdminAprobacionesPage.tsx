@@ -124,7 +124,7 @@ export default function AdminAprobacionesPage() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutro-50 min-h-[520px] block">
+              <tbody className="divide-y divide-neutro-50">
                 {loading ? (
                   <tr>
                     <td colSpan={5} className="text-center py-12 text-neutro-400 font-medium">
