@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Search } from 'lucide-react';
+import { Menu, Search, X } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import accountCircleIcon from '../assets/images/account_circle.svg';
 import shoppingCartIcon from '../assets/images/shopping_cart.svg';
@@ -47,6 +47,7 @@ export default function TopBar({
   const [query, setQuery] = useState('');
   const [resultados, setResultados] = useState<IProducto[]>([]);
   const [abierto, setAbierto] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const contenedorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -102,11 +103,21 @@ export default function TopBar({
   }
 
   return (
-    <header className="sticky top-0 z-40 h-20 border-b border-ink-200 bg-white">
-      <div className="flex h-full items-center justify-between px-4">
+    <header className="sticky top-0 z-40 border-b border-ink-200 bg-white">
+      <div className="flex h-20 items-center justify-between gap-3 px-4">
 
         {/* ── Izquierda: logo + nav ─────────────────────────────────── */}
-        <div className="flex items-center gap-8 self-stretch">
+        <div className="flex min-w-0 items-center gap-4 self-stretch lg:gap-8">
+          {!minimal && (
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen((open) => !open)}
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg text-ink-700 hover:bg-surface-muted md:hidden"
+              aria-label={mobileNavOpen ? 'Cerrar menú' : 'Abrir menú'}
+            >
+              {mobileNavOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          )}
           <Link to={RUTAS.INICIO} aria-label="Ir al inicio">
             <Logo size="md" />
           </Link>
@@ -150,7 +161,7 @@ export default function TopBar({
             Volver al Inicio
           </Link>
         ) : (
-          <div className="flex items-center gap-5">
+          <div className="flex flex-shrink-0 items-center gap-3 sm:gap-5">
 
             {/* Buscador */}
             <div
@@ -268,7 +279,7 @@ export default function TopBar({
                 onClick={handleCerrarSesion}
                 aria-label="Cerrar sesión"
                 title="Cerrar sesión"
-                className="inline-flex items-center justify-center transition-opacity hover:opacity-80"
+                className="hidden items-center justify-center transition-opacity hover:opacity-80 sm:inline-flex"
               >
                 <MaterialIcon
                   name="logout"
@@ -280,6 +291,33 @@ export default function TopBar({
           </div>
         )}
       </div>
+      {!minimal && mobileNavOpen && (
+        <div className="border-t border-ink-100 px-4 pb-4 pt-3 md:hidden">
+          <nav className="grid grid-cols-2 gap-2">
+            {navItems.map((item) => (
+              <Link
+                key={item.label}
+                to={item.to}
+                onClick={() => setMobileNavOpen(false)}
+                className={`rounded-lg px-3 py-2 text-sm font-medium ${item.label === active ? 'bg-brand-50 text-brand-600' : 'text-ink-700 hover:bg-surface-muted'}`}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+          <div className="relative mt-3">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-500" />
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={manejarTecla}
+              placeholder="Buscar productos"
+              className="h-11 w-full rounded-full border border-ink-100 pl-9 pr-4 text-sm focus:border-brand-500 focus:outline-none"
+            />
+          </div>
+        </div>
+      )}
     </header>
   );
 }

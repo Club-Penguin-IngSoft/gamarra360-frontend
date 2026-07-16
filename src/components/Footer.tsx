@@ -23,7 +23,7 @@ const enlaces: { label: string; to: string }[] = [
 export default function Footer() {
   return (
     <footer className="border-t border-ink-200 bg-white">
-      <div className="grid grid-cols-1 gap-6 px-[120px] py-[60px] md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-8 px-6 py-10 sm:grid-cols-2 sm:px-8 md:grid-cols-4 lg:px-[120px] lg:py-[60px]">
         <div className="flex flex-col gap-6">
           <Logo size="lg" />
           <p className="text-[18px] text-ink-700">

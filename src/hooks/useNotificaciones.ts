@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { getNotificaciones } from "../services/notificacionService";
+import type { Notificacion } from "../services/notificacionService";
 
 export const useNotificaciones = (usuarioId: number) => {
 
-  const [notificaciones, setNotificaciones] = useState<any[]>([]);
+  const [notificaciones, setNotificaciones] = useState<Notificacion[]>([]);
   const [loading, setLoading] = useState(false);
 
   const cargar = async () => {
@@ -14,7 +15,11 @@ export const useNotificaciones = (usuarioId: number) => {
 
     try {
       const data = await getNotificaciones(usuarioId);
-      setNotificaciones(Array.isArray(data) ? data : []);
+      setNotificaciones(
+        Array.isArray(data)
+          ? data.filter((notificacion) => notificacion.fueleida === false)
+          : []
+      );
     } catch (e) {
       console.error(e);
       setNotificaciones([]);

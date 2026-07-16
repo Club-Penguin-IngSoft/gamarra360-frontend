@@ -72,7 +72,7 @@ export default function AdminAprobacionesPage() {
     <div className="flex min-h-screen bg-neutro-50 font-sans">
       <AdminSidebar />
 
-      <main className="flex-1 p-8">
+      <main className="min-w-0 flex-1 px-4 py-16 sm:px-6 lg:p-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-black text-neutro-900 mb-2">Aprobación de Vendedores</h1>
@@ -99,12 +99,19 @@ export default function AdminAprobacionesPage() {
 
         {/* Tabla */}
         <div className="bg-white rounded-tarjeta shadow-tarjeta border border-neutro-100 overflow-hidden">
-          <div className="p-6 flex items-center justify-between border-b border-neutro-100 bg-white">
+          <div className="flex items-center justify-between border-b border-neutro-100 bg-white p-4 sm:p-6">
             <h2 className="text-xl font-black text-neutro-900">Cola de Verificación</h2>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[960px] table-fixed">
+              <colgroup>
+                <col className="w-[23%]" />
+                <col className="w-[20%]" />
+                <col className="w-[13%]" />
+                <col className="w-[25%]" />
+                <col className="w-[19%]" />
+              </colgroup>
               <thead>
                 <tr className="border-b border-neutro-100 bg-neutro-50/30">
                   <th className="px-6 py-4 text-left text-xs font-black text-neutro-400 uppercase tracking-widest">
@@ -124,7 +131,7 @@ export default function AdminAprobacionesPage() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutro-50 min-h-[520px] block">
+              <tbody className="divide-y divide-neutro-50">
                 {loading ? (
                   <tr>
                     <td colSpan={5} className="text-center py-12 text-neutro-400 font-medium">
@@ -141,7 +148,7 @@ export default function AdminAprobacionesPage() {
                   <tr key={v.comercianteId} className="hover:bg-neutro-50/50 transition-colors">
 
                     {/* Empresa = nombreTienda */}
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 align-middle">
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl bg-primario-claro flex items-center justify-center text-2xl shadow-sm border border-white">
                           🏪
@@ -151,23 +158,23 @@ export default function AdminAprobacionesPage() {
                     </td>
 
                     {/* Razón Social */}
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 align-middle">
                       <p className="text-sm text-neutro-700 font-medium">{v.razonSocial}</p>
                     </td>
 
                     {/* RUC */}
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 align-middle">
                       <p className="text-sm text-neutro-700 font-bold">{v.ruc}</p>
                     </td>
 
                     {/* Email */}
-                    <td className="px-6 py-4">
-                      <p className="text-sm text-neutro-700">{v.emailContacto}</p>
+                    <td className="px-6 py-4 align-middle">
+                      <p className="break-all text-sm text-neutro-700">{v.emailContacto}</p>
                     </td>
 
                     {/* Acciones */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-center gap-2">
+                    <td className="px-6 py-4 align-middle">
+                      <div className="flex items-center justify-center gap-2 whitespace-nowrap">
                         <button
                           onClick={() => handleRechazar(v.comercianteId)}
                           disabled={procesando === v.comercianteId}
@@ -198,7 +205,7 @@ export default function AdminAprobacionesPage() {
           </div>
 
           {/* Paginación */}
-          <div className="px-6 py-4 flex items-center justify-between bg-neutro-50/30">
+          <div className="flex flex-col gap-3 bg-neutro-50/30 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <p className="text-xs font-bold text-neutro-400 uppercase tracking-wider">
               Mostrando {vendors.length} de {total} solicitudes
             </p>

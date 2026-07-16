@@ -126,7 +126,7 @@ function CatalogoGlobal() {
   const destacados = shuffleDiario(filtrados, semillaDelDia()).slice(0, 4);
 
   return (
-    <section className="flex flex-col gap-8 px-12 py-12">
+    <section className="flex flex-col gap-8 px-4 py-10 sm:px-6 lg:px-12 lg:py-12">
       <div className="flex flex-col gap-6">
         <SectionHeader
           eyebrow="Catálogo"
@@ -177,7 +177,7 @@ function Directorio() {
 
   return (
     <section
-      className="flex flex-col gap-8 px-12 py-12"
+      className="flex flex-col gap-8 px-4 py-10 sm:px-6 lg:px-12 lg:py-12"
       style={{ backgroundColor: 'rgba(240, 241, 243, 0.3)' }}
     >
       <SectionHeader eyebrow="Directorio" title="Tiendas de Moda Destacadas" />
@@ -203,7 +203,7 @@ function Directorio() {
 
 function SpecialOrdersCTA() {
   return (
-    <section className="relative overflow-hidden px-12 py-16">
+    <section className="relative overflow-hidden px-4 py-12 sm:px-6 lg:px-12 lg:py-16">
       <div className="absolute inset-0 bg-[#2F343E]" />
       <div
         className="absolute inset-0 opacity-25"
@@ -261,7 +261,7 @@ function SpecialOrdersCTA() {
 
 function MerchantCTA() {
   return (
-    <section className="relative overflow-hidden bg-brand-900 px-12 py-20">
+    <section className="relative overflow-hidden bg-brand-900 px-4 py-14 sm:px-6 lg:px-12 lg:py-20">
       <div
         className="absolute inset-0"
         style={{

@@ -313,7 +313,7 @@ export default function RegistroComerciantePage() {
       {enviado && <SuccessModal onClose={() => navigate(RUTAS.INICIO)} />}
 
       {/* ── Hero header ─────────────────────────────────────────────── */}
-      <div className="px-8 pt-12 pb-8 max-w-[960px] mx-auto w-full">
+      <div className="mx-auto w-full max-w-[960px] px-4 pb-8 pt-10 sm:px-8 sm:pt-12">
         <span
           className="text-xs font-bold uppercase tracking-widest"
           style={{ color: COLORES.primario }}
@@ -330,7 +330,7 @@ export default function RegistroComerciantePage() {
       </div>
 
       {/* ── Google ──────────────────────────────────────────────────── */}
-      <div className="mx-auto w-full max-w-[960px] px-8 flex flex-col gap-3 pb-2">
+      <div className="mx-auto flex w-full max-w-[960px] flex-col gap-3 px-4 pb-2 sm:px-8">
         {emailGoogle ? (
           <div className="mb-2 flex items-center gap-2 rounded-xl bg-pink-50 border border-pink-200 px-4 py-3 text-sm text-pink-700">
             <MaterialIcon name="check_circle" style={{ fontSize: '20px' }} />
@@ -354,7 +354,7 @@ export default function RegistroComerciantePage() {
       <form
         onSubmit={handleSubmit}
         noValidate
-        className="mx-auto w-full max-w-[960px] flex flex-col gap-4 px-8 pb-12"
+        className="mx-auto flex w-full max-w-[960px] flex-col gap-4 px-4 pb-12 sm:px-8"
       >
         {/* ── Sección 1: Datos del Negocio ─────────────────────────── */}
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-cardShadow">

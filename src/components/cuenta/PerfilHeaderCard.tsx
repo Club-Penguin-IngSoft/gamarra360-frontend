@@ -38,17 +38,21 @@ export default function PerfilHeaderCard({ perfil, cargando, onEditarPerfil }: P
     <div className="flex flex-col items-start gap-6 rounded-xl bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
+          <span className="mb-1 inline-flex w-fit items-center rounded-full bg-info px-4 py-1.5 text-label-xs font-medium text-white">
+            {etiquetaRol}
+          </span>
           <h2 className="text-h6 font-semibold text-ink-900">{nombreCompleto}</h2>
           {perfil?.telefono && (
             <p className="text-body-xl text-ink-700">
+              <span className="font-semibold text-ink-900">Número:</span>{' '}
               +51 {perfil.telefono.replace(/^\+51\s?/, '')}
             </p>
           )}
-          <p className="text-body-xl text-ink-700">{perfil?.email ?? usuario?.correo}</p>
+          <p className="break-all text-body-xl text-ink-700">
+            <span className="font-semibold text-ink-900">Correo electrónico:</span>{' '}
+            {perfil?.email ?? usuario?.correo}
+          </p>
         </div>
-        <span className="inline-flex w-fit items-center rounded-full bg-info px-4 py-1.5 text-label-xs font-medium text-white">
-          {etiquetaRol}
-        </span>
       </div>
       <button
         type="button"

@@ -241,7 +241,7 @@ export default function RegistroPage() {
                 autoComplete="given-name"
               />
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <Input
                   type="text"
                   name="primerApellido"

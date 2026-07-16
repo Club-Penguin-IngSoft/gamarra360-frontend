@@ -105,7 +105,7 @@ const LoginPage = () => {
                 'linear-gradient(to top, rgba(0,0,0,0.72) 40%, rgba(0,0,0,0.25) 100%)',
             }}
           />
-          <div className="relative z-10 p-12 pb-14">
+          <div className="relative z-10 p-6 pb-8 sm:p-10 sm:pb-12 lg:p-12 lg:pb-14">
             <span
               className="inline-block px-4 py-1 rounded-full text-white text-xs font-bold uppercase tracking-widest mb-5"
               style={{ backgroundColor: COLORES.primario }}
