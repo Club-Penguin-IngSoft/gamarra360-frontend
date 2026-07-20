@@ -216,7 +216,7 @@ export default function AdminUsuariosPage() {
             </button>
             <button onClick={() => { setEditandoId(null); setFormUsuario({ nombres: '', primerApellido: '', segundoApellido: '', email: '', dni: '', telefono: '', contrasenha: '', rol: 'CLIENTE' }); setModalUsuario(true); }} className="flex items-center gap-2 px-4 py-2 bg-primario text-white rounded-xl hover:bg-primario-hover transition-colors font-bold text-sm shadow-primario">
               <UserPlus className="w-4 h-4" />
-              Registrar Usuario
+              Registrar Cliente o Admin
             </button>
           </div>
         </div>
