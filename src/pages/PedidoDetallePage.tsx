@@ -280,6 +280,9 @@ export default function PedidoDetallePage() {
                         <button type="button" onClick={() => setSeguimientoAbierto(true)} className={BTN_SECONDARY}>
                           Ver seguimiento
                         </button>
+                        <button type="button" onClick={() => navigate(`${RUTAS.RECLAMOS}?pedidoId=${pedido.id}`)} className={BTN_SECONDARY}>
+                          Presentar reclamo
+                        </button>
                       </div>
                     </div>
                   </div>

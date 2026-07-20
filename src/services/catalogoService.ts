@@ -19,7 +19,7 @@ interface IProductoBackend {
   precioBase?: number;
   precioFinal?: number;
   /** Solo viene poblado si hay una oferta ACTIVA vigente ahora (backend: esOfertaActiva()). */
-  oferta?: { titulo: string; tipoDescuento: 'PORCENTAJE' | 'MONTO_FIJO'; valorDescuento: number } | null;
+  oferta?: { titulo: string; tipoDescuento: 'PORCENTAJE' | 'MONTO_FIJO'; valorDescuento: number; cantidadMinima: number } | null;
   esPersonalizable: boolean;
   activo: boolean;
   idTienda?: number;
@@ -52,6 +52,8 @@ interface IProductoBackend {
     colorHex?: string;
     idColor?: number;
     idTalla?: number;
+    material?: string;
+    calidad?: string;
   }[];
 }
 
@@ -88,6 +90,8 @@ export interface IVariantePayload {
   color: { idColor: number };
   talla: { idTalla: number };
   imagenUrl?: string | null;
+  material?: string;
+  calidad?: string;
 }
 
 /** Busca una talla por nombre; si no existe la crea. Devuelve el idTalla. */
@@ -179,6 +183,8 @@ function adaptarProducto(p: IProductoBackend): IProducto {
     colorHex: v.colorHex ?? undefined,
     idColor: v.idColor ?? undefined,
     idTalla: v.idTalla ?? undefined,
+    material: v.material ?? undefined,
+    calidad: v.calidad ?? undefined,
     precioAjustado: v.precioAjustado ?? undefined,
     // precioEfectivo viene del backend si ya está implementado;
     // si no, cae a precioAjustado como precio final de variante
@@ -292,7 +298,9 @@ export async function listarTiposPorCategoria(idCategoria: number): Promise<ITip
   const { data } = await apiClient.get<ITipoProductoOpcion[]>('/tipos-producto', {
     params: { categoriaId: idCategoria },
   });
-  return data;
+  return [...data].sort((a, b) =>
+    a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }),
+  );
 }
 
 /** Devuelve los materiales disponibles para los selects del formulario. */

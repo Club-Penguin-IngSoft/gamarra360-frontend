@@ -6,6 +6,8 @@ import { personalizacionService } from '../../services/personalizacionService';
 import type { IPersonalizacionComercianteDetalle, IResponderPersonalizacionRequest } from '../../types/IPersonalizacion';
 import { generarCodigoPersonalizacion, getBadgeInfo, TIPO_TRABAJO_LABEL } from '../../utils/personalizacionUi';
 import { formatearPrecio } from '../../utils';
+import { subirImagenS3 } from '../../services/catalogoService';
+import ChatPersonalizacion from '../../components/ChatPersonalizacion';
 
 function obtenerIniciales(nombre: string | null): string {
   if (!nombre) return '?';
@@ -27,6 +29,8 @@ export default function DetalleDePersonalizacionComerciantePage() {
   const [anotaciones, setAnotaciones] = useState('');
   const [condiciones, setCondiciones] = useState('');
   const [comentario, setComentario] = useState('');
+  const [imagenDiseno, setImagenDiseno] = useState('');
+  const [subiendoDiseno, setSubiendoDiseno] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [cancelando, setCancelando] = useState(false);
@@ -51,11 +55,16 @@ export default function DetalleDePersonalizacionComerciantePage() {
         setFormError('Ingresa un precio final válido mayor a 0.');
         return;
       }
+      if (!imagenDiseno) {
+        setFormError('Adjunta el diseño final que verá y aprobará el cliente.');
+        return;
+      }
       req = {
         decision: 'ACEPTAR',
         precioPropuesto: precio,
         anotaciones: anotaciones.trim() || undefined,
         condiciones: condiciones.trim() || undefined,
+        imagen: imagenDiseno,
       };
     } else {
       if (!comentario.trim()) {
@@ -76,14 +85,36 @@ export default function DetalleDePersonalizacionComerciantePage() {
     }
   }
 
+  async function handleSubirDiseno(file?: File) {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setFormError('El diseño debe ser una imagen.');
+      return;
+    }
+    setSubiendoDiseno(true);
+    setFormError(null);
+    try {
+      setImagenDiseno(await subirImagenS3(file));
+    } catch {
+      setFormError('No se pudo subir el diseño. Inténtalo nuevamente.');
+    } finally {
+      setSubiendoDiseno(false);
+    }
+  }
+
   async function handleAceptarPrecioCliente() {
     if (!detalle?.precioDeseado) return;
     setFormError(null);
+    if (!imagenDiseno) {
+      setFormError('Adjunta el diseño final antes de aceptar el precio del cliente.');
+      return;
+    }
     setEnviando(true);
     try {
       const actualizado = await personalizacionService.responderPersonalizacion(detalle.id, {
         decision: 'ACEPTAR',
         precioPropuesto: detalle.precioDeseado,
+        imagen: imagenDiseno,
       });
       setDetalle(actualizado);
     } catch {
@@ -95,11 +126,23 @@ export default function DetalleDePersonalizacionComerciantePage() {
 
   async function handleCancelar() {
     if (!detalle) return;
-    if (!window.confirm('¿Seguro que deseas cancelar esta solicitud?')) return;
+    const motivo = window.prompt('Indica el motivo de la cancelación:')?.trim();
+    if (!motivo) return;
     setCancelando(true);
     try {
-      await personalizacionService.cancelarPorVendedor(detalle.id);
-      setDetalle((prev) => (prev ? { ...prev, estado: 'RECHAZADA' } : prev));
+      await personalizacionService.cancelarPorVendedor(detalle.id, motivo);
+      setDetalle((prev) => (prev ? {
+        ...prev,
+        estado: 'RECHAZADA',
+        propuesta: prev.propuesta ? { ...prev.propuesta, comentario: motivo } : {
+          precioPropuesto: null,
+          comentario: motivo,
+          condiciones: null,
+          anotaciones: null,
+          imagen: null,
+          fecha: new Date().toISOString(),
+        },
+      } : prev));
     } catch {
       setFormError('No se pudo cancelar la solicitud. Inténtalo de nuevo.');
     } finally {
@@ -213,6 +256,17 @@ export default function DetalleDePersonalizacionComerciantePage() {
                 {decision === 'ACEPTAR' ? (
                   <div className="flex flex-col gap-4">
                     <div>
+                      <label className="block text-[12px] font-semibold text-gray-700 mb-1.5">Diseño final para aprobación del cliente *</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => void handleSubirDiseno(e.target.files?.[0])}
+                        className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-[12px]"
+                      />
+                      {subiendoDiseno && <p className="mt-1 text-[12px] text-gray-500">Subiendo diseño...</p>}
+                      {imagenDiseno && <img src={imagenDiseno} alt="Diseño final" className="mt-3 max-h-56 rounded-lg border border-gray-200 object-contain" />}
+                    </div>
+                    <div>
                       <label className="block text-[12px] font-semibold text-gray-700 mb-1.5">Costo de personalización (S/)</label>
                       <p className="text-[12px] text-gray-500 mb-1.5">
                         Precio base del producto: {formatearPrecio(detalle.precioBase ?? 0)} (se suma automáticamente, no lo incluyas aquí).
@@ -306,6 +360,14 @@ export default function DetalleDePersonalizacionComerciantePage() {
                         </p>
                       </div>
                     )}
+                    {detalle.propuesta?.imagen && (
+                      <div>
+                        <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] mb-2">Diseño enviado</p>
+                        <a href={detalle.propuesta.imagen} target="_blank" rel="noreferrer">
+                          <img src={detalle.propuesta.imagen} alt="Diseño enviado al cliente" className="max-h-72 rounded-lg border border-gray-200 object-contain" />
+                        </a>
+                      </div>
+                    )}
                     {detalle.propuesta?.anotaciones && (
                       <div>
                         <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] mb-1">Anotaciones</p>
@@ -332,6 +394,7 @@ export default function DetalleDePersonalizacionComerciantePage() {
                 )}
               </div>
             )}
+            <ChatPersonalizacion personalizacionId={detalle.id} soy="VENDEDOR" />
           </div>
 
           {/* Columna lateral */}

@@ -10,6 +10,7 @@ export interface IPersonalizacionResumen {
   nombreTienda: string | null;
   fotoTienda: string | null;
   detalleProductoId: number;
+  productoId: number | null;
   nombreProducto: string | null;
   imagenUrl: string | null;
   talla: string | null;
@@ -46,6 +47,7 @@ export interface IPersonalizacionDetalle {
   nombreTienda: string | null;
   fotoTienda: string | null;
   detalleProductoId: number;
+  productoId: number | null;
   nombreProducto: string | null;
   imagenUrl: string | null;
   talla: string | null;
@@ -96,6 +98,7 @@ export interface IPropuestaComercianteInfo {
   comentario: string | null;
   condiciones: string | null;
   anotaciones: string | null;
+  imagen: string | null;
   fecha: string | null;
 }
 
@@ -128,10 +131,19 @@ export interface IResponderPersonalizacionRequest {
   anotaciones?: string;
   condiciones?: string;
   comentario?: string;
+  imagen?: string;
 }
 
 export interface IContraPropuestaPersonalizacionRequest {
   precioDeseado?: number;
   especificacion?: string;
   comentario?: string;
+}
+
+export interface IMensajePersonalizacion {
+  id: number;
+  remitenteId: number;
+  remitente: 'CLIENTE' | 'VENDEDOR';
+  mensaje: string;
+  fecha: string;
 }

@@ -6,6 +6,7 @@ export interface IOferta {
   titulo: string;
   tipoDescuento: TipoDescuentoOferta;
   valorDescuento: number;
+  cantidadMinima: number;
   fechaInicio: string;
   fechaFin: string;
   activa: boolean;
@@ -17,6 +18,7 @@ export interface IOfertaPayload {
   titulo: string;
   tipoDescuento: TipoDescuentoOferta;
   valorDescuento: number;
+  cantidadMinima: number;
   fechaInicio: string;
   fechaFin: string;
   activa: boolean;

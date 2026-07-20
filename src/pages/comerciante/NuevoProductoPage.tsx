@@ -52,6 +52,8 @@ interface IVarianteNueva {
   stockMinimo: number;
   activo: boolean;
   imagenUrl: string;
+  material: string;
+  calidad: string;
 }
 
 interface IEspecificacion {
@@ -217,6 +219,8 @@ export default function NuevoProductoPage() {
           stockMinimo: 5,
           activo: true,
           imagenUrl: principalUrl,
+          material: materialesBackend.find((m) => m.idMaterial === idMaterial)?.nombre ?? '',
+          calidad: '',
         });
       });
     });
@@ -237,6 +241,9 @@ export default function NuevoProductoPage() {
 
   const updateVarianteStockMinimo = (id: number, stockMinimo: number) =>
     setVariantes((p) => p.map((v) => (v.id === id ? { ...v, stockMinimo } : v)));
+
+  const updateVarianteTexto = (id: number, campo: 'material' | 'calidad', valor: string) =>
+    setVariantes((p) => p.map((v) => (v.id === id ? { ...v, [campo]: valor } : v)));
 
   const eliminarVariante = (id: number) =>
     setVariantes((p) => p.filter((v) => v.id !== id));
@@ -349,6 +356,8 @@ export default function NuevoProductoPage() {
             color: { idColor },
             talla: { idTalla },
             imagenUrl: v.imagenUrl || null,
+            material: v.material || undefined,
+            calidad: v.calidad || undefined,
           });
         })
       );
@@ -727,7 +736,7 @@ export default function NuevoProductoPage() {
               <table className="w-full border-collapse">
                 <thead>
                   <tr>
-                    {['Variante', 'SKU', 'Precio Base', 'Stock', 'Stock Mín.', 'Imagen', 'Estado', ''].map((col, i) => (
+                    {['Variante', 'SKU', 'Material', 'Calidad', 'Precio Base', 'Stock', 'Stock Mín.', 'Imagen', 'Estado', ''].map((col, i) => (
                       <th
                         key={i}
                         className={`text-left text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] px-3 py-2 bg-gray-100 border-b border-gray-200 whitespace-nowrap ${
@@ -754,6 +763,12 @@ export default function NuevoProductoPage() {
                           <span className="text-[11px] font-mono text-gray-500 bg-gray-50 px-2 py-1 rounded border border-gray-200 whitespace-nowrap">
                             {skuVariante}
                           </span>
+                        </td>
+                        <td className="px-3 py-3 border-b border-gray-100 align-middle">
+                          <input value={v.material} onChange={(e) => updateVarianteTexto(v.id, 'material', e.target.value)} placeholder="Material" className="w-28 h-[34px] border border-gray-300 rounded px-2 text-[12px]" />
+                        </td>
+                        <td className="px-3 py-3 border-b border-gray-100 align-middle">
+                          <input value={v.calidad} onChange={(e) => updateVarianteTexto(v.id, 'calidad', e.target.value)} placeholder="Calidad" className="w-28 h-[34px] border border-gray-300 rounded px-2 text-[12px]" />
                         </td>
                         <td className="px-3 py-3 border-b border-gray-100 align-middle">
                           <PrecioInput value={v.precioBase} onChange={(p) => updateVariantePrecio(v.id, p)} />

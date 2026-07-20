@@ -36,7 +36,7 @@ export const ESTADO_PEDIDO_INFO: Record<EstadoPedido, { label: string; className
 
 /** Orden lineal de la máquina de estados del pedido (sin contar CANCELADO). */
 export const ORDEN_ESTADOS: EstadoPedido[] = [
-  'RECIBIDO', 'EN_PREPARACION', 'EN_CAMINO', 'LISTO_PARA_ENTREGA', 'ENTREGADO',
+  'RECIBIDO', 'EN_PREPARACION', 'LISTO_PARA_ENTREGA', 'EN_CAMINO', 'ENTREGADO',
 ];
 
 export interface PasoSeguimiento {
@@ -52,7 +52,7 @@ export interface PasoSeguimiento {
  */
 export function pasosSeguimiento(tipoEntrega: string | null | undefined): PasoSeguimiento[] {
   const esRecojo = tipoEntrega === 'RECOJO_TIENDA';
-  return [
+  const pasos: PasoSeguimiento[] = [
     {
       estado: 'RECIBIDO',
       titulo: 'Pedido recibido',
@@ -65,17 +65,6 @@ export function pasosSeguimiento(tipoEntrega: string | null | undefined): PasoSe
     },
     esRecojo
       ? {
-          estado: 'EN_CAMINO',
-          titulo: 'Alistando para recojo',
-          descripcion: 'Tu pedido se está empacando para que lo recojas.',
-        }
-      : {
-          estado: 'EN_CAMINO',
-          titulo: 'En camino',
-          descripcion: 'Tu pedido va en camino a tu dirección.',
-        },
-    esRecojo
-      ? {
           estado: 'LISTO_PARA_ENTREGA',
           titulo: 'Listo para recojo',
           descripcion: 'Tu pedido está listo. Acércate a la tienda en Gamarra a recogerlo.',
@@ -85,14 +74,22 @@ export function pasosSeguimiento(tipoEntrega: string | null | undefined): PasoSe
           titulo: 'Listo para entrega',
           descripcion: 'El repartidor está por llegar a tu dirección.',
         },
-    {
+  ];
+  if (!esRecojo) {
+    pasos.push({
+      estado: 'EN_CAMINO',
+      titulo: 'En camino',
+      descripcion: 'Tu pedido va en camino a tu dirección.',
+    });
+  }
+  pasos.push({
       estado: 'ENTREGADO',
       titulo: esRecojo ? 'Recogido' : 'Entregado',
       descripcion: esRecojo
         ? 'Recogiste tu pedido. ¡Gracias por tu compra!'
         : 'Tu pedido fue entregado. ¡Gracias por tu compra!',
-    },
-  ];
+    });
+  return pasos;
 }
 
 /**
@@ -104,9 +101,13 @@ export function etiquetaAvanzarEstado(
   estadoActual: EstadoPedido,
   tipoEntrega: string | null | undefined,
 ): string | null {
-  const idx = ORDEN_ESTADOS.indexOf(estadoActual);
-  if (idx < 0 || idx >= ORDEN_ESTADOS.length - 1) return null;
-  const siguiente = ORDEN_ESTADOS[idx + 1];
+  if (estadoActual === 'RECIBIDO') return 'Aprobar pedido';
+  const orden = tipoEntrega === 'RECOJO_TIENDA'
+    ? (['RECIBIDO', 'EN_PREPARACION', 'LISTO_PARA_ENTREGA', 'ENTREGADO'] as EstadoPedido[])
+    : ORDEN_ESTADOS;
+  const idx = orden.indexOf(estadoActual);
+  if (idx < 0 || idx >= orden.length - 1) return null;
+  const siguiente = orden[idx + 1];
   const paso = pasosSeguimiento(tipoEntrega).find((p) => p.estado === siguiente);
   return paso ? `Marcar ${paso.titulo}` : null;
 }

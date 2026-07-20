@@ -12,6 +12,9 @@ const NAV_ITEMS = [
   { label: 'Promociones', icon: 'local_offer', to: RUTAS.COMERCIANTE_PROMOCIONES },
   { label: 'Personalizaciones', icon: 'palette', to: RUTAS.COMERCIANTE_PERSONALIZACIONES },
   { label: 'Cotizaciones', icon: 'request_quote', to: RUTAS.COMERCIANTE_COTIZACIONES },
+  { label: 'Reclamos', icon: 'support_agent', to: RUTAS.COMERCIANTE_RECLAMOS },
+  { label: 'Reportes', icon: 'analytics', to: RUTAS.COMERCIANTE_REPORTES },
+  { label: 'Precios de delivery', icon: 'local_shipping', to: RUTAS.COMERCIANTE_ENVIOS },
   { label: 'Notificaciones', icon: 'notifications', to: RUTAS.COMERCIANTE_NOTIFICACIONES },
 ];
 

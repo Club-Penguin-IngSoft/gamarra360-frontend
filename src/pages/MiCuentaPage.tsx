@@ -12,6 +12,7 @@ import { pedidoService } from '../services/pedidoService';
 import { obtenerPerfilCliente } from '../services/clienteService';
 import type { IDetalleOrden } from '../types/IPedido';
 import type { IPerfilCliente } from '../types/ICliente';
+import apiClient from '../services/apiClient';
 
 export default function MiCuentaPage() {
   const { usuario } = useAuth();
@@ -24,6 +25,25 @@ export default function MiCuentaPage() {
   /* Pedido más reciente */
   const [orden, setOrden]                 = useState<IDetalleOrden | null>(null);
   const [cargandoPedidos, setCargandoPedidos] = useState(true);
+  const [passwordActual, setPasswordActual] = useState('');
+  const [passwordNueva, setPasswordNueva] = useState('');
+  const [passwordConfirmacion, setPasswordConfirmacion] = useState('');
+  const [mensajePassword, setMensajePassword] = useState<string | null>(null);
+  const [guardandoPassword, setGuardandoPassword] = useState(false);
+
+  async function cambiarPassword() {
+    if (passwordNueva.length < 8) { setMensajePassword('La nueva contraseña debe tener al menos 8 caracteres.'); return; }
+    if (passwordNueva !== passwordConfirmacion) { setMensajePassword('Las contraseñas nuevas no coinciden.'); return; }
+    setGuardandoPassword(true);
+    setMensajePassword(null);
+    try {
+      await apiClient.patch('/usuarios/me/password', { passwordActual, passwordNueva });
+      setPasswordActual(''); setPasswordNueva(''); setPasswordConfirmacion('');
+      setMensajePassword('Contraseña actualizada correctamente.');
+    } catch (error: any) {
+      setMensajePassword(error.response?.data?.mensaje ?? 'No se pudo actualizar la contraseña.');
+    } finally { setGuardandoPassword(false); }
+  }
 
   const recargarPerfil = useCallback(() => {
     setCargandoPerfil(true);
@@ -69,6 +89,19 @@ export default function MiCuentaPage() {
                 onEditarPerfil={() => setModalPerfilAbierto(true)}
               />
               <DireccionCard perfil={perfil} onGuardado={recargarPerfil} />
+              <section className="rounded-2xl bg-white p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-ink-900">Cambiar contraseña</h3>
+                <p className="mt-1 text-sm text-ink-500">Usa una contraseña única de al menos 8 caracteres.</p>
+                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <input type="password" autoComplete="current-password" value={passwordActual} onChange={e=>setPasswordActual(e.target.value)} placeholder="Contraseña actual" className="rounded-xl border border-ink-200 px-4 py-3" />
+                  <input type="password" autoComplete="new-password" value={passwordNueva} onChange={e=>setPasswordNueva(e.target.value)} placeholder="Nueva contraseña" className="rounded-xl border border-ink-200 px-4 py-3" />
+                  <input type="password" autoComplete="new-password" value={passwordConfirmacion} onChange={e=>setPasswordConfirmacion(e.target.value)} placeholder="Confirmar contraseña" className="rounded-xl border border-ink-200 px-4 py-3" />
+                </div>
+                {mensajePassword && <p className={`mt-3 text-sm ${mensajePassword.includes('correctamente') ? 'text-exito' : 'text-error'}`}>{mensajePassword}</p>}
+                <button type="button" onClick={cambiarPassword} disabled={guardandoPassword || !passwordActual || !passwordNueva || !passwordConfirmacion} className="mt-4 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+                  {guardandoPassword ? 'Guardando...' : 'Actualizar contraseña'}
+                </button>
+              </section>
               <PedidosRecientesCard orden={orden} cargando={cargandoPedidos} />
               {/* Preferencias de notificación ocultas temporalmente.
               <NotificacionesCard

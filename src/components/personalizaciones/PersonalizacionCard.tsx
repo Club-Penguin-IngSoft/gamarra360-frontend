@@ -84,7 +84,8 @@ export default function PersonalizacionCard({ personalizacion: p, onPagarAhora }
         {repetible && (
           <button
             type="button"
-            onClick={() => navigate(RUTAS.PERSONALIZAR(p.detalleProductoId))}
+            onClick={() => p.productoId && navigate(RUTAS.PERSONALIZAR(p.productoId))}
+            disabled={!p.productoId}
             className={BTN_PRIMARY_LIGHT}
           >
             Repetir solicitud

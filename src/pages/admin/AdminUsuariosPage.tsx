@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AdminSidebar } from "../../components/admin/AdminSidebar";
-import { Search, Download, UserPlus, MoreVertical, X } from "lucide-react";
+import { Search, Download, UserPlus, MoreVertical, X, AlertTriangle } from "lucide-react";
 import apiClient from '../../services/apiClient';
 //import axios from 'axios';
 
@@ -54,6 +54,14 @@ export default function AdminUsuariosPage() {
   const [menuAbierto, setMenuAbierto] = useState<number | null>(null);
   const [detalle, setDetalle]         = useState<UsuarioDetalle | null>(null);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
+  const [modalUsuario, setModalUsuario] = useState(false);
+  const [editandoId, setEditandoId] = useState<number | null>(null);
+  const [guardandoUsuario, setGuardandoUsuario] = useState(false);
+  const [usuarioDesactivar, setUsuarioDesactivar] = useState<Usuario | null>(null);
+  const [motivoDesactivacion, setMotivoDesactivacion] = useState('');
+  const [errorDesactivacion, setErrorDesactivacion] = useState<string | null>(null);
+  const [desactivando, setDesactivando] = useState(false);
+  const [formUsuario, setFormUsuario] = useState({ nombres: '', primerApellido: '', segundoApellido: '', email: '', dni: '', telefono: '', contrasenha: '', rol: 'CLIENTE' });
 
   const cargar = async (p = 0) => {
     setLoading(true);
@@ -77,19 +85,47 @@ export default function AdminUsuariosPage() {
   useEffect(() => { cargar(0); }, [rolFiltro, activoFiltro]);
 
   const handleToggle = async (user: Usuario) => {
+    setMenuAbierto(null);
+    if (user.activo) {
+      setUsuarioDesactivar(user);
+      setMotivoDesactivacion('');
+      setErrorDesactivacion(null);
+      return;
+    }
     try {
-      if (user.activo) {
-        const razon = prompt('Motivo de desactivación:');
-        if (!razon) return;
-        await apiClient.patch(`/admin/usuarios/${user.usuarioId}/desactivar`, { razon });
-      } else {
         await apiClient.patch(`/admin/usuarios/${user.usuarioId}/reactivar`, {});
-      }
-      cargar(page);
+      await cargar(page);
     } catch (e: any) {
       alert(e.response?.data?.message || 'Error al cambiar estado');
     }
-    setMenuAbierto(null);
+  };
+
+  const cerrarDesactivacion = () => {
+    if (desactivando) return;
+    setUsuarioDesactivar(null);
+    setMotivoDesactivacion('');
+    setErrorDesactivacion(null);
+  };
+
+  const confirmarDesactivacion = async () => {
+    if (!usuarioDesactivar) return;
+    const razon = motivoDesactivacion.trim();
+    if (razon.length < 10) {
+      setErrorDesactivacion('Explica el motivo con al menos 10 caracteres.');
+      return;
+    }
+    setDesactivando(true);
+    setErrorDesactivacion(null);
+    try {
+      await apiClient.patch(`/admin/usuarios/${usuarioDesactivar.usuarioId}/desactivar`, { razon });
+      setUsuarioDesactivar(null);
+      setMotivoDesactivacion('');
+      await cargar(page);
+    } catch (e: any) {
+      setErrorDesactivacion(e.response?.data?.message || 'No se pudo desactivar la cuenta. Inténtalo nuevamente.');
+    } finally {
+      setDesactivando(false);
+    }
   };
 
   const verDetalle = async (usuarioId: number) => {
@@ -110,6 +146,45 @@ export default function AdminUsuariosPage() {
     setQ('');
     setRolFiltro(null);
     setActivoFiltro(null);
+  };
+
+  const exportar = () => {
+    const filas = [['ID', 'Nombre', 'Email', 'Rol', 'Estado'], ...users.map(u => [String(u.usuarioId), u.nombreCompleto, u.email, u.rol, u.activo ? 'ACTIVO' : 'INACTIVO'])];
+    const csv = filas.map(f => f.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const enlace = document.createElement('a');
+    enlace.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
+    enlace.download = 'usuarios-gamarra360.csv';
+    enlace.click();
+    URL.revokeObjectURL(enlace.href);
+  };
+
+  const registrarUsuario = async () => {
+    if (!formUsuario.nombres.trim() || !formUsuario.primerApellido.trim() || !formUsuario.email.trim() || (!editandoId && formUsuario.contrasenha.length < 8)) return;
+    setGuardandoUsuario(true);
+    try {
+      if (editandoId) {
+        const { contrasenha: _contrasenha, rol: _rol, ...datos } = formUsuario;
+        await apiClient.put(`/admin/usuarios/${editandoId}`, datos);
+      } else {
+        await apiClient.post('/admin/usuarios', { ...formUsuario, tipoDocumento: 'DNI' });
+      }
+      setModalUsuario(false);
+      setEditandoId(null);
+      setFormUsuario({ nombres: '', primerApellido: '', segundoApellido: '', email: '', dni: '', telefono: '', contrasenha: '', rol: 'CLIENTE' });
+      await cargar(0);
+    } catch (e: any) {
+      alert(e.response?.data?.mensaje ?? 'No se pudo registrar el usuario.');
+    } finally { setGuardandoUsuario(false); }
+  };
+
+  const abrirEdicion = (usuario: UsuarioDetalle) => {
+    setEditandoId(usuario.usuarioId);
+    setFormUsuario({
+      nombres: usuario.nombres ?? '', primerApellido: usuario.primerApellido ?? '', segundoApellido: usuario.segundoApellido ?? '',
+      email: usuario.email ?? '', dni: usuario.dni ?? '', telefono: usuario.telefono ?? '', contrasenha: '', rol: usuario.rol,
+    });
+    setDetalle(null);
+    setModalUsuario(true);
   };
 
   const avatarLetras = (nombre: string) =>
@@ -135,11 +210,11 @@ export default function AdminUsuariosPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 border border-neutro-200 bg-white rounded-xl text-neutro-600 hover:bg-neutro-50 transition-colors font-bold text-sm">
+            <button onClick={exportar} className="flex items-center gap-2 px-4 py-2 border border-neutro-200 bg-white rounded-xl text-neutro-600 hover:bg-neutro-50 transition-colors font-bold text-sm">
               <Download className="w-4 h-4" />
               Exportar Datos
             </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-primario text-white rounded-xl hover:bg-primario-hover transition-colors font-bold text-sm shadow-primario">
+            <button onClick={() => { setEditandoId(null); setFormUsuario({ nombres: '', primerApellido: '', segundoApellido: '', email: '', dni: '', telefono: '', contrasenha: '', rol: 'CLIENTE' }); setModalUsuario(true); }} className="flex items-center gap-2 px-4 py-2 bg-primario text-white rounded-xl hover:bg-primario-hover transition-colors font-bold text-sm shadow-primario">
               <UserPlus className="w-4 h-4" />
               Registrar Usuario
             </button>
@@ -417,8 +492,90 @@ export default function AdminUsuariosPage() {
                     </div>
                   </div>
                 </div>
+                <button onClick={() => abrirEdicion(detalle)} className="mt-5 w-full rounded-xl border border-primario px-4 py-2.5 text-sm font-bold text-primario hover:bg-primario-claro">
+                  Modificar usuario
+                </button>
               </>
             )}
+          </div>
+        </div>
+      )}
+      {modalUsuario && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button className="absolute inset-0 bg-black/40" onClick={() => setModalUsuario(false)} aria-label="Cerrar" />
+          <div className="relative w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl">
+            <button onClick={() => setModalUsuario(false)} className="absolute right-4 top-4 text-neutro-400"><X size={20}/></button>
+            <h2 className="text-xl font-black text-neutro-900">{editandoId ? 'Modificar usuario' : 'Registrar usuario'}</h2>
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <input value={formUsuario.nombres} onChange={e=>setFormUsuario(v=>({...v,nombres:e.target.value}))} placeholder="Nombres *" className="rounded-xl border px-4 py-3" />
+              <input value={formUsuario.primerApellido} onChange={e=>setFormUsuario(v=>({...v,primerApellido:e.target.value}))} placeholder="Primer apellido *" className="rounded-xl border px-4 py-3" />
+              <input value={formUsuario.segundoApellido} onChange={e=>setFormUsuario(v=>({...v,segundoApellido:e.target.value}))} placeholder="Segundo apellido" className="rounded-xl border px-4 py-3" />
+              <input value={formUsuario.dni} onChange={e=>setFormUsuario(v=>({...v,dni:e.target.value.replace(/\D/g,'').slice(0,8)}))} placeholder="DNI" className="rounded-xl border px-4 py-3" />
+              <input type="email" value={formUsuario.email} onChange={e=>setFormUsuario(v=>({...v,email:e.target.value}))} placeholder="Correo *" className="rounded-xl border px-4 py-3 sm:col-span-2" />
+              <input value={formUsuario.telefono} onChange={e=>setFormUsuario(v=>({...v,telefono:e.target.value.replace(/\D/g,'').slice(0,9)}))} placeholder="Teléfono" className="rounded-xl border px-4 py-3" />
+              <select disabled={!!editandoId} value={formUsuario.rol} onChange={e=>setFormUsuario(v=>({...v,rol:e.target.value}))} className="rounded-xl border px-4 py-3 disabled:bg-neutro-100"><option value="CLIENTE">Cliente</option><option value="ADMIN">Administrador</option>{editandoId && <option value="VENDEDOR">Vendedor</option>}</select>
+              {!editandoId && <input type="password" minLength={8} value={formUsuario.contrasenha} onChange={e=>setFormUsuario(v=>({...v,contrasenha:e.target.value}))} placeholder="Contraseña (mín. 8) *" className="rounded-xl border px-4 py-3 sm:col-span-2" />}
+            </div>
+            <button onClick={registrarUsuario} disabled={guardandoUsuario} className="mt-5 w-full rounded-xl bg-primario py-3 font-bold text-white disabled:opacity-50">{guardandoUsuario ? 'Guardando...' : editandoId ? 'Guardar cambios' : 'Registrar usuario'}</button>
+          </div>
+        </div>
+      )}
+      {usuarioDesactivar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="titulo-desactivacion">
+          <button className="absolute inset-0 bg-neutro-900/50 backdrop-blur-[1px]" onClick={cerrarDesactivacion} aria-label="Cerrar diálogo" />
+          <div className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-start gap-4 border-b border-neutro-100 px-6 py-5">
+              <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-red-50 text-error">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 id="titulo-desactivacion" className="text-xl font-black text-neutro-900">Desactivar cuenta</h2>
+                <p className="mt-1 text-sm text-neutro-500">Esta acción bloqueará el acceso del usuario hasta que un administrador reactive la cuenta.</p>
+              </div>
+              <button onClick={cerrarDesactivacion} disabled={desactivando} className="rounded-lg p-1.5 text-neutro-400 hover:bg-neutro-100 hover:text-neutro-700 disabled:opacity-40" aria-label="Cerrar">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="px-6 py-5">
+              <div className="rounded-xl border border-neutro-100 bg-neutro-50 p-4">
+                <p className="text-xs font-black uppercase tracking-wider text-neutro-400">Usuario seleccionado</p>
+                <p className="mt-2 font-bold text-neutro-900">{usuarioDesactivar.nombreCompleto}</p>
+                <p className="text-sm text-neutro-500">{usuarioDesactivar.email}</p>
+              </div>
+
+              <label htmlFor="motivo-desactivacion" className="mt-5 block text-sm font-bold text-neutro-800">
+                Motivo de desactivación <span className="text-error">*</span>
+              </label>
+              <p className="mt-1 text-xs text-neutro-500">Describe brevemente la razón administrativa. Esta información quedará asociada a la acción.</p>
+              <textarea
+                id="motivo-desactivacion"
+                autoFocus
+                rows={4}
+                maxLength={300}
+                value={motivoDesactivacion}
+                onChange={(e) => { setMotivoDesactivacion(e.target.value); if (errorDesactivacion) setErrorDesactivacion(null); }}
+                placeholder="Ej.: Incumplimiento reiterado de las políticas de la plataforma."
+                className={`mt-3 w-full resize-none rounded-xl border px-4 py-3 text-sm text-neutro-800 outline-none transition-colors focus:ring-2 ${errorDesactivacion ? 'border-error focus:ring-red-100' : 'border-neutro-200 focus:border-primario focus:ring-pink-100'}`}
+                aria-invalid={Boolean(errorDesactivacion)}
+                aria-describedby={errorDesactivacion ? 'error-motivo' : 'ayuda-motivo'}
+              />
+              <div className="mt-1 flex items-start justify-between gap-4">
+                <span id={errorDesactivacion ? 'error-motivo' : 'ayuda-motivo'} className={`text-xs ${errorDesactivacion ? 'font-semibold text-error' : 'text-neutro-400'}`}>
+                  {errorDesactivacion ?? 'Mínimo 10 caracteres.'}
+                </span>
+                <span className="text-xs tabular-nums text-neutro-400">{motivoDesactivacion.length}/300</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 border-t border-neutro-100 bg-neutro-50 px-6 py-4 sm:flex-row sm:justify-end">
+              <button onClick={cerrarDesactivacion} disabled={desactivando} className="rounded-xl border border-neutro-200 bg-white px-5 py-2.5 text-sm font-bold text-neutro-700 hover:bg-neutro-100 disabled:opacity-50">
+                Mantener activa
+              </button>
+              <button onClick={() => void confirmarDesactivacion()} disabled={desactivando || motivoDesactivacion.trim().length < 10} className="rounded-xl bg-error px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50">
+                {desactivando ? 'Desactivando...' : 'Confirmar desactivación'}
+              </button>
+            </div>
           </div>
         </div>
       )}

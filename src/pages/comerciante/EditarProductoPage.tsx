@@ -59,6 +59,8 @@ interface IVarianteEditable {
   activo: boolean;
   imagenUrl: string;
   imagenUrlOriginal: string;
+  material: string;
+  calidad: string;
   /** true si esta fila fue generada localmente y aún no existe en el backend */
   esNueva?: boolean;
 }
@@ -181,6 +183,8 @@ export default function EditarProductoPage() {
         activo: v.disponible ?? true,
         imagenUrl: v.imagenUrl ?? '',
         imagenUrlOriginal: v.imagenUrl ?? '',
+        material: v.material ?? '',
+        calidad: v.calidad ?? '',
       }));
       setVariantes(variantesApi);
 
@@ -293,6 +297,8 @@ export default function EditarProductoPage() {
           activo: true,
           imagenUrl: principalUrl,
           imagenUrlOriginal: principalUrl,
+          material: materialesBackend.find((m) => m.idMaterial === idMaterial)?.nombre ?? '',
+          calidad: '',
           esNueva: true,
         });
       });
@@ -313,6 +319,9 @@ export default function EditarProductoPage() {
 
   const updateVarianteStockMinimo = (id: number, stockMinimo: number) =>
     setVariantes((p) => p.map((v) => (v.id === id ? { ...v, stockMinimo } : v)));
+
+  const updateVarianteTexto = (id: number, campo: 'material' | 'calidad', valor: string) =>
+    setVariantes((p) => p.map((v) => (v.id === id ? { ...v, [campo]: valor } : v)));
 
   // --- Handlers de imágenes del producto ---
   const handleAgregarImagenesProducto = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -438,6 +447,8 @@ export default function EditarProductoPage() {
               color: { idColor },
               talla: { idTalla },
               imagenUrl: v.imagenUrl || null,
+              material: v.material || undefined,
+              calidad: v.calidad || undefined,
             });
             return;
           }
@@ -445,6 +456,8 @@ export default function EditarProductoPage() {
             precioAjustado: v.precioBase,
             disponible: v.activo,
             minimoStock: v.stockMinimo,
+            material: v.material || undefined,
+            calidad: v.calidad || undefined,
           });
           await actualizarStockVariante(v.id, v.stock);
           if (v.imagenUrl !== v.imagenUrlOriginal) {
@@ -842,7 +855,7 @@ export default function EditarProductoPage() {
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  {['Variante', 'SKU', 'Precio Base', 'Stock', 'Stock Mín.', 'Imagen', 'Estado', ''].map((col, i) => (
+                  {['Variante', 'SKU', 'Material', 'Calidad', 'Precio Base', 'Stock', 'Stock Mín.', 'Imagen', 'Estado', ''].map((col, i) => (
                     <th
                       key={col || 'acciones'}
                       className={`text-left text-[11px] font-semibold text-gray-500 uppercase tracking-[0.4px] px-3 py-2 bg-gray-100 border-b border-gray-200 whitespace-nowrap ${
@@ -869,6 +882,12 @@ export default function EditarProductoPage() {
                         <span className="text-[11px] font-mono text-gray-500 bg-gray-50 px-2 py-1 rounded border border-gray-200 whitespace-nowrap">
                           {skuVariante}
                         </span>
+                      </td>
+                      <td className="px-3 py-3 border-b border-gray-100 align-middle">
+                        <input value={v.material} onChange={(e) => updateVarianteTexto(v.id, 'material', e.target.value)} placeholder="Material" className="w-28 h-[34px] border border-gray-300 rounded px-2 text-[12px]" />
+                      </td>
+                      <td className="px-3 py-3 border-b border-gray-100 align-middle">
+                        <input value={v.calidad} onChange={(e) => updateVarianteTexto(v.id, 'calidad', e.target.value)} placeholder="Calidad" className="w-28 h-[34px] border border-gray-300 rounded px-2 text-[12px]" />
                       </td>
                       <td className="px-3 py-3 border-b border-gray-100 align-middle">
                         <PrecioInput value={v.precioBase} onChange={(p) => updateVariantePrecio(v.id, p)} />

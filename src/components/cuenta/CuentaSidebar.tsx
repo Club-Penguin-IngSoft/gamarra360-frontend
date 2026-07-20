@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { label: 'Mis Pedidos', icon: 'shopping_bag', to: RUTAS.MIS_PEDIDOS },
   { label: 'Mis Personalizaciones', icon: 'palette', to: RUTAS.PERSONALIZACIONES },
   { label: 'Mis Cotizaciones', icon: 'request_quote', to: RUTAS.MIS_COTIZACIONES },
+  { label: 'Reclamos y Libro', icon: 'menu_book', to: RUTAS.RECLAMOS },
 ];
 
 export default function CuentaSidebar() {

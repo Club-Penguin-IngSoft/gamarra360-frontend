@@ -123,7 +123,7 @@ function StripeCheckoutForm() {
 
 // ── Página principal ───────────────────────────────────────────────────
 export default function PagoPage() {
-  const { items, vaciarCarrito } = useCarrito();
+  const { items } = useCarrito();
   const { usuario } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -273,8 +273,12 @@ export default function PagoPage() {
 
       if (personalizacionId) {
         sessionStorage.setItem('pendingPersonalizacionId', String(personalizacionId));
-      } else if (!cotizacionId) {
-        vaciarCarrito();
+      }
+      // El carrito normal se conserva hasta que Stripe confirme el pago. Vaciarlo
+      // aquí hacía perder la compra cuando el pago demoraba, era rechazado o el
+      // usuario volvía atrás. PedidoConfirmadoPage lo limpia tras resolver la orden.
+      if (!personalizacionId && !cotizacionId) {
+        sessionStorage.setItem('pendingCartPayment', 'true');
       }
     } catch (err) {
       console.error('[PagoPage] Error al iniciar pago:', err);

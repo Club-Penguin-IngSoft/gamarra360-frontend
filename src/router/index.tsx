@@ -24,6 +24,7 @@ import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
 import AdminUsuariosPage from '../pages/admin/AdminUsuariosPage';
 import AdminAprobacionesPage from '../pages/admin/AdminAprobacionesPage';
 import AdminNotificacionesPage from '../pages/admin/AdminNotificacionesPage';
+import AdminConfiguracionPage from '../pages/admin/AdminConfiguracionPage';
 import DashboardPage from '../pages/comerciante/DashboardPage';
 import GestionInventarioPage from '../pages/comerciante/GestionInventarioPage';
 import EditarProductoPage from '../pages/comerciante/EditarProductoPage';
@@ -53,6 +54,9 @@ import PromocionesPage from '../pages/comerciante/PromocionesPage';
 import OlvidoPasswordPage from '../pages/OlvidoPasswordPage';
 import { useAuth } from '../hooks/useAuth';
 import PedidoConfirmadoPage from '../pages/PedidoConfirmadoPage';
+import ReclamosPage from '../pages/ReclamosPage';
+import ReportesPage from '../pages/ReportesPage';
+import ConfiguracionEnvioPage from '../pages/comerciante/ConfiguracionEnvioPage';
 /**
  * Definición de rutas. NO incluye BrowserRouter — ese se monta en `main.tsx`
  * para que componentes globales como `CartDrawer` (que viven en StoreProvider)
@@ -107,12 +111,18 @@ export default function AppRouter() {
       <Route path={RUTAS.COTIZACIONES} element={<SoloClientes><SolicitarCotizacionPage /></SoloClientes>} />
       <Route path={RUTAS.MIS_COTIZACIONES} element={<SoloClientes><MisCotizacionesPage /></SoloClientes>} />
       <Route path={RUTAS.DETALLE_COTIZACION()} element={<SoloClientes><DetalleCotizacionClientePage /></SoloClientes>} />
+      <Route element={<RutaProtegida rolesPermitidos={['CLIENTE']} />}>
+        <Route path={RUTAS.RECLAMOS} element={<ReclamosPage />} />
+      </Route>
       <Route element={<RutaProtegida rolesPermitidos={['ADMIN']} />}>
         <Route path={RUTAS.ADMIN_DASHBOARD} element={<AdminDashboardPage />} />
         <Route path={RUTAS.ADMIN_USUARIOS} element={<AdminUsuariosPage />} />
         <Route path={RUTAS.ADMIN_APROBACIONES} element={<AdminAprobacionesPage />} />
         <Route path={RUTAS.ADMIN_APROBACION_COMERCIANTES} element={<AdminAprobacionesPage />} />
         <Route path={RUTAS.ADMIN_NOTIFICACIONES} element={<AdminNotificacionesPage />} />
+        <Route path={RUTAS.ADMIN_CONFIGURACION} element={<AdminConfiguracionPage />} />
+        <Route path={RUTAS.ADMIN_RECLAMOS} element={<ReclamosPage />} />
+        <Route path={RUTAS.ADMIN_REPORTES} element={<ReportesPage />} />
       </Route>
       <Route element={<RutaProtegida rolesPermitidos={['COMERCIANTE']} />}>
         <Route path={RUTAS.COMERCIANTE_DASHBOARD} element={<DashboardPage />} />
@@ -127,6 +137,9 @@ export default function AppRouter() {
         <Route path={RUTAS.COMERCIANTE_COTIZACION_DETALLE()} element={<DetalleCotizacionComerciantePage />} />
         <Route path={RUTAS.COMERCIANTE_PROMOCIONES} element={<PromocionesPage />} />
         <Route path={RUTAS.COMERCIANTE_CUENTA} element={<MiCuentaComerciantePage />} />
+        <Route path={RUTAS.COMERCIANTE_RECLAMOS} element={<ReclamosPage />} />
+        <Route path={RUTAS.COMERCIANTE_REPORTES} element={<ReportesPage />} />
+        <Route path={RUTAS.COMERCIANTE_ENVIOS} element={<ConfiguracionEnvioPage />} />
         <Route
           path={RUTAS.COMERCIANTE_NOTIFICACIONES}
           element={<NotificacionesPage />}

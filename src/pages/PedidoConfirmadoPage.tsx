@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { pagoService } from '../services/pagoService';
 import { RUTAS } from '../constants/rutas';
+import { useCarrito } from '../hooks/useCarrito';
 
 export default function PedidoConfirmadoPage() {
   const navigate = useNavigate();
+  const { vaciarCarrito } = useCarrito();
   const [error, setError] = useState(false);
 
   useEffect(() => {
@@ -24,6 +26,10 @@ export default function PedidoConfirmadoPage() {
     const intentarResolver = async () => {
       const ordenId = await pagoService.buscarOrdenPorPaymentIntent(paymentIntentId);
       if (ordenId) {
+        if (sessionStorage.getItem('pendingCartPayment') === 'true') {
+          vaciarCarrito();
+          sessionStorage.removeItem('pendingCartPayment');
+        }
         navigate(`${RUTAS.DETALLE_PEDIDO(ordenId)}?redirect_status=succeeded`, { replace: true });
         return;
       }
@@ -36,7 +42,7 @@ export default function PedidoConfirmadoPage() {
     };
 
     intentarResolver();
-  }, [navigate]);
+  }, [navigate, vaciarCarrito]);
 
   if (error) {
     return (

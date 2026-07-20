@@ -11,6 +11,7 @@ import type { ICheckoutGrupo, IDistritoEnvio } from '../types/IPedido';
 import type { IPersonalizacionCheckoutState } from '../types/IPersonalizacion';
 import { pedidoService } from '../services/pedidoService';
 import { obtenerPerfilCliente } from '../services/clienteService';
+import apiClient from '../services/apiClient';
 
 type TipoEntrega = 'DELIVERY' | 'RECOJO_TIENDA';
 
@@ -153,6 +154,16 @@ export default function CheckoutEntregaPage() {
       return acc;
     }, {});
   const tiendas = Object.entries(porComerciante);
+  const [tarifasPorVendedor, setTarifasPorVendedor] = useState<Record<string, { distritoId: number; costoEnvio: number; activo: boolean }[]>>({});
+
+  useEffect(() => {
+    Promise.all(tiendas.map(async ([vendedorId]) => {
+      const { data } = await apiClient.get<{ distritoId: number; costoEnvio: number; activo: boolean }[]>(`/tarifas-envio/vendedor/${vendedorId}`);
+      return [vendedorId, data] as const;
+    })).then((resultados) => setTarifasPorVendedor(Object.fromEntries(resultados))).catch(() => {});
+  // Los identificadores de las tiendas son estables durante este checkout.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tiendas.map(([id]) => id).join(',')]);
 
   /* Estado de entrega independiente por tienda */
   const [entregasPorTienda, setEntregasPorTienda] = useState<Record<string, EntregaTienda>>(() =>
@@ -179,8 +190,13 @@ export default function CheckoutEntregaPage() {
   }, 0);
   // "Subtotal" mostrado = precios base = efectivos + ahorros
   const subtotal = totalItems + descuentos;
-  const costoEnvioTotal = Object.values(entregasPorTienda).reduce(
-    (acc, e) => acc + (e.tipoEntrega === 'DELIVERY' ? costoDistrito : 0),
+  const costoParaTienda = (vendedorId: string) => {
+    if (!idDistrito) return 0;
+    const tarifa = tarifasPorVendedor[vendedorId]?.find((t) => t.distritoId === idDistrito && t.activo);
+    return tarifa?.costoEnvio ?? costoDistrito;
+  };
+  const costoEnvioTotal = Object.entries(entregasPorTienda).reduce(
+    (acc, [vendedorId, e]) => acc + (e.tipoEntrega === 'DELIVERY' ? costoParaTienda(vendedorId) : 0),
     0,
   );
   const total = totalItems + costoEnvioTotal;
@@ -501,7 +517,7 @@ export default function CheckoutEntregaPage() {
               {tiendas.map(([idComerciante, { nombreTienda }]) => {
                 const e = entregasPorTienda[idComerciante];
                 if (!e) return null;
-                const costoTienda = e.tipoEntrega === 'DELIVERY' ? costoDistrito : 0;
+                const costoTienda = e.tipoEntrega === 'DELIVERY' ? costoParaTienda(idComerciante) : 0;
                 return (
                   <div key={idComerciante} className="flex items-center justify-between text-[14px]">
                     <span className="text-ink-600 truncate max-w-[160px]">Envío · {nombreTienda}</span>

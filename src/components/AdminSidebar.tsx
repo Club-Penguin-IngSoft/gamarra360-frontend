@@ -9,6 +9,9 @@ const NAV_ITEMS = [
   { label: 'Gestión de Usuarios', icon: 'people', to: RUTAS.ADMIN_USUARIOS },
   { label: 'Aprobación de Comerciantes', icon: 'verified', to: RUTAS.ADMIN_APROBACION_COMERCIANTES },
   { label: 'Notificaciones', icon: 'notifications', to: RUTAS.ADMIN_NOTIFICACIONES },
+  { label: 'Libro de Reclamaciones', icon: 'menu_book', to: RUTAS.ADMIN_RECLAMOS },
+  { label: 'Reportes', icon: 'analytics', to: RUTAS.ADMIN_REPORTES },
+  { label: 'Configuración', icon: 'settings', to: RUTAS.ADMIN_CONFIGURACION },
 ];
 
 export default function AdminSidebar() {

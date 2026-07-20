@@ -10,6 +10,7 @@ export interface IOfertaResumen {
   titulo: string;
   tipoDescuento: 'PORCENTAJE' | 'MONTO_FIJO';
   valorDescuento: number;
+  cantidadMinima: number;
 }
 
 /** Categoría de producto — valor dinámico desde la BD (no enum) */
@@ -24,6 +25,8 @@ export interface IVarianteProducto {
   colorHex?: string;
   idColor?: number;
   idTalla?: number;
+  material?: string;
+  calidad?: string;
   /** Precio final con ofertas/descuentos para esta combinación talla+color */
   precioEfectivo?: number | null;
   /** Precio ajustado por regla de descuento (antes de ofertas) */

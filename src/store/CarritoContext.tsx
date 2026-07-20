@@ -48,6 +48,26 @@ export const CarritoContext = createContext<ICarritoContextValue | undefined>(
   undefined,
 );
 
+function calcularPrecioUnitario(
+  producto: IProducto,
+  cantidad: number,
+  idVariante?: string,
+): number {
+  const variante = producto.variantes?.find((v) => v.id === idVariante);
+  const precioBase = variante?.precioAjustado ?? producto.precioBase ?? 0;
+  const oferta = producto.oferta;
+
+  if (!oferta || cantidad < Math.max(1, oferta.cantidadMinima ?? 1)) {
+    return precioBase;
+  }
+
+  const precioConDescuento = oferta.tipoDescuento === 'PORCENTAJE'
+    ? precioBase * (1 - oferta.valorDescuento / 100)
+    : precioBase - oferta.valorDescuento;
+
+  return Math.max(0, Number(precioConDescuento.toFixed(2)));
+}
+
 export function CarritoProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<IItemCarrito[]>(() => {
     try {
@@ -79,7 +99,11 @@ export function CarritoProvider({ children }: { children: ReactNode }) {
           // Si ya tiene el máximo, no cambia nada
           if (nuevaCantidad === cantidadActual) return actuales;
           const copia = [...actuales];
-          copia[indice] = { ...copia[indice], cantidad: nuevaCantidad };
+          copia[indice] = {
+            ...copia[indice],
+            cantidad: nuevaCantidad,
+            precioUnitario: calcularPrecioUnitario(producto, nuevaCantidad, idVariante),
+          };
           return copia;
         }
 
@@ -91,7 +115,7 @@ export function CarritoProvider({ children }: { children: ReactNode }) {
           producto,
           idVariante,
           cantidad: cantidadFinal,
-          precioUnitario: variante?.precioEfectivo ?? producto.precioFinal ?? producto.precioBase ?? 0,
+          precioUnitario: calcularPrecioUnitario(producto, cantidadFinal, idVariante),
         };
         return [...actuales, nuevo];
       });
@@ -121,7 +145,12 @@ export function CarritoProvider({ children }: { children: ReactNode }) {
         if (i.id !== idItem) return i;
         const variante = i.producto.variantes?.find((v) => v.id === i.idVariante);
         const stockDisponible = variante?.stock ?? Infinity;
-        return { ...i, cantidad: Math.min(cantidad, stockDisponible) };
+        const cantidadFinal = Math.min(cantidad, stockDisponible);
+        return {
+          ...i,
+          cantidad: cantidadFinal,
+          precioUnitario: calcularPrecioUnitario(i.producto, cantidadFinal, i.idVariante),
+        };
       }),
     );
   }, []);

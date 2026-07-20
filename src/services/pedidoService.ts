@@ -106,6 +106,11 @@ async function avanzarEstadoPedido(pedidoId: number): Promise<IPedido> {
   return data;
 }
 
+async function cancelarPedidoVendedor(pedidoId: number): Promise<IPedido> {
+  const { data } = await apiClient.patch<IPedido>(`${BASE_PEDIDOS}/${pedidoId}/cancelar-vendedor`);
+  return data;
+}
+
 /** Detalle completo de un pedido propio del comerciante (items, envío, cliente, historial). */
 async function obtenerDetallePedidoComerciante(id: number): Promise<IPedidoComercianteDetalle> {
   const { data } = await apiClient.get<IPedidoComercianteDetalle>(`${BASE_PEDIDOS}/${id}/comerciante-detalle`);
@@ -126,5 +131,6 @@ export const pedidoService = {
   listarPedidosComerciante,
   obtenerDetallePedidoComerciante,
   avanzarEstadoPedido,
+  cancelarPedidoVendedor,
   listarDistritos,
 };

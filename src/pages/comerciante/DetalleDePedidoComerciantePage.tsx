@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { FileText } from 'lucide-react';
 import ComercianteSidebar from '../../components/ComercianteSidebar';
 import { RUTAS } from '../../constants/rutas';
 import { pedidoService } from '../../services/pedidoService';
@@ -25,6 +24,7 @@ export default function DetalleDePedidoComerciantePage() {
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [errorAccion, setErrorAccion] = useState<string | null>(null);
   const [avanzando, setAvanzando] = useState(false);
+  const [anulando, setAnulando] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -47,6 +47,16 @@ export default function DetalleDePedidoComerciantePage() {
     } finally {
       setAvanzando(false);
     }
+  }
+
+  async function handleAnular() {
+    if (!detalle || !window.confirm('¿Seguro que deseas anular este pedido?')) return;
+    setAnulando(true); setErrorAccion(null);
+    try {
+      const actualizado = await pedidoService.cancelarPedidoVendedor(detalle.id);
+      setDetalle((prev) => prev ? { ...prev, estado: actualizado.estado } : prev);
+    } catch { setErrorAccion('No se pudo anular el pedido.'); }
+    finally { setAnulando(false); }
   }
 
   if (cargando) {
@@ -99,6 +109,11 @@ export default function DetalleDePedidoComerciantePage() {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            {!['ENTREGADO', 'CANCELADO'].includes(detalle.estado) && (
+              <button disabled={anulando || avanzando} onClick={() => void handleAnular()} className="rounded-lg border border-error px-4 py-2.5 text-[13px] font-semibold text-error hover:bg-error-claro disabled:opacity-60">
+                {anulando ? 'Anulando...' : 'Anular pedido'}
+              </button>
+            )}
             {labelAvanzar && (
               <button
                 disabled={avanzando}
@@ -106,15 +121,6 @@ export default function DetalleDePedidoComerciantePage() {
                 className="flex items-center gap-1.5 px-[18px] py-2.5 bg-primario text-white rounded-lg text-[13px] font-semibold hover:bg-primario-hover transition-colors disabled:opacity-60"
               >
                 {avanzando ? 'Actualizando...' : labelAvanzar}
-              </button>
-            )}
-            {!labelAvanzar && (
-              <button
-                className="flex items-center gap-1.5 px-[18px] py-2.5 bg-primario text-white rounded-lg text-[13px] font-semibold hover:bg-primario-hover transition-colors"
-                onClick={() => window.alert('Próximamente disponible')}
-              >
-                <FileText size={15} />
-                Generar Guía de Envío
               </button>
             )}
           </div>

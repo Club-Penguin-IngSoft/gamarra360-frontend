@@ -37,11 +37,15 @@ export const RUTAS = {
   COMERCIANTE_COTIZACIONES: '/comerciante/cotizaciones',
   COMERCIANTE_PROMOCIONES: '/comerciante/promociones',
   COMERCIANTE_NOTIFICACIONES: '/comerciante/notificaciones',
+  COMERCIANTE_RECLAMOS: '/comerciante/reclamos',
+  COMERCIANTE_REPORTES: '/comerciante/reportes',
+  COMERCIANTE_ENVIOS: '/comerciante/envios',
   COMERCIANTE_CUENTA: '/comerciante/cuenta',
   /** Helper: construye la ruta del formulario de personalización */
   PERSONALIZAR: (id: string | number = ':id') => `/personalizar/${id}`,
   /** Mis personalizaciones (seguimiento del cliente — HU-29) */
   PERSONALIZACIONES: '/personalizaciones',
+  RECLAMOS: '/reclamos',
   /** Detalle de una personalización específica */
   PERSONALIZACION_DETALLE: (id: string | number = ':id') => `/personalizaciones/${id}`,
   /** Historial de pedidos del cliente (HU-37) */
@@ -57,5 +61,8 @@ export const RUTAS = {
   ADMIN_APROBACIONES: '/admin/aprobaciones',
   ADMIN_APROBACION_COMERCIANTES: '/admin/aprobacion-comerciantes',
   ADMIN_NOTIFICACIONES: '/admin/notificaciones',
+  ADMIN_CONFIGURACION: '/admin/configuracion',
+  ADMIN_RECLAMOS: '/admin/reclamos',
+  ADMIN_REPORTES: '/admin/reportes',
   OLVIDO_PASSWORD: '/olvido-password',
 } as const;

@@ -36,6 +36,7 @@ interface ProductoItem {
   imagenManualUrl: string;
   subiendoImagen: boolean;
   especificacion: string;
+  cantidad: number;
   personalizacion: PersonalizacionDatos | null;
 }
 
@@ -61,6 +62,7 @@ function crearProductoVacio(): ProductoItem {
     imagenManualUrl: '',
     subiendoImagen: false,
     especificacion: '',
+    cantidad: 1,
     personalizacion: null,
   };
 }
@@ -123,6 +125,7 @@ export default function SolicitarCotizacionPage() {
       if (draft.productos?.length) {
         setProductos(draft.productos.map((producto) => ({
           ...producto,
+          cantidad: producto.cantidad && producto.cantidad > 0 ? producto.cantidad : 1,
           resultados: [],
           buscando: false,
           dropdownAbierto: false,
@@ -155,7 +158,7 @@ export default function SolicitarCotizacionPage() {
       const productoCompleto = producto.modo === 'CATALOGO'
         ? Boolean(producto.productoSeleccionado)
         : Boolean(producto.nombreManual.trim());
-      return productoCompleto && Boolean(producto.especificacion.trim());
+      return productoCompleto && Boolean(producto.especificacion.trim()) && producto.cantidad > 0;
     }) &&
     !subiendoDiseno
   );
@@ -367,7 +370,7 @@ export default function SolicitarCotizacionPage() {
             ? { idVariante: p.productoSeleccionado.idVariante }
             : { nombre: p.nombreManual.trim(), imagenUrl: p.imagenManualUrl || undefined }),
           especificacion: buildEspecificacion(p) || undefined,
-          cantidad: 1,
+          cantidad: p.cantidad,
         })),
       });
       sessionStorage.removeItem(COTIZACION_DRAFT_KEY);
@@ -827,6 +830,23 @@ function ProductoForm({
           </div>
         </div>
       )}
+
+      <div className="mb-3">
+        <label htmlFor={`cantidad-${producto.uid}`} className="mb-1 block text-xs font-medium text-ink-700">
+          Cantidad solicitada
+        </label>
+        <input
+          id={`cantidad-${producto.uid}`}
+          type="number"
+          inputMode="numeric"
+          min={1}
+          step={1}
+          value={producto.cantidad}
+          onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault(); }}
+          onChange={(e) => onCambio({ cantidad: Math.max(1, Math.trunc(Number(e.target.value) || 1)) })}
+          className="w-full rounded-lg border border-ink-200 px-4 py-3 text-sm focus:border-brand-500 focus:outline-none"
+        />
+      </div>
 
       {/* Especificaciones */}
       <div className="relative mb-3">

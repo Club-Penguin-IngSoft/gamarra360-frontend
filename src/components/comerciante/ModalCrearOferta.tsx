@@ -30,6 +30,7 @@ export default function ModalCrearOferta({ open, ofertaEditar, onClose, onSucces
   const [titulo, setTitulo] = useState('');
   const [tipoDescuento, setTipoDescuento] = useState<TipoDescuentoOferta>('PORCENTAJE');
   const [valor, setValor] = useState('');
+  const [cantidadMinima, setCantidadMinima] = useState('1');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
 
@@ -69,6 +70,7 @@ export default function ModalCrearOferta({ open, ofertaEditar, onClose, onSucces
       setTitulo(ofertaEditar.titulo);
       setTipoDescuento(ofertaEditar.tipoDescuento);
       setValor(String(ofertaEditar.valorDescuento));
+      setCantidadMinima(String(ofertaEditar.cantidadMinima ?? 1));
       setFechaInicio(ofertaEditar.fechaInicio.split('T')[0]);
       setFechaFin(ofertaEditar.fechaFin.split('T')[0]);
       setSeleccionados(new Set(ofertaEditar.idsProductos));
@@ -76,6 +78,7 @@ export default function ModalCrearOferta({ open, ofertaEditar, onClose, onSucces
       setTitulo('');
       setTipoDescuento('PORCENTAJE');
       setValor('');
+      setCantidadMinima('1');
       setFechaInicio('');
       setFechaFin('');
       setSeleccionados(new Set());
@@ -163,6 +166,7 @@ export default function ModalCrearOferta({ open, ofertaEditar, onClose, onSucces
       titulo: titulo.trim(),
       tipoDescuento,
       valorDescuento: Number(valor),
+      cantidadMinima: Number(cantidadMinima),
       fechaInicio,
       fechaFin,
       activa: true,
@@ -197,6 +201,7 @@ export default function ModalCrearOferta({ open, ofertaEditar, onClose, onSucces
     const numValor = Number(valor);
     if (!valor || numValor <= 0) { setError('El valor del descuento debe ser mayor a 0.'); return; }
     if (tipoDescuento === 'PORCENTAJE' && numValor > 100) { setError('El porcentaje no puede superar 100.'); return; }
+    if (!Number.isInteger(Number(cantidadMinima)) || Number(cantidadMinima) < 1) { setError('La cantidad mínima debe ser un entero mayor a cero.'); return; }
     if (!fechaInicio) { setError('La fecha de inicio es requerida.'); return; }
     if (!fechaFin) { setError('La fecha de fin es requerida.'); return; }
     if (fechaFin <= fechaInicio) { setError('La fecha de fin debe ser posterior a la de inicio.'); return; }
@@ -316,6 +321,19 @@ export default function ModalCrearOferta({ open, ofertaEditar, onClose, onSucces
                     </span>
                   </div>
                 </div>
+              </div>
+
+              <div>
+                <label className={LABEL_CLS}>Cantidad mínima para aplicar el descuento</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={cantidadMinima}
+                  onChange={(e) => setCantidadMinima(e.target.value)}
+                  className={INPUT_CLS}
+                />
+                <p className="mt-1 text-xs text-gray-400">Usa 1 para descuentos normales o una cantidad mayor para descuentos por volumen.</p>
               </div>
 
               {/* Fechas */}

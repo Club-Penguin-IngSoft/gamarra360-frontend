@@ -68,12 +68,18 @@ export default function Footer() {
         </div>
 
         <div className="flex items-start justify-start">
-          <img
-            src={libroReclamaciones}
-            alt="Libro de Reclamaciones"
-            className="h-auto w-[210px] object-contain"
-            loading="lazy"
-          />
+          <Link
+            to={RUTAS.RECLAMOS}
+            aria-label="Abrir el Libro de Reclamaciones"
+            className="rounded-lg transition-opacity hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
+          >
+            <img
+              src={libroReclamaciones}
+              alt="Libro de Reclamaciones"
+              className="h-auto w-[210px] object-contain"
+              loading="lazy"
+            />
+          </Link>
         </div>
       </div>
 

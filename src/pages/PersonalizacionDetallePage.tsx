@@ -15,6 +15,7 @@ import {
 } from '../utils/personalizacionUi';
 import { RUTAS } from '../constants/rutas';
 import type { IPersonalizacionDetalle } from '../types/IPersonalizacion';
+import ChatPersonalizacion from '../components/ChatPersonalizacion';
 
 const BTN_BASE = 'flex w-full items-center justify-center gap-2 rounded-lg px-6 py-3 text-label-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60';
 const BTN_PRIMARY = `${BTN_BASE} bg-brand-500 text-white hover:bg-brand-600`;
@@ -460,7 +461,8 @@ export default function PersonalizacionDetallePage() {
                             </div>
                             <button
                               type="button"
-                              onClick={() => navigate(RUTAS.PERSONALIZAR(personalizacion.detalleProductoId))}
+                              onClick={() => personalizacion.productoId && navigate(RUTAS.PERSONALIZAR(personalizacion.productoId))}
+                              disabled={!personalizacion.productoId}
                               className={BTN_PRIMARY_LIGHT}
                             >
                               Repetir solicitud
@@ -470,6 +472,7 @@ export default function PersonalizacionDetallePage() {
                       </div>
                     </div>
                   </div>
+                  <ChatPersonalizacion personalizacionId={personalizacion.id} soy="CLIENTE" />
                 </>
               )}
             </div>

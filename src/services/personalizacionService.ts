@@ -12,6 +12,7 @@ import type {
   IPersonalizacionDetalle,
   IPersonalizacionResumen,
   IResponderPersonalizacionRequest,
+  IMensajePersonalizacion,
 } from '../types/IPersonalizacion';
 
 /* ── Mapeo de tipos frontend → enums del backend ──────────────────────── */
@@ -136,8 +137,8 @@ async function cancelarPorCliente(id: number): Promise<void> {
 }
 
 /** Cancela la solicitud desde el comerciante (PENDIENTE o RESPONDIDA → RECHAZADA). */
-async function cancelarPorVendedor(id: number): Promise<void> {
-  await apiClient.patch(`/personalizaciones/comerciante/${id}/cancelar`);
+async function cancelarPorVendedor(id: number, motivo: string): Promise<void> {
+  await apiClient.patch(`/personalizaciones/comerciante/${id}/cancelar`, { motivo });
 }
 
 /** El cliente envía una contrapropuesta cuando está en estado RESPONDIDA: vuelve a PENDIENTE. */
@@ -152,6 +153,16 @@ async function contraProponerCliente(
   return data;
 }
 
+async function listarMensajes(id: number): Promise<IMensajePersonalizacion[]> {
+  const { data } = await apiClient.get<IMensajePersonalizacion[]>(`/personalizaciones/${id}/mensajes`);
+  return data;
+}
+
+async function enviarMensaje(id: number, mensaje: string): Promise<IMensajePersonalizacion> {
+  const { data } = await apiClient.post<IMensajePersonalizacion>(`/personalizaciones/${id}/mensajes`, { mensaje });
+  return data;
+}
+
 export const personalizacionService = {
   listarMisPersonalizaciones,
   obtenerDetallePersonalizacion,
@@ -163,4 +174,6 @@ export const personalizacionService = {
   obtenerDetallePersonalizacionComerciante,
   cancelarPorVendedor,
   responderPersonalizacion,
+  listarMensajes,
+  enviarMensaje,
 };

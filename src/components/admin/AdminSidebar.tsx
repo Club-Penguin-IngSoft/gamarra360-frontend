@@ -7,6 +7,9 @@ import {
   LogOut,
   Menu,
   X,
+  Settings,
+  BookOpen,
+  BarChart3,
 } from "lucide-react"
 import { useState } from "react"
 import LogoGamarra from "../LogoGamarra"
@@ -17,6 +20,9 @@ const navItems = [
   { href: "/admin/usuarios", label: "Gestión de Usuarios", icon: Users },
   { href: "/admin/aprobaciones", label: "Aprobación de Comerciantes", icon: CheckSquare },
   { href: "/admin/notificaciones", label: "Notificaciones", icon: Bell },
+  { href: "/admin/configuracion", label: "Configuración", icon: Settings },
+  { href: "/admin/reclamos", label: "Libro de Reclamaciones", icon: BookOpen },
+  { href: "/admin/reportes", label: "Reportes", icon: BarChart3 },
 ]
 
 export function AdminSidebar() {
