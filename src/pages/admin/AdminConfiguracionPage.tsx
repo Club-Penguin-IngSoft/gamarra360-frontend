@@ -6,6 +6,7 @@ import apiClient from '../../services/apiClient';
 interface Categoria { idCategoria: number; nombreCategoria: string }
 interface Distrito { idDistrito: number; ciudad: string; nombre: string; costoEnvio: number; activo: boolean }
 interface Parametro { clave: string; valor: string; descripcion: string; tipo: string; editable: boolean }
+interface TipoProducto { idTipoProducto: number; nombre: string; idCategoria: number }
 
 export default function AdminConfiguracionPage() {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -14,6 +15,12 @@ export default function AdminConfiguracionPage() {
   const [nombreCategoria, setNombreCategoria] = useState('');
   const [distritoNuevo, setDistritoNuevo] = useState({ ciudad: 'Lima', nombre: '', costoEnvio: 0 });
   const [mensaje, setMensaje] = useState<string | null>(null);
+
+  // Estados para la gestión de tipos de producto
+  const [catParaTipos, setCatParaTipos] = useState<Categoria | null>(null);
+  const [tipos, setTipos] = useState<TipoProducto[]>([]);
+  const [cargandoTipos, setCargandoTipos] = useState(false);
+  const [nombreTipoNuevo, setNombreTipoNuevo] = useState('');
 
   const cargar = useCallback(async () => {
     const [cat, dist, par] = await Promise.all([
@@ -52,6 +59,49 @@ export default function AdminConfiguracionPage() {
     }
   }
 
+  const cargarTipos = useCallback(async (categoriaId: number) => {
+    setCargandoTipos(true);
+    try {
+      const res = await apiClient.get<TipoProducto[]>('/tipos-producto', {
+        params: { categoriaId }
+      });
+      setTipos([...res.data].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')));
+    } catch (err) {
+      setMensaje('Error al cargar los tipos de producto.');
+    } finally {
+      setCargandoTipos(false);
+    }
+  }, []);
+
+  function abrirGestionTipos(categoria: Categoria) {
+    setCatParaTipos(categoria);
+    cargarTipos(categoria.idCategoria);
+  }
+
+  async function crearTipo() {
+    if (!catParaTipos || !nombreTipoNuevo.trim()) return;
+    try {
+      await apiClient.post('/tipos-producto', {
+        nombre: nombreTipoNuevo.trim(),
+        idCategoria: catParaTipos.idCategoria
+      });
+      setNombreTipoNuevo('');
+      await cargarTipos(catParaTipos.idCategoria);
+    } catch (err: any) {
+      setMensaje(err.response?.data?.mensaje ?? 'Error al crear el tipo de producto.');
+    }
+  }
+
+  async function eliminarTipo(tipo: TipoProducto) {
+    if (!window.confirm(`¿Eliminar el tipo "${tipo.nombre}"?`)) return;
+    try {
+      await apiClient.delete(`/tipos-producto/${tipo.idTipoProducto}`);
+      await cargarTipos(catParaTipos!.idCategoria);
+    } catch (err: any) {
+      setMensaje(err.response?.data?.mensaje ?? 'No se puede eliminar un tipo de producto en uso.');
+    }
+  }
+
   async function crearDistrito() {
     if (!distritoNuevo.ciudad.trim() || !distritoNuevo.nombre.trim() || distritoNuevo.costoEnvio < 0) return;
     await apiClient.post('/distritos', { ...distritoNuevo, activo: true });
@@ -84,7 +134,22 @@ export default function AdminConfiguracionPage() {
             <button onClick={crearCategoria} className="flex items-center gap-2 rounded-xl bg-primario px-4 py-2 text-sm font-bold text-white"><Plus size={16}/>Agregar</button>
           </div>
           <div className="mt-4 divide-y divide-neutro-100">
-            {categorias.map((c) => <div key={c.idCategoria} className="flex items-center justify-between py-3"><span className="font-medium">{c.nombreCategoria}</span><div className="flex gap-2"><button onClick={() => editarCategoria(c)} className="rounded-lg border px-3 py-1.5 text-xs font-bold">Editar</button><button onClick={() => eliminarCategoria(c)} className="rounded-lg p-2 text-error"><Trash2 size={16}/></button></div></div>)}
+            {categorias.map((c) => (
+              <div key={c.idCategoria} className="flex items-center justify-between py-3">
+                <span className="font-medium text-neutro-800">{c.nombreCategoria}</span>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => abrirGestionTipos(c)} className="rounded-lg border border-primario text-primario px-3 py-1.5 text-xs font-bold hover:bg-primario-claro transition-colors">
+                    Tipos
+                  </button>
+                  <button onClick={() => editarCategoria(c)} className="rounded-lg border px-3 py-1.5 text-xs font-bold">
+                    Editar
+                  </button>
+                  <button onClick={() => eliminarCategoria(c)} className="rounded-lg p-2 text-error hover:bg-red-50 transition-colors" aria-label={`Eliminar categoría ${c.nombreCategoria}`}>
+                    <Trash2 size={16}/>
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 
@@ -116,6 +181,56 @@ export default function AdminConfiguracionPage() {
             </div>)}
           </div>
         </section>
+
+        {catParaTipos && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutro-900/50 backdrop-blur-sm p-4">
+            <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-modal">
+              <button onClick={() => setCatParaTipos(null)} className="absolute top-4 right-4 text-neutro-400 hover:text-neutro-600">
+                <X size={20} />
+              </button>
+
+              <h3 className="text-lg font-black text-neutro-900 pr-8">
+                Tipos de producto en: {catParaTipos.nombreCategoria}
+              </h3>
+              <p className="text-xs text-neutro-500 mt-1">
+                Agrega o elimina tipos de prendas/productos asociados a esta categoría.
+              </p>
+
+              {/* Formulario de creación */}
+              <div className="mt-4 flex gap-2">
+                <input
+                  value={nombreTipoNuevo}
+                  onChange={(e) => setNombreTipoNuevo(e.target.value)}
+                  placeholder="Ej: Abrigos, Blusas, Calzado"
+                  maxLength={80}
+                  className="flex-1 rounded-xl border border-neutro-200 px-3.5 py-2 text-sm focus:border-primario focus:outline-none"
+                  onKeyDown={(e) => e.key === 'Enter' && crearTipo()}
+                />
+                <button onClick={crearTipo} className="flex items-center gap-1 rounded-xl bg-primario px-4 py-2 text-xs font-bold text-white hover:bg-primario-hover transition-colors">
+                  <Plus size={14} /> Agregar
+                </button>
+              </div>
+
+              {/* Lista de tipos con scroll */}
+              <div className="mt-4 max-h-[300px] overflow-y-auto divide-y divide-neutro-100 border-t border-neutro-100">
+                {cargandoTipos ? (
+                  <div className="py-8 text-center text-xs text-neutro-400">Cargando tipos...</div>
+                ) : tipos.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-neutro-400">No hay tipos en esta categoría.</div>
+                ) : (
+                  tipos.map((t) => (
+                    <div key={t.idTipoProducto} className="flex items-center justify-between py-2.5">
+                      <span className="text-sm font-medium text-neutro-700">{t.nombre}</span>
+                      <button onClick={() => eliminarTipo(t)} className="rounded-lg p-1.5 text-error hover:bg-red-50 transition-colors" aria-label={`Eliminar tipo ${t.nombre}`}>
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
